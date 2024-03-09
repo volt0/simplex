@@ -1,17 +1,14 @@
-use std::rc::Rc;
-
-use definition::{Definition, DefinitionValue};
 use inkwell::context::Context as BackendContext;
 use inkwell::execution_engine::JitFunction;
 use inkwell::OptimizationLevel;
 
-use crate::expressions::Expression;
-use crate::statements::{Scope, Statement};
+use definition::Definition;
 use function::{Function, FunctionArgument};
 use module::Module;
 
+use crate::expressions::Expression;
+use crate::statements::{Scope, Statement};
 use crate::types::{IntegerType, Type};
-use crate::values::Constant;
 
 mod definition;
 mod expressions;
@@ -22,34 +19,34 @@ mod types;
 mod values;
 
 fn main() {
-    let module = Module {
-        name: "test".into(),
-        defs: vec![Definition {
-            name: "test".into(),
-            value: DefinitionValue::Function(Rc::new(Function {
-                args: vec![
-                    Rc::from(FunctionArgument {
-                        name: "x".into(),
-                        arg_type: Type::SignedInteger(IntegerType::Int),
-                    }),
-                    Rc::from(FunctionArgument {
-                        name: "y".into(),
-                        arg_type: Type::SignedInteger(IntegerType::Int),
-                    }),
-                    Rc::from(FunctionArgument {
-                        name: "z".into(),
-                        arg_type: Type::SignedInteger(IntegerType::Int),
-                    }),
-                ],
-                return_type: Type::SignedInteger(IntegerType::Int),
-                body: Scope {
-                    statements: vec![Statement::Return(Box::new(Expression::Constant(
-                        Constant::SignedInteger(IntegerType::Int, 99),
-                    )))],
-                },
-            })),
+    let module = Module::new(
+        "test".into(),
+        vec![{
+            let x = FunctionArgument::new("x".into(), Type::SignedInteger(IntegerType::Int));
+            let y = FunctionArgument::new("y".into(), Type::SignedInteger(IntegerType::Int));
+            let z = FunctionArgument::new("z".into(), Type::SignedInteger(IntegerType::Int));
+
+            Definition::define_function(
+                "test".into(),
+                Function::new(
+                    vec![x.clone(), y, z],
+                    Type::SignedInteger(IntegerType::Int),
+                    Scope {
+                        statements: vec![Statement::Return(
+                            Expression::new_int_const(99),
+                            // Expression::new_add(
+                            //     Expression::new_int_const(99),
+                            //     Box::new(Expression::Identifier(Identifier {
+                            //         name: "x".into(),
+                            //         resolved: OnceCell::from(Value::Argument(x)),
+                            //     })),
+                            // ),
+                        )],
+                    },
+                ),
+            )
         }],
-    };
+    );
 
     let ctx = BackendContext::create();
     let module_ir = module.compile(&ctx);

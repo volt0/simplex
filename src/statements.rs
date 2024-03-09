@@ -50,18 +50,12 @@ impl Statement {
             }
         }
 
-        // let x = function_ir.get_nth_param(0).unwrap().into_int_value();
-        // let y = function_ir.get_nth_param(1).unwrap().into_int_value();
-        // let z = function_ir.get_nth_param(2).unwrap().into_int_value();
         // let w = builder
         //     .build_call(fn2, &[], "w")
         //     .unwrap()
         //     .try_as_basic_value()
         //     .unwrap_left()
         //     .into_int_value();
-
-        // let sum = builder.build_int_add(x, y, "sum").unwrap();
-        // let sum = builder.build_int_add(sum, z, "sum").unwrap();
         // let sum = builder.build_int_add(sum, w, "sum").unwrap();
     }
 }

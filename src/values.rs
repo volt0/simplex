@@ -1,21 +1,23 @@
 #![allow(unused)]
 
-use inkwell::builder::Builder;
-use inkwell::context::Context as BackendContext;
-use inkwell::values::AnyValueEnum;
 use std::cell::OnceCell;
 use std::rc::Rc;
 
+use inkwell::builder::Builder;
+use inkwell::context::Context as BackendContext;
+use inkwell::values::AnyValueEnum;
+
+use crate::function::FunctionArgument;
 use crate::types::{FloatType, IntegerType};
 
 pub struct Identifier {
-    name: Rc<str>,
-    resolved: OnceCell<Rc<Value>>,
+    pub name: Rc<str>,
+    pub resolved: OnceCell<Value>,
 }
 
 pub enum Value {
     Constant(Constant),
-    // Argument(Rc<FunctionArgument>),
+    Argument(Rc<FunctionArgument>),
     // Variable(Rc<Variable>),
 }
 

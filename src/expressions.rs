@@ -6,7 +6,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context as BackendContext;
 use inkwell::values::AnyValueEnum;
 
-use crate::types::Type;
+use crate::types::{IntegerType, Type};
 use crate::values::{Constant, Identifier};
 
 pub enum Expression {
@@ -22,6 +22,17 @@ pub enum Expression {
 }
 
 impl Expression {
+    pub fn new_int_const(value: i32) -> Box<Self> {
+        Box::new(Expression::Constant(Constant::SignedInteger(
+            IntegerType::Int,
+            value as i64,
+        )))
+    }
+
+    pub fn new_add(a: Box<Expression>, b: Box<Expression>) -> Box<Self> {
+        Box::new(Expression::BinaryOperation(BinaryOperation::Add, a, b))
+    }
+
     pub fn compile<'ctx>(
         &self,
         builder: &Builder<'ctx>,
