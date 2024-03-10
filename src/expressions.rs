@@ -6,8 +6,10 @@ use inkwell::builder::Builder;
 use inkwell::context::Context as BackendContext;
 use inkwell::values::AnyValueEnum;
 
+use crate::cache::Cache;
+use crate::constant::Constant;
 use crate::types::{IntegerType, Type};
-use crate::values::{Constant, Identifier};
+use crate::values::Identifier;
 
 pub enum Expression {
     Constant(Constant),
@@ -37,10 +39,11 @@ impl Expression {
         &self,
         builder: &Builder<'ctx>,
         ctx: &'ctx BackendContext,
+        cache: &Cache<'ctx>,
     ) -> AnyValueEnum<'ctx> {
         match self {
-            Expression::Constant(constant) => constant.compile(builder, ctx),
-            // Expression::Identifier(_) => {}
+            Expression::Constant(constant) => constant.compile(ctx),
+            Expression::Identifier(identifier) => identifier.compile(builder, ctx, cache),
             // Expression::Conditional(_, _, _) => {}
             // Expression::BinaryOperation(_, _, _) => {}
             // Expression::UnaryOperation(_, _) => {}

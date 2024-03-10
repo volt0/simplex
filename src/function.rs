@@ -1,3 +1,4 @@
+use std::cell::OnceCell;
 use std::rc::Rc;
 
 use inkwell::context::Context as BackendContext;
@@ -5,28 +6,55 @@ use inkwell::module::Module as ModuleIr;
 use inkwell::types::BasicType;
 use inkwell::values::FunctionValue;
 
-use crate::statements::Scope;
+use crate::cache::{Cache, ValueCacheKey};
+use crate::statements::CompoundStatement;
 use crate::types::Type;
 
 pub struct FunctionArgument {
     name: Rc<str>,
     arg_type: Type,
+    cache_key: OnceCell<ValueCacheKey>,
 }
 
 impl FunctionArgument {
     pub fn new(name: Rc<str>, arg_type: Type) -> Rc<Self> {
-        Rc::new(FunctionArgument { name, arg_type })
+        Rc::new(FunctionArgument {
+            name,
+            arg_type,
+            cache_key: OnceCell::new(),
+        })
+    }
+
+    pub fn compile<'ctx>(
+        &self,
+        position: u32,
+        function_ir: FunctionValue<'ctx>,
+        cache: &mut Cache<'ctx>,
+    ) {
+        let arg_ir = function_ir.get_nth_param(position).unwrap();
+        arg_ir.set_name(self.name.as_ref());
+
+        let arg_cache_key = cache.values.insert(arg_ir.into());
+        self.cache_key.set(arg_cache_key).unwrap()
+    }
+
+    pub fn cache_key(&self) -> ValueCacheKey {
+        self.cache_key.get().unwrap().clone()
     }
 }
 
 pub struct Function {
     args: Vec<Rc<FunctionArgument>>,
     return_type: Type,
-    body: Scope,
+    body: CompoundStatement,
 }
 
 impl Function {
-    pub fn new(args: Vec<Rc<FunctionArgument>>, return_type: Type, body: Scope) -> Rc<Self> {
+    pub fn new(
+        args: Vec<Rc<FunctionArgument>>,
+        return_type: Type,
+        body: CompoundStatement,
+    ) -> Rc<Self> {
         Rc::new(Function {
             args,
             return_type,
@@ -53,13 +81,13 @@ impl Function {
 
         let function_ir = module_ir.add_function(name, function_type, None);
 
+        let mut cache = Cache::default();
         for (i, arg) in self.args.iter().enumerate() {
-            let arg_ir = function_ir.get_nth_param(i as u32).unwrap();
-            arg_ir.set_name(arg.name.as_ref())
+            arg.compile(i as u32, function_ir, &mut cache);
         }
 
         let builder = ctx.create_builder();
-        self.body.compile(function_ir, &builder, ctx);
+        self.body.compile(function_ir, &builder, ctx, &mut cache);
 
         function_ir
     }
