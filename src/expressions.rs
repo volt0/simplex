@@ -1,19 +1,17 @@
-#![allow(unused)]
-
 use std::rc::Rc;
 
 use inkwell::builder::Builder;
 use inkwell::context::Context as BackendContext;
-use inkwell::values::AnyValueEnum;
 
-use crate::cache::Cache;
 use crate::constant::Constant;
+use crate::function::Scope;
 use crate::types::{IntegerType, Type};
-use crate::values::Identifier;
+use crate::values::Value;
 
+#[allow(unused)]
 pub enum Expression {
     Constant(Constant),
-    Identifier(Identifier),
+    Identifier(Rc<str>),
     Conditional(Box<Expression>, Box<Expression>, Box<Expression>),
     BinaryOperation(BinaryOperation, Box<Expression>, Box<Expression>),
     UnaryOperation(UnaryOperationExpression, Box<Expression>),
@@ -24,26 +22,27 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub fn new_int_const(value: i32) -> Box<Self> {
+    pub fn _new_int_const(value: i32) -> Box<Self> {
         Box::new(Expression::Constant(Constant::SignedInteger(
             IntegerType::Int,
             value as i64,
         )))
     }
 
-    pub fn new_add(a: Box<Expression>, b: Box<Expression>) -> Box<Self> {
+    pub fn _new_add(a: Box<Expression>, b: Box<Expression>) -> Box<Self> {
         Box::new(Expression::BinaryOperation(BinaryOperation::Add, a, b))
     }
 
     pub fn compile<'ctx>(
         &self,
+        scope: &Scope<'ctx>,
         builder: &Builder<'ctx>,
         ctx: &'ctx BackendContext,
-        cache: &Cache<'ctx>,
-    ) -> AnyValueEnum<'ctx> {
+    ) -> Value<'ctx> {
+        let _ = builder;
         match self {
             Expression::Constant(constant) => constant.compile(ctx),
-            Expression::Identifier(identifier) => identifier.compile(builder, ctx, cache),
+            Expression::Identifier(identifier) => scope.resolve(identifier.clone()).clone(),
             // Expression::Conditional(_, _, _) => {}
             // Expression::BinaryOperation(_, _, _) => {}
             // Expression::UnaryOperation(_, _) => {}
@@ -56,11 +55,13 @@ impl Expression {
     }
 }
 
+#[allow(unused)]
 pub struct UnaryOperationExpression {
     operation: UnaryOperation,
     val: Box<Expression>,
 }
 
+#[allow(unused)]
 pub enum UnaryOperation {
     Plus,
     Minus,
@@ -68,6 +69,7 @@ pub enum UnaryOperation {
     LogicalNot,
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 pub enum BinaryOperation {
     Add,

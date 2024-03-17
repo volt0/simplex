@@ -1,6 +1,3 @@
-use std::cell::OnceCell;
-use std::rc::Rc;
-
 use inkwell::context::Context as BackendContext;
 use inkwell::execution_engine::JitFunction;
 use inkwell::OptimizationLevel;
@@ -8,14 +5,11 @@ use inkwell::OptimizationLevel;
 use definition::Definition;
 use function::{Function, FunctionArgument};
 use module::Module;
-use variable::Variable;
 
 use crate::expressions::Expression;
 use crate::statements::{CompoundStatement, Statement};
 use crate::types::{IntegerType, Type};
-use crate::values::{Identifier, Value};
 
-mod cache;
 mod constant;
 mod definition;
 mod expressions;
@@ -30,40 +24,28 @@ fn main() {
     let module = Module::new(
         "test".into(),
         vec![{
-            let x = FunctionArgument::new("x".into(), Type::SignedInteger(IntegerType::Int));
-            let y = FunctionArgument::new("y".into(), Type::SignedInteger(IntegerType::Int));
-            let z = FunctionArgument::new("z".into(), Type::SignedInteger(IntegerType::Int));
-
-            let a = Rc::new(Variable {
-                name: "a".into(),
-                value_type: Type::SignedInteger(IntegerType::Int),
-                value: Box::new(Expression::Identifier(Identifier {
-                    name: "x".into(),
-                    value: OnceCell::from(Value::Argument(x.clone())),
-                })),
-                cache_key: Default::default(),
-            });
-
             Definition::define_function(
                 "test".into(),
                 Function::new(
-                    vec![x.clone(), y, z],
+                    vec![
+                        FunctionArgument::new("x".into(), Type::SignedInteger(IntegerType::Int)),
+                        FunctionArgument::new("y".into(), Type::SignedInteger(IntegerType::Int)),
+                        FunctionArgument::new("z".into(), Type::SignedInteger(IntegerType::Int)),
+                    ],
                     Type::SignedInteger(IntegerType::Int),
                     CompoundStatement {
                         statements: vec![
-                            Statement::Let(a.clone()),
+                            // Statement::Let(Rc::new(Variable {
+                            //     name: "a".into(),
+                            //     value_type: Type::SignedInteger(IntegerType::Int),
+                            //     value_init: Box::new(Expression::Identifier("x".into())),
+                            // })),
                             Statement::Return(
                                 // Expression::new_int_const(99),
-                                Box::new(Expression::Identifier(Identifier {
-                                    name: "x".into(),
-                                    value: OnceCell::from(Value::Variable(a.clone())),
-                                })),
+                                Box::new(Expression::Identifier("x".into())),
                                 // Expression::new_add(
                                 //     Expression::new_int_const(99),
-                                //     Box::new(Expression::Identifier(Identifier {
-                                //         name: "x".into(),
-                                //         resolved: OnceCell::from(Value::Argument(x)),
-                                //     })),
+                                //     Box::new(Expression::Identifier(Identifier("x".into()))),
                                 // ),
                             ),
                         ],

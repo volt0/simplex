@@ -3,11 +3,11 @@
 use std::rc::Rc;
 
 use inkwell::builder::Builder;
-use inkwell::context::Context as BackendContext;
+use inkwell::context::{Context as BackendContext, Context};
 use inkwell::values::{BasicValueEnum, FunctionValue};
 
-use crate::cache::Cache;
 use crate::expressions::Expression;
+use crate::function::Scope;
 use crate::variable::Variable;
 
 pub struct CompoundStatement {
@@ -17,16 +17,16 @@ pub struct CompoundStatement {
 impl CompoundStatement {
     pub fn compile<'ctx>(
         &self,
-        function_ir: FunctionValue<'ctx>,
+        scope: &Scope,
         builder: &Builder<'ctx>,
+        function_ir: FunctionValue<'ctx>,
         ctx: &'ctx BackendContext,
-        cache: &mut Cache<'ctx>,
     ) {
         let entry_block = ctx.append_basic_block(function_ir, "");
         builder.position_at_end(entry_block);
 
         for statement in self.statements.iter() {
-            statement.compile(function_ir, builder, ctx, cache);
+            statement.compile(scope, builder, function_ir, ctx);
         }
     }
 }
@@ -40,19 +40,21 @@ pub enum Statement {
 impl Statement {
     pub fn compile<'ctx>(
         &self,
-        function_ir: FunctionValue<'ctx>,
+        scope: &Scope,
         builder: &Builder<'ctx>,
+        function_ir: FunctionValue<'ctx>,
         ctx: &'ctx BackendContext,
-        cache: &mut Cache<'ctx>,
     ) {
         match self {
-            Statement::Let(variable) => variable.compile(builder, ctx, cache),
-            Statement::Compound(inner) => inner.compile(function_ir, builder, ctx, cache),
+            Statement::Let(variable) => {
+                variable.compile(scope, builder, ctx);
+            }
+            Statement::Compound(inner) => inner.compile(scope, builder, function_ir, ctx),
             Statement::Return(expression) => {
                 let expression = expression.as_ref();
-                let return_value_any = expression.compile(builder, ctx, cache);
-                let return_value_basic: BasicValueEnum = return_value_any.try_into().unwrap();
-                builder.build_return(Some(&return_value_basic)).unwrap();
+                let return_value = expression.compile(scope, builder, ctx);
+                let return_value_ir = return_value.compile_as_basic();
+                builder.build_return(Some(&return_value_ir)).unwrap();
             }
         }
 

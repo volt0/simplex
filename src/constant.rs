@@ -3,9 +3,9 @@
 use std::rc::Rc;
 
 use inkwell::context::Context as BackendContext;
-use inkwell::values::AnyValueEnum;
 
-use crate::types::{FloatType, IntegerType};
+use crate::types::{FloatType, IntegerType, Type};
+use crate::values::Value;
 
 #[derive(Clone)]
 pub enum Constant {
@@ -19,20 +19,29 @@ pub enum Constant {
 }
 
 impl Constant {
-    pub fn compile<'ctx>(&self, ctx: &'ctx BackendContext) -> AnyValueEnum<'ctx> {
+    pub fn compile<'ctx>(&self, ctx: &'ctx BackendContext) -> Value<'ctx> {
         match self {
             Constant::Void => unimplemented!(),
-            Constant::True => ctx.bool_type().const_int(1, false).into(),
-            Constant::False => ctx.bool_type().const_int(0, false).into(),
-            Constant::SignedInteger(int_type, value) => {
-                int_type.compile(ctx).const_int(*value as u64, true).into()
-            }
-            Constant::UnsignedInteger(int_type, value) => {
-                int_type.compile(ctx).const_int(*value, false).into()
-            }
-            Constant::Float(float_type, value) => {
-                float_type.compile(ctx).const_float(*value).into()
-            }
+            Constant::True => Value {
+                ir: ctx.bool_type().const_int(1, false).into(),
+                value_type: Type::Boolean,
+            },
+            Constant::False => Value {
+                ir: ctx.bool_type().const_int(0, false).into(),
+                value_type: Type::Boolean,
+            },
+            Constant::SignedInteger(int_type, value) => Value {
+                ir: int_type.compile(ctx).const_int(*value as u64, true).into(),
+                value_type: Type::SignedInteger(int_type.clone()),
+            },
+            Constant::UnsignedInteger(int_type, value) => Value {
+                ir: int_type.compile(ctx).const_int(*value, false).into(),
+                value_type: Type::UnsignedInteger(int_type.clone()),
+            },
+            Constant::Float(float_type, value) => Value {
+                ir: float_type.compile(ctx).const_float(*value).into(),
+                value_type: Type::Float(float_type.clone()),
+            },
             Constant::String(_) => todo!(),
         }
     }
