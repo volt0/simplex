@@ -4,7 +4,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context as BackendContext;
 
 use crate::expressions::Expression;
-use crate::function::Scope;
+use crate::scope::Scope;
 use crate::types::Type;
 use crate::values::Value;
 
@@ -17,7 +17,7 @@ pub struct Variable {
 impl Variable {
     pub fn compile<'ctx>(
         &self,
-        scope: &Scope<'ctx>,
+        scope: &dyn Scope<'ctx>,
         builder: &Builder<'ctx>,
         ctx: &'ctx BackendContext,
     ) -> Value<'ctx> {

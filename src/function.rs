@@ -7,6 +7,7 @@ use inkwell::types::BasicType;
 use inkwell::values::FunctionValue;
 
 use crate::statements::CompoundStatement;
+use crate::statements::LocalScope;
 use crate::types::Type;
 use crate::values::Value;
 
@@ -68,8 +69,9 @@ impl Function {
 
         let function_ir = module_ir.add_function(name, function_type, None);
 
-        let mut scope = Scope {
+        let mut scope = LocalScope {
             index: BTreeMap::new(),
+            parent: None,
         };
         for (i, arg) in self.args.iter().enumerate() {
             let value = arg.compile(i as u32, function_ir);
@@ -80,15 +82,5 @@ impl Function {
         self.body.compile(&scope, &builder, function_ir, ctx);
 
         function_ir
-    }
-}
-
-pub struct Scope<'ctx> {
-    index: BTreeMap<Rc<str>, Value<'ctx>>,
-}
-
-impl<'ctx> Scope<'ctx> {
-    pub fn resolve(&self, name: Rc<str>) -> &Value<'ctx> {
-        self.index.get(name.as_ref()).unwrap()
     }
 }
