@@ -4,6 +4,7 @@ use inkwell::context::Context as BackendContext;
 use inkwell::module::Module as ModuleIr;
 
 use crate::function::Function;
+use crate::scope::Scope;
 
 #[derive(Clone)]
 pub enum DefinitionValue {
@@ -24,12 +25,17 @@ impl Definition {
         }
     }
 
-    pub fn compile<'ctx>(&self, module_ir: &ModuleIr<'ctx>, ctx: &'ctx BackendContext) {
+    pub fn compile<'ctx>(
+        &self,
+        scope: &dyn Scope<'ctx>,
+        module_ir: &ModuleIr<'ctx>,
+        ctx: &'ctx BackendContext,
+    ) {
         let name = self.name.as_ref();
         match &self.value {
             DefinitionValue::Function(function) => {
                 let function = function.as_ref();
-                function.compile(name, &module_ir, ctx);
+                function.compile(name, scope, &module_ir, ctx);
             }
         }
     }

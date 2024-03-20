@@ -6,6 +6,7 @@ use inkwell::module::Module as ModuleIr;
 use inkwell::types::BasicType;
 use inkwell::values::FunctionValue;
 
+use crate::scope::Scope;
 use crate::statements::CompoundStatement;
 use crate::statements::LocalScope;
 use crate::types::Type;
@@ -53,6 +54,7 @@ impl Function {
     pub fn compile<'ctx>(
         &self,
         name: &str,
+        outer_scope: &dyn Scope<'ctx>,
         module_ir: &ModuleIr<'ctx>,
         ctx: &'ctx BackendContext,
     ) -> FunctionValue<'ctx> {
@@ -71,7 +73,7 @@ impl Function {
 
         let mut scope = LocalScope {
             index: BTreeMap::new(),
-            parent: None,
+            parent: outer_scope,
         };
         for (i, arg) in self.args.iter().enumerate() {
             let value = arg.compile(i as u32, function_ir);

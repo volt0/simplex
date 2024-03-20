@@ -26,7 +26,7 @@ impl CompoundStatement {
     ) {
         let mut scope = LocalScope {
             index: Default::default(),
-            parent: Some(scope),
+            parent: scope,
         };
 
         let entry_block = ctx.append_basic_block(function_ir, "");
@@ -72,13 +72,12 @@ impl Statement {
         //     .try_as_basic_value()
         //     .unwrap_left()
         //     .into_int_value();
-        // let sum = builder.build_int_add(sum, w, "sum").unwrap();
     }
 }
 
 pub struct LocalScope<'ctx, 'a> {
     pub index: BTreeMap<Rc<str>, Value<'ctx>>,
-    pub parent: Option<&'a dyn Scope<'ctx>>,
+    pub parent: &'a dyn Scope<'ctx>,
 }
 
 impl<'ctx, 'a> Scope<'ctx> for LocalScope<'ctx, 'a> {
@@ -87,6 +86,6 @@ impl<'ctx, 'a> Scope<'ctx> for LocalScope<'ctx, 'a> {
             return value;
         }
 
-        self.parent.unwrap().resolve(name)
+        self.parent.resolve(name)
     }
 }

@@ -13,7 +13,7 @@ pub enum Expression {
     Constant(Constant),
     Identifier(Rc<str>),
     Conditional(Box<Expression>, Box<Expression>, Box<Expression>),
-    BinaryOperation(BinaryOperation, Box<Expression>, Box<Expression>),
+    BinaryOperation(BinaryOperationExpression),
     UnaryOperation(UnaryOperationExpression, Box<Expression>),
     Cast(Box<Expression>, Type),
     Call(Box<Expression>, Vec<Expression>),
@@ -30,7 +30,11 @@ impl Expression {
     }
 
     pub fn _new_add(a: Box<Expression>, b: Box<Expression>) -> Box<Self> {
-        Box::new(Expression::BinaryOperation(BinaryOperation::Add, a, b))
+        Box::new(Expression::BinaryOperation(BinaryOperationExpression {
+            operation: BinaryOperation::Add,
+            a,
+            b,
+        }))
     }
 
     pub fn compile<'ctx>(
@@ -44,7 +48,7 @@ impl Expression {
             Expression::Constant(constant) => constant.compile(ctx),
             Expression::Identifier(identifier) => scope.resolve(identifier.clone()).clone(),
             // Expression::Conditional(_, _, _) => {}
-            // Expression::BinaryOperation(_, _, _) => {}
+            Expression::BinaryOperation(op) => op.compile(scope, builder, ctx),
             // Expression::UnaryOperation(_, _) => {}
             // Expression::Cast(_, _) => {}
             // Expression::Call(_, _) => {}
@@ -67,6 +71,60 @@ pub enum UnaryOperation {
     Minus,
     BitNot,
     LogicalNot,
+}
+
+pub struct BinaryOperationExpression {
+    operation: BinaryOperation,
+    a: Box<Expression>,
+    b: Box<Expression>,
+}
+
+impl BinaryOperationExpression {
+    pub fn compile<'ctx>(
+        &self,
+        scope: &dyn Scope<'ctx>,
+        builder: &Builder<'ctx>,
+        ctx: &'ctx BackendContext,
+    ) -> Value<'ctx> {
+        match self.operation {
+            BinaryOperation::Add => {
+                let a = self.a.compile(scope, builder, ctx);
+                let b = self.b.compile(scope, builder, ctx);
+
+                match (&a.value_type, &b.value_type) {
+                    (Type::SignedInteger(a_type), Type::SignedInteger(b_type)) => {
+                        assert!(a_type == b_type);
+                        let a_ir = a.ir.into_int_value();
+                        let b_ir = b.ir.into_int_value();
+                        let result = builder.build_int_add(a_ir, b_ir, "").unwrap();
+                        Value {
+                            ir: result.into(),
+                            value_type: Type::SignedInteger(a_type.clone()),
+                        }
+                    }
+                    _ => todo!(),
+                }
+            }
+            // BinaryOperation::Sub => {}
+            // BinaryOperation::Mul => {}
+            // BinaryOperation::Div => {}
+            // BinaryOperation::Mod => {}
+            // BinaryOperation::BitAnd => {}
+            // BinaryOperation::BitXor => {}
+            // BinaryOperation::BitOr => {}
+            // BinaryOperation::ShiftLeft => {}
+            // BinaryOperation::ShiftRight => {}
+            // BinaryOperation::Eq => {}
+            // BinaryOperation::Ne => {}
+            // BinaryOperation::Gt => {}
+            // BinaryOperation::Ge => {}
+            // BinaryOperation::Lt => {}
+            // BinaryOperation::Le => {}
+            // BinaryOperation::LogicalAnd => {}
+            // BinaryOperation::LogicalOr => {}
+            _ => todo!(),
+        }
+    }
 }
 
 #[allow(unused)]

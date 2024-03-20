@@ -1,9 +1,8 @@
-#![allow(unused)]
-
 use inkwell::context::Context as BackendContext;
 use inkwell::types::{BasicTypeEnum, FloatType as FloatTypeIR, IntType as IntTypeIR};
 
-#[derive(Clone)]
+#[allow(unused)]
+#[derive(Clone, PartialEq)]
 pub enum Type {
     Void,
     Boolean,
@@ -25,7 +24,8 @@ impl Type {
     }
 }
 
-#[derive(Clone)]
+#[allow(unused)]
+#[derive(Clone, PartialEq)]
 pub enum IntegerType {
     Byte,
     Short,
@@ -44,7 +44,8 @@ impl IntegerType {
     }
 }
 
-#[derive(Clone)]
+#[allow(unused)]
+#[derive(Clone, PartialEq)]
 pub enum FloatType {
     Float,
     Double,

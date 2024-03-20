@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use inkwell::context::Context as BackendContext;
 use inkwell::execution_engine::JitFunction;
 use inkwell::OptimizationLevel;
@@ -11,7 +9,6 @@ use module::Module;
 use crate::expressions::Expression;
 use crate::statements::{CompoundStatement, Statement};
 use crate::types::{IntegerType, Type};
-use crate::variable::Variable;
 
 mod constant;
 mod definition;
@@ -38,21 +35,10 @@ fn main() {
                     ],
                     Type::SignedInteger(IntegerType::Int),
                     CompoundStatement {
-                        statements: vec![
-                            Statement::Let(Rc::new(Variable {
-                                name: "a".into(),
-                                value_type: Type::SignedInteger(IntegerType::Int),
-                                value_init: Box::new(Expression::Identifier("x".into())),
-                            })),
-                            Statement::Return(
-                                // Expression::new_int_const(99),
-                                Box::new(Expression::Identifier("a".into())),
-                                // Expression::new_add(
-                                //     Expression::new_int_const(99),
-                                //     Box::new(Expression::Identifier(Identifier("x".into()))),
-                                // ),
-                            ),
-                        ],
+                        statements: vec![Statement::Return(Expression::_new_add(
+                            Box::new(Expression::Identifier("x".into())),
+                            Expression::_new_int_const(99),
+                        ))],
                     },
                 ),
             )
