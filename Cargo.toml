@@ -4,8 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-intrusive-collections = "0.9.6"
-slotmap = "1.0.7"
+thiserror = "1.0.58"
 
 [dependencies.inkwell]
 version = "0.4.0"

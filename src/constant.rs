@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use inkwell::context::Context as BackendContext;
 
-use crate::types::{FloatType, IntegerType, Type};
+use crate::types::{FloatType, IntegerType};
 use crate::values::Value;
 
 #[derive(Clone)]
@@ -22,26 +22,17 @@ impl Constant {
     pub fn compile<'ctx>(&self, ctx: &'ctx BackendContext) -> Value<'ctx> {
         match self {
             Constant::Void => unimplemented!(),
-            Constant::True => Value {
-                ir: ctx.bool_type().const_int(1, false).into(),
-                value_type: Type::Boolean,
-            },
-            Constant::False => Value {
-                ir: ctx.bool_type().const_int(0, false).into(),
-                value_type: Type::Boolean,
-            },
-            Constant::SignedInteger(int_type, value) => Value {
-                ir: int_type.compile(ctx).const_int(*value as u64, true).into(),
-                value_type: Type::SignedInteger(int_type.clone()),
-            },
-            Constant::UnsignedInteger(int_type, value) => Value {
-                ir: int_type.compile(ctx).const_int(*value, false).into(),
-                value_type: Type::UnsignedInteger(int_type.clone()),
-            },
-            Constant::Float(float_type, value) => Value {
-                ir: float_type.compile(ctx).const_float(*value).into(),
-                value_type: Type::Float(float_type.clone()),
-            },
+            Constant::True => Value::from_ir(ctx.bool_type().const_int(1, false).into()),
+            Constant::False => Value::from_ir(ctx.bool_type().const_int(0, false).into()),
+            Constant::SignedInteger(int_type, value) => {
+                Value::new_integer(int_type.compile(ctx).const_int(*value as u64, true), false)
+            }
+            Constant::UnsignedInteger(int_type, value) => {
+                Value::new_integer(int_type.compile(ctx).const_int(*value, false), true)
+            }
+            Constant::Float(float_type, value) => {
+                Value::from_ir(float_type.compile(ctx).const_float(*value).into())
+            }
             Constant::String(_) => todo!(),
         }
     }

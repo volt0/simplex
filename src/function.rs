@@ -9,39 +9,36 @@ use inkwell::values::FunctionValue;
 use crate::scope::Scope;
 use crate::statements::CompoundStatement;
 use crate::statements::LocalScope;
-use crate::types::Type;
+use crate::types::TypeSpec;
 use crate::values::Value;
 
 pub struct FunctionArgument {
     name: Rc<str>,
-    arg_type: Type,
+    arg_type: TypeSpec,
 }
 
 impl FunctionArgument {
-    pub fn new(name: Rc<str>, arg_type: Type) -> Rc<Self> {
+    pub fn new(name: Rc<str>, arg_type: TypeSpec) -> Rc<Self> {
         Rc::new(FunctionArgument { name, arg_type })
     }
 
     pub fn compile<'ctx>(&self, position: u32, function_ir: FunctionValue<'ctx>) -> Value<'ctx> {
         let ir = function_ir.get_nth_param(position).unwrap();
         ir.set_name(self.name.as_ref());
-        Value {
-            ir: ir.into(),
-            value_type: self.arg_type.clone(),
-        }
+        Value::from_ir(ir)
     }
 }
 
 pub struct Function {
     args: Vec<Rc<FunctionArgument>>,
-    return_type: Type,
+    return_type: TypeSpec,
     body: CompoundStatement,
 }
 
 impl Function {
     pub fn new(
         args: Vec<Rc<FunctionArgument>>,
-        return_type: Type,
+        return_type: TypeSpec,
         body: CompoundStatement,
     ) -> Rc<Self> {
         Rc::new(Function {
@@ -65,7 +62,7 @@ impl Function {
 
         let is_var_args = false;
         let function_type = match &self.return_type {
-            Type::Void => ctx.void_type().fn_type(&arg_types, is_var_args),
+            TypeSpec::Void => ctx.void_type().fn_type(&arg_types, is_var_args),
             return_type => return_type.compile(ctx).fn_type(&arg_types, is_var_args),
         };
 

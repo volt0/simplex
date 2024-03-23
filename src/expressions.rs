@@ -2,10 +2,12 @@ use std::rc::Rc;
 
 use inkwell::builder::Builder;
 use inkwell::context::Context as BackendContext;
+use inkwell::values::BasicValueEnum;
 
 use crate::constant::Constant;
+use crate::errors::CompilationError;
 use crate::scope::Scope;
-use crate::types::{IntegerType, Type};
+use crate::types::{IntegerType, TypeSpec};
 use crate::values::Value;
 
 #[allow(unused)]
@@ -15,7 +17,7 @@ pub enum Expression {
     Conditional(Box<Expression>, Box<Expression>, Box<Expression>),
     BinaryOperation(BinaryOperationExpression),
     UnaryOperation(UnaryOperationExpression, Box<Expression>),
-    Cast(Box<Expression>, Type),
+    Cast(Box<Expression>, TypeSpec),
     Call(Box<Expression>, Vec<Expression>),
     ItemAccess(Box<Expression>, Box<Expression>),
     MemberAccess(Box<Expression>, Rc<str>),
@@ -48,7 +50,7 @@ impl Expression {
             Expression::Constant(constant) => constant.compile(ctx),
             Expression::Identifier(identifier) => scope.resolve(identifier.clone()).clone(),
             // Expression::Conditional(_, _, _) => {}
-            Expression::BinaryOperation(op) => op.compile(scope, builder, ctx),
+            Expression::BinaryOperation(op) => op.compile(scope, builder, ctx).unwrap(),
             // Expression::UnaryOperation(_, _) => {}
             // Expression::Cast(_, _) => {}
             // Expression::Call(_, _) => {}
@@ -85,43 +87,51 @@ impl BinaryOperationExpression {
         scope: &dyn Scope<'ctx>,
         builder: &Builder<'ctx>,
         ctx: &'ctx BackendContext,
-    ) -> Value<'ctx> {
-        match self.operation {
-            BinaryOperation::Add => {
-                let a = self.a.compile(scope, builder, ctx);
-                let b = self.b.compile(scope, builder, ctx);
+    ) -> Result<Value<'ctx>, CompilationError> {
+        let a = self.a.compile(scope, builder, ctx);
+        let b = self.b.compile(scope, builder, ctx);
+        assert_eq!(a.get_type(), b.get_type());
 
-                match (&a.value_type, &b.value_type) {
-                    (Type::SignedInteger(a_type), Type::SignedInteger(b_type)) => {
-                        assert!(a_type == b_type);
-                        let a_ir = a.ir.into_int_value();
-                        let b_ir = b.ir.into_int_value();
-                        let result = builder.build_int_add(a_ir, b_ir, "").unwrap();
-                        Value {
-                            ir: result.into(),
-                            value_type: Type::SignedInteger(a_type.clone()),
-                        }
-                    }
+        // match a {
+        //     Value::SignedInt(a_ir) => {}
+        //     Value::UnsignedInt(a_ir) => {}
+        // }
+
+        match a.ir {
+            // BasicValueEnum::ArrayValue(_) => {}
+            BasicValueEnum::IntValue(_) => {
+                let a_ir = a.ir.into_int_value();
+                let b_ir = b.ir.into_int_value();
+
+                let result = match self.operation {
+                    BinaryOperation::Add => builder.build_int_add(a_ir, b_ir, "")?,
+                    BinaryOperation::Sub => builder.build_int_sub(a_ir, b_ir, "")?,
+                    BinaryOperation::Mul => builder.build_int_mul(a_ir, b_ir, "")?,
+                    // BinaryOperation::Div => builder.build_int_unsigned_div(a_ir, b_ir, "")?,
+                    // BinaryOperation::Mod => builder.build_int_unsigned_rem(a_ir, b_ir, "")?,
+                    // BinaryOperation::BitAnd => {}
+                    // BinaryOperation::BitXor => {}
+                    // BinaryOperation::BitOr => {}
+                    // BinaryOperation::ShiftLeft => {}
+                    // BinaryOperation::ShiftRight => {}
+                    // BinaryOperation::Eq => {}
+                    // BinaryOperation::Ne => {}
+                    // BinaryOperation::Gt => {}
+                    // BinaryOperation::Ge => {}
+                    // BinaryOperation::Lt => {}
+                    // BinaryOperation::Le => {}
+                    // BinaryOperation::LogicalAnd => {}
+                    // BinaryOperation::LogicalOr => {}
                     _ => todo!(),
-                }
+                };
+
+                Ok(Value::from_ir(result.into()))
             }
-            // BinaryOperation::Sub => {}
-            // BinaryOperation::Mul => {}
-            // BinaryOperation::Div => {}
-            // BinaryOperation::Mod => {}
-            // BinaryOperation::BitAnd => {}
-            // BinaryOperation::BitXor => {}
-            // BinaryOperation::BitOr => {}
-            // BinaryOperation::ShiftLeft => {}
-            // BinaryOperation::ShiftRight => {}
-            // BinaryOperation::Eq => {}
-            // BinaryOperation::Ne => {}
-            // BinaryOperation::Gt => {}
-            // BinaryOperation::Ge => {}
-            // BinaryOperation::Lt => {}
-            // BinaryOperation::Le => {}
-            // BinaryOperation::LogicalAnd => {}
-            // BinaryOperation::LogicalOr => {}
+            // BasicValueEnum::FloatValue(_) => {}
+            // BasicValueEnum::FunctionValue(_) => {}
+            // BasicValueEnum::PointerValue(_) => {}
+            // BasicValueEnum::StructValue(_) => {}
+            // BasicValueEnum::VectorValue(_) => {}
             _ => todo!(),
         }
     }

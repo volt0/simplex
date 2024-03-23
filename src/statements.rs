@@ -61,8 +61,7 @@ impl Statement {
             Statement::Return(expression) => {
                 let expression = expression.as_ref();
                 let return_value = expression.compile(scope, builder, ctx);
-                let return_value_ir = return_value.compile_as_basic();
-                builder.build_return(Some(&return_value_ir)).unwrap();
+                builder.build_return(Some(&return_value.ir)).unwrap();
             }
         }
 

@@ -3,7 +3,7 @@ use inkwell::types::{BasicTypeEnum, FloatType as FloatTypeIR, IntType as IntType
 
 #[allow(unused)]
 #[derive(Clone, PartialEq)]
-pub enum Type {
+pub enum TypeSpec {
     Void,
     Boolean,
     SignedInteger(IntegerType),
@@ -11,15 +11,15 @@ pub enum Type {
     Float(FloatType),
 }
 
-impl Type {
+impl TypeSpec {
     pub fn compile<'ctx>(&self, ctx: &'ctx BackendContext) -> BasicTypeEnum<'ctx> {
         match self {
-            Type::Void => BasicTypeEnum::StructType(ctx.struct_type(&vec![], true)),
-            Type::Boolean => BasicTypeEnum::IntType(ctx.bool_type()),
-            Type::SignedInteger(int_type) | Type::UnsignedInteger(int_type) => {
+            TypeSpec::Void => BasicTypeEnum::StructType(ctx.struct_type(&vec![], true)),
+            TypeSpec::Boolean => BasicTypeEnum::IntType(ctx.bool_type()),
+            TypeSpec::SignedInteger(int_type) | TypeSpec::UnsignedInteger(int_type) => {
                 BasicTypeEnum::IntType(int_type.compile(ctx))
             }
-            Type::Float(float_type) => BasicTypeEnum::FloatType(float_type.compile(ctx)),
+            TypeSpec::Float(float_type) => BasicTypeEnum::FloatType(float_type.compile(ctx)),
         }
     }
 }

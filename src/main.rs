@@ -8,10 +8,11 @@ use module::Module;
 
 use crate::expressions::Expression;
 use crate::statements::{CompoundStatement, Statement};
-use crate::types::{IntegerType, Type};
+use crate::types::{IntegerType, TypeSpec};
 
 mod constant;
 mod definition;
+mod errors;
 mod expressions;
 mod function;
 mod module;
@@ -29,11 +30,20 @@ fn main() {
                 "test".into(),
                 Function::new(
                     vec![
-                        FunctionArgument::new("x".into(), Type::SignedInteger(IntegerType::Int)),
-                        FunctionArgument::new("y".into(), Type::SignedInteger(IntegerType::Int)),
-                        FunctionArgument::new("z".into(), Type::SignedInteger(IntegerType::Int)),
+                        FunctionArgument::new(
+                            "x".into(),
+                            TypeSpec::SignedInteger(IntegerType::Int),
+                        ),
+                        FunctionArgument::new(
+                            "y".into(),
+                            TypeSpec::SignedInteger(IntegerType::Int),
+                        ),
+                        FunctionArgument::new(
+                            "z".into(),
+                            TypeSpec::SignedInteger(IntegerType::Int),
+                        ),
                     ],
-                    Type::SignedInteger(IntegerType::Int),
+                    TypeSpec::SignedInteger(IntegerType::Int),
                     CompoundStatement {
                         statements: vec![Statement::Return(Expression::_new_add(
                             Box::new(Expression::Identifier("x".into())),
