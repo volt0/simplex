@@ -7,31 +7,33 @@ use inkwell::values::BasicValueEnum;
 use crate::constant::Constant;
 use crate::errors::CompilationError;
 use crate::scope::Scope;
-use crate::types::{IntegerType, TypeSpec};
+use crate::types::TypeSpec;
 use crate::values::Value;
+
+pub type ExpressionRef = Box<Expression>;
 
 #[allow(unused)]
 pub enum Expression {
     Constant(Constant),
     Identifier(Rc<str>),
-    Conditional(Box<Expression>, Box<Expression>, Box<Expression>),
+    Conditional(ConditionalExpression),
     BinaryOperation(BinaryOperationExpression),
-    UnaryOperation(UnaryOperationExpression, Box<Expression>),
-    Cast(Box<Expression>, TypeSpec),
-    Call(Box<Expression>, Vec<Expression>),
-    ItemAccess(Box<Expression>, Box<Expression>),
-    MemberAccess(Box<Expression>, Rc<str>),
+    UnaryOperation(UnaryOperationExpression),
+    Cast(CastExpression),
+    Call(CallExpression),
+    ItemAccess(ItemAccessExpression),
+    MemberAccess(MemberAccessExpression),
 }
 
 impl Expression {
-    pub fn _new_int_const(value: i32) -> Box<Self> {
-        Box::new(Expression::Constant(Constant::SignedInteger(
-            IntegerType::Int,
-            value as i64,
-        )))
-    }
+    // pub fn new_const(Constant) -> ExpressionRef {
+    //     Box::new(Expression::Constant(Constant::SignedInteger(
+    //         IntegerType::Int,
+    //         value as i64,
+    //     )))
+    // }
 
-    pub fn _new_add(a: Box<Expression>, b: Box<Expression>) -> Box<Self> {
+    pub fn new_add(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
         Box::new(Expression::BinaryOperation(BinaryOperationExpression {
             operation: BinaryOperation::Add,
             a,
@@ -64,7 +66,7 @@ impl Expression {
 #[allow(unused)]
 pub struct UnaryOperationExpression {
     operation: UnaryOperation,
-    val: Box<Expression>,
+    val: ExpressionRef,
 }
 
 #[allow(unused)]
@@ -77,8 +79,8 @@ pub enum UnaryOperation {
 
 pub struct BinaryOperationExpression {
     operation: BinaryOperation,
-    a: Box<Expression>,
-    b: Box<Expression>,
+    a: ExpressionRef,
+    b: ExpressionRef,
 }
 
 impl BinaryOperationExpression {
@@ -91,11 +93,6 @@ impl BinaryOperationExpression {
         let a = self.a.compile(scope, builder, ctx);
         let b = self.b.compile(scope, builder, ctx);
         assert_eq!(a.get_type(), b.get_type());
-
-        // match a {
-        //     Value::SignedInt(a_ir) => {}
-        //     Value::UnsignedInt(a_ir) => {}
-        // }
 
         match a.ir {
             // BasicValueEnum::ArrayValue(_) => {}
@@ -159,3 +156,18 @@ pub enum BinaryOperation {
     LogicalAnd,
     LogicalOr,
 }
+
+#[allow(unused)]
+pub struct ConditionalExpression(ExpressionRef, ExpressionRef, ExpressionRef);
+
+#[allow(unused)]
+pub struct CastExpression(ExpressionRef, TypeSpec);
+
+#[allow(unused)]
+pub struct CallExpression(ExpressionRef, Vec<Expression>);
+
+#[allow(unused)]
+pub struct ItemAccessExpression(ExpressionRef, ExpressionRef);
+
+#[allow(unused)]
+pub struct MemberAccessExpression(ExpressionRef, Rc<str>);

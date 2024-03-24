@@ -2,13 +2,7 @@ use inkwell::context::Context as BackendContext;
 use inkwell::execution_engine::JitFunction;
 use inkwell::OptimizationLevel;
 
-use definition::Definition;
-use function::{Function, FunctionArgument};
-use module::Module;
-
-use crate::expressions::Expression;
-use crate::statements::{CompoundStatement, Statement};
-use crate::types::{IntegerType, TypeSpec};
+use crate::parser::parse_module;
 
 mod constant;
 mod definition;
@@ -16,44 +10,22 @@ mod errors;
 mod expressions;
 mod function;
 mod module;
+mod parser;
 mod scope;
 mod statements;
 mod types;
 mod values;
 mod variable;
 
+const SRC: &'static str = "\
+fn test(x: int, y: int, z: int): int {
+    let a = x + 99;
+    return a + y + z;
+}
+";
+
 fn main() {
-    let module = Module::new(
-        "test".into(),
-        vec![{
-            Definition::define_function(
-                "test".into(),
-                Function::new(
-                    vec![
-                        FunctionArgument::new(
-                            "x".into(),
-                            TypeSpec::SignedInteger(IntegerType::Int),
-                        ),
-                        FunctionArgument::new(
-                            "y".into(),
-                            TypeSpec::SignedInteger(IntegerType::Int),
-                        ),
-                        FunctionArgument::new(
-                            "z".into(),
-                            TypeSpec::SignedInteger(IntegerType::Int),
-                        ),
-                    ],
-                    TypeSpec::SignedInteger(IntegerType::Int),
-                    CompoundStatement {
-                        statements: vec![Statement::Return(Expression::_new_add(
-                            Box::new(Expression::Identifier("x".into())),
-                            Expression::_new_int_const(99),
-                        ))],
-                    },
-                ),
-            )
-        }],
-    );
+    let module = parse_module(SRC);
 
     let ctx = BackendContext::create();
     let module_ir = module.compile(&ctx);

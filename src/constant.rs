@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use std::rc::Rc;
 
 use inkwell::context::Context as BackendContext;
@@ -7,6 +5,7 @@ use inkwell::context::Context as BackendContext;
 use crate::types::{FloatType, IntegerType};
 use crate::values::Value;
 
+#[allow(unused)]
 #[derive(Clone)]
 pub enum Constant {
     Void,

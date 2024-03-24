@@ -2,35 +2,25 @@ use std::ops::Deref;
 
 use inkwell::values::{BasicValueEnum, IntValue};
 
-// #[derive(Clone)]
-// pub enum Value<'ctx> {
-//     SignedInt(IntValue<'ctx>),
-//     UnsignedInt(IntValue<'ctx>),
-// }
-
 #[derive(Clone)]
 pub struct Value<'ctx> {
     pub ir: BasicValueEnum<'ctx>,
-    pub is_unsigned: bool,
+    pub sign_extend: bool,
 }
 
 impl<'ctx> Value<'ctx> {
     pub fn from_ir(ir: BasicValueEnum<'ctx>) -> Self {
         Value {
             ir,
-            is_unsigned: false,
+            sign_extend: false,
         }
     }
 
-    pub fn new_integer(ir: IntValue<'ctx>, is_unsigned: bool) -> Self {
+    pub fn new_integer(ir: IntValue<'ctx>, sign_extend: bool) -> Self {
         Value {
             ir: ir.into(),
-            is_unsigned,
+            sign_extend,
         }
-        // match is_unsigned {
-        //     true => Value::UnsignedInt(ir),
-        //     false => Value::SignedInt(ir),
-        // }
     }
 }
 

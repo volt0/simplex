@@ -3,15 +3,15 @@ use std::rc::Rc;
 use inkwell::builder::Builder;
 use inkwell::context::Context as BackendContext;
 
-use crate::expressions::Expression;
+use crate::expressions::ExpressionRef;
 use crate::scope::Scope;
 use crate::types::TypeSpec;
 use crate::values::Value;
 
 pub struct Variable {
     pub name: Rc<str>,
-    pub value_type: TypeSpec,
-    pub value_init: Box<Expression>,
+    pub value_type: Option<TypeSpec>,
+    pub value_init: ExpressionRef,
 }
 
 impl Variable {

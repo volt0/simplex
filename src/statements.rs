@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
@@ -7,14 +5,13 @@ use inkwell::builder::Builder;
 use inkwell::context::Context as BackendContext;
 use inkwell::values::FunctionValue;
 
-use crate::expressions::Expression;
+use crate::expressions::ExpressionRef;
 use crate::scope::Scope;
 use crate::values::Value;
 use crate::variable::Variable;
 
-pub struct CompoundStatement {
-    pub statements: Vec<Statement>,
-}
+#[repr(transparent)]
+pub struct CompoundStatement(pub Vec<Statement>);
 
 impl CompoundStatement {
     pub fn compile<'ctx>(
@@ -32,16 +29,16 @@ impl CompoundStatement {
         let entry_block = ctx.append_basic_block(function_ir, "");
         builder.position_at_end(entry_block);
 
-        for statement in self.statements.iter() {
+        for statement in self.0.iter() {
             statement.compile(&mut scope, builder, function_ir, ctx);
         }
     }
 }
 
 pub enum Statement {
-    Let(Rc<Variable>),
     Compound(CompoundStatement),
-    Return(Box<Expression>),
+    Let(Rc<Variable>),
+    Return(ExpressionRef),
 }
 
 impl Statement {
@@ -53,11 +50,11 @@ impl Statement {
         ctx: &'ctx BackendContext,
     ) {
         match self {
+            Statement::Compound(inner) => inner.compile(scope, builder, function_ir, ctx),
             Statement::Let(variable) => {
                 let value = variable.compile(scope, builder, ctx);
                 scope.index.insert(variable.name.clone(), value);
             }
-            Statement::Compound(inner) => inner.compile(scope, builder, function_ir, ctx),
             Statement::Return(expression) => {
                 let expression = expression.as_ref();
                 let return_value = expression.compile(scope, builder, ctx);

@@ -29,17 +29,21 @@ impl FunctionArgument {
     }
 }
 
+pub enum FunctionPayload {
+    Body(CompoundStatement),
+}
+
 pub struct Function {
     args: Vec<Rc<FunctionArgument>>,
     return_type: TypeSpec,
-    body: CompoundStatement,
+    body: FunctionPayload,
 }
 
 impl Function {
     pub fn new(
         args: Vec<Rc<FunctionArgument>>,
         return_type: TypeSpec,
-        body: CompoundStatement,
+        body: FunctionPayload,
     ) -> Rc<Self> {
         Rc::new(Function {
             args,
@@ -78,7 +82,11 @@ impl Function {
         }
 
         let builder = ctx.create_builder();
-        self.body.compile(&scope, &builder, function_ir, ctx);
+        match &self.body {
+            FunctionPayload::Body(body) => {
+                body.compile(&scope, &builder, function_ir, ctx);
+            }
+        }
 
         function_ir
     }
