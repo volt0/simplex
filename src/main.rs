@@ -4,18 +4,14 @@ use inkwell::OptimizationLevel;
 
 use crate::parser::parse_module;
 
-mod constant;
-mod definition;
+mod definitions;
 mod errors;
 mod expressions;
-mod function;
 mod module;
 mod parser;
 mod scope;
 mod statements;
 mod types;
-mod values;
-mod variable;
 
 const SRC: &'static str = "\
 fn test(x: int, y: int, z: int): int {

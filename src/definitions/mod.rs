@@ -3,8 +3,13 @@ use std::rc::Rc;
 use inkwell::context::Context as BackendContext;
 use inkwell::module::Module as ModuleIr;
 
-use crate::function::Function;
+pub use function::{Function, FunctionArgument};
+
 use crate::scope::Scope;
+use crate::statements::CompoundStatement;
+use crate::types::TypeSpec;
+
+mod function;
 
 #[derive(Clone)]
 pub enum DefinitionValue {
@@ -18,10 +23,16 @@ pub struct Definition {
 }
 
 impl Definition {
-    pub fn define_function(name: Rc<str>, function: Rc<Function>) -> Self {
+    #[inline(always)]
+    pub fn define_function(
+        name: Rc<str>,
+        args: Vec<Rc<FunctionArgument>>,
+        return_type: TypeSpec,
+        body: Option<CompoundStatement>,
+    ) -> Self {
         Definition {
             name,
-            value: DefinitionValue::Function(function),
+            value: DefinitionValue::Function(Function::new(args, return_type, body)),
         }
     }
 

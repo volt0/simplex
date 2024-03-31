@@ -1,0 +1,189 @@
+use std::rc::Rc;
+
+use crate::definitions::{Definition, FunctionArgument};
+use crate::expressions::{Constant, Expression, ExpressionRef};
+use crate::module::Module;
+use crate::statements::{CompoundStatement, Statement};
+use crate::types::{FloatType, IntegerType, TypeSpec};
+
+grammar;
+
+// Module
+
+pub Module: Module = {
+    <defs:Definition*> => Module::new("__unknown__".into(), defs)
+};
+
+Definition: Definition = {
+    <def:FunctionDefinition> => def,
+};
+
+// Functions
+
+FunctionDefinition: Definition = {
+    "fn" <name:Identifier> "(" <args:Comma<FunctionArgument>> ")" <return_type:TypeAnnotation?> <payload:FunctionPayload> => {
+        Definition::define_function(name, args, return_type.unwrap_or(TypeSpec::Void), payload)
+    }
+};
+
+FunctionArgument: Rc<FunctionArgument> = {
+    <name:Identifier> <type_spec:TypeAnnotation> => FunctionArgument::new(name, type_spec)
+}
+
+FunctionPayload: Option<CompoundStatement> = {
+    ";" => None,
+    <body:CompoundStatement> => Some(body),
+}
+
+// Statements
+
+Statement: Statement = {
+    <items:CompoundStatement> => Statement::new_compound(items),
+    "let" <var:VariableSignature> "=" <value:Expression> ";" => Statement::new_let(var.0, var.1, value),
+    "var" <var:VariableSignature> "=" <value:Expression> ";" => Statement::new_var(),
+    "if" <condition:Expression> <body:CompoundStatement> => Statement::new_if(),
+    "while" <condition:Expression> <body:CompoundStatement> => Statement::new_while(),
+    "for" "_" "=" <iterator:Expression> <body:CompoundStatement> => Statement::new_for(),
+    "for" <var:VariableSignature> "=" <iterator:Expression> <body:CompoundStatement> => Statement::new_for(),
+    "break" ";" => Statement::new_break(),
+    "continue" ";" => Statement::new_continue(),
+    "return" ";" => Statement::new_return(None),
+    "return" <expression:Expression> ";" => Statement::new_return(Some(expression)),
+    <expression:Expression> ";" => Statement::new_assign(),
+}
+
+CompoundStatement: CompoundStatement = {
+    "{" <items:(<Statement>)*> "}" => CompoundStatement(items)
+}
+
+VariableSignature: (Rc<str>, Option<TypeSpec>) = {
+    <name:Identifier> <type_spec:TypeAnnotation?> => (name, type_spec),
+}
+
+//// Expressions
+
+Expression: ExpressionRef = {
+    #[precedence(level="0")]
+    <name:Identifier> => Box::new(Expression::Identifier(name)),
+    <constant:Constant> => Box::new(Expression::Constant(constant)),
+    "(" <expression:Expression> ")" => expression,
+
+    #[precedence(level="1")]
+    #[assoc(side="right")]
+    <subject:Expression> "(" <args:Comma<Expression>> ")" => todo!(),
+    <subject:Expression> "[" <expression:Expression> "]" => todo!(),
+
+    #[precedence(level="1")]
+    <subject:Expression> "." <name:Identifier> => todo!(),
+
+    #[precedence(level="2")]
+    "+" <subject:Expression> => todo!(),
+    "-" <subject:Expression> => todo!(),
+    "~" <subject:Expression> => todo!(),
+    "!" <subject:Expression> => todo!(),
+
+//    #[precedence(level="1")]
+//    #[assoc(side="left")]
+//    <from:Expression> ".." <to:Expression> => todo!(),
+
+    #[precedence(level="3")]
+    <subject:Expression> "as" <typespec:TypeSpec> => todo!(),
+
+    #[precedence(level="4")]
+    #[assoc(side="left")]
+    <a:Expression> "*" <b:Expression> => todo!(),
+    <a:Expression> "/" <b:Expression> => todo!(),
+    <a:Expression> "%" <b:Expression> => todo!(),
+
+    #[precedence(level="5")]
+    #[assoc(side="left")]
+    <a:Expression> "+" <b:Expression> => Expression::new_add(a, b),
+    <a:Expression> "-" <b:Expression> => todo!(),
+
+    #[precedence(level="6")]
+    #[assoc(side="left")]
+    <a:Expression> "<<" <b:Expression> => todo!(),
+    <a:Expression> ">>" <b:Expression> => todo!(),
+
+    #[precedence(level="7")]
+    #[assoc(side="left")]
+    <a:Expression> "&" <b:Expression> => todo!(),
+
+    #[precedence(level="8")]
+    #[assoc(side="left")]
+    <a:Expression> "^" <b:Expression> => todo!(),
+
+    #[precedence(level="9")]
+    #[assoc(side="left")]
+    <a:Expression> "|" <b:Expression> => todo!(),
+
+    #[precedence(level="10")]
+    #[assoc(side="left")]
+    <a:Expression> "<" <b:Expression> => todo!(),
+    <a:Expression> ">" <b:Expression> => todo!(),
+    <a:Expression> "<=" <b:Expression> => todo!(),
+    <a:Expression> ">=" <b:Expression> => todo!(),
+    <a:Expression> "==" <b:Expression> => todo!(),
+    <a:Expression> "!=" <b:Expression> => todo!(),
+
+    #[precedence(level="11")]
+    #[assoc(side="left")]
+    <a:Expression> "&&" <b:Expression> => todo!(),
+
+    #[precedence(level="12")]
+    #[assoc(side="left")]
+    <a:Expression> "||" <b:Expression> => todo!(),
+
+    #[precedence(level="13")]
+    #[assoc(side="right")]
+    <condition:Expression> "?" <case_a:Expression> ":" <case_b:Expression> => todo!(),
+}
+
+// Types
+
+TypeAnnotation: TypeSpec = {
+    ":" <type_spec:TypeSpec> => type_spec
+}
+
+TypeSpec: TypeSpec = {
+    "byte" => TypeSpec::SignedInteger(IntegerType::Byte),
+    "short" => TypeSpec::SignedInteger(IntegerType::Short),
+    "int" => TypeSpec::SignedInteger(IntegerType::Int),
+    "long" => TypeSpec::SignedInteger(IntegerType::Long),
+    "ubyte" => TypeSpec::UnsignedInteger(IntegerType::Byte),
+    "ushort" => TypeSpec::UnsignedInteger(IntegerType::Short),
+    "uint" => TypeSpec::UnsignedInteger(IntegerType::Int),
+    "ulong" => TypeSpec::UnsignedInteger(IntegerType::Long),
+    "float" => TypeSpec::Float(FloatType::Float),
+    "double" => TypeSpec::Float(FloatType::Double),
+    "bool" => TypeSpec::Boolean,
+    "void" => TypeSpec::Void,
+    <name:Identifier> => todo!(),
+}
+
+// Syntax base
+
+Identifier: Rc<str> = <s:r"[_A-Za-z][_0-9A-Za-z]*"> => s.into();
+
+Constant: Constant = {
+    <value:IntegerConstant> => Constant::SignedInteger(IntegerType::Int, value as i64),
+    <value:RealConstant> => Constant::Float(FloatType::Double, value),
+    <value:StringConstant> => Constant::String(value),
+    "true" => Constant::True,
+    "false" => Constant::False,
+    "void" => Constant::Void,
+}
+
+IntegerConstant: i64 = <s:r"[0-9]+"> => s.parse::<i64>().unwrap();
+RealConstant: f64 = <s:r#"[0-9]+"."[0-9]*([Ee][+-]?[0-9]+)?[fFlL]?"#> => s.parse::<f64>().unwrap();
+StringConstant: Rc<str> = <s:r#""(\\.|[^\\"])*""#> => s.into();
+
+Comma<T>: Vec<T> = {
+    <mut v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};

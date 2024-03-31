@@ -4,9 +4,9 @@ use inkwell::builder::Builder;
 use inkwell::context::Context as BackendContext;
 
 use crate::expressions::ExpressionRef;
+use crate::expressions::Value;
 use crate::scope::Scope;
 use crate::types::TypeSpec;
-use crate::values::Value;
 
 pub struct Variable {
     pub name: Rc<str>,
@@ -15,6 +15,14 @@ pub struct Variable {
 }
 
 impl Variable {
+    pub fn new(name: Rc<str>, value_type: Option<TypeSpec>, value_init: ExpressionRef) -> Rc<Self> {
+        Rc::new(Variable {
+            name,
+            value_type,
+            value_init,
+        })
+    }
+
     pub fn compile<'ctx>(
         &self,
         scope: &dyn Scope<'ctx>,

@@ -6,11 +6,11 @@ use inkwell::module::Module as ModuleIr;
 use inkwell::types::BasicType;
 use inkwell::values::FunctionValue;
 
+use crate::expressions::Value;
 use crate::scope::Scope;
 use crate::statements::CompoundStatement;
 use crate::statements::LocalScope;
 use crate::types::TypeSpec;
-use crate::values::Value;
 
 pub struct FunctionArgument {
     name: Rc<str>,
@@ -29,21 +29,17 @@ impl FunctionArgument {
     }
 }
 
-pub enum FunctionPayload {
-    Body(CompoundStatement),
-}
-
 pub struct Function {
     args: Vec<Rc<FunctionArgument>>,
     return_type: TypeSpec,
-    body: FunctionPayload,
+    body: Option<CompoundStatement>,
 }
 
 impl Function {
     pub fn new(
         args: Vec<Rc<FunctionArgument>>,
         return_type: TypeSpec,
-        body: FunctionPayload,
+        body: Option<CompoundStatement>,
     ) -> Rc<Self> {
         Rc::new(Function {
             args,
@@ -82,10 +78,8 @@ impl Function {
         }
 
         let builder = ctx.create_builder();
-        match &self.body {
-            FunctionPayload::Body(body) => {
-                body.compile(&scope, &builder, function_ir, ctx);
-            }
+        if let Some(body) = &self.body {
+            body.compile(&scope, &builder, function_ir, ctx);
         }
 
         function_ir
