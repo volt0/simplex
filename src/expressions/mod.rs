@@ -32,19 +32,157 @@ pub enum Expression {
 }
 
 impl Expression {
-    // pub fn new_const(Constant) -> ExpressionRef {
-    //     Box::new(Expression::Constant(Constant::SignedInteger(
-    //         IntegerType::Int,
-    //         value as i64,
-    //     )))
-    // }
+    #[inline(always)]
+    pub fn new_identifier(name: Rc<str>) -> ExpressionRef {
+        Box::new(Expression::Identifier(name))
+    }
 
+    #[inline(always)]
+    pub fn new_constant(constant: Constant) -> ExpressionRef {
+        Box::new(Expression::Constant(constant))
+    }
+
+    #[inline(always)]
+    pub fn new_call() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_item_access() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_member_access() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_prefix_plus() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_prefix_minus() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_bit_not() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_logic_not() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_cast() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_mul() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_div() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_mod() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
     pub fn new_add(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
         Box::new(Expression::BinaryOperation(BinaryOperationExpression {
             operation: BinaryOperation::Add,
             a,
             b,
         }))
+    }
+
+    #[inline(always)]
+    pub fn new_sub(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(BinaryOperationExpression {
+            operation: BinaryOperation::Sub,
+            a,
+            b,
+        }))
+    }
+
+    #[inline(always)]
+    pub fn new_lshift() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_rshift() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_bit_and() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_bit_xor() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_bit_or() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_lt() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_gt() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_le() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_ge() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_eq() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_ne() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_logic_and() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_logic_or() -> ExpressionRef {
+        todo!()
+    }
+
+    #[inline(always)]
+    pub fn new_inline_if() -> ExpressionRef {
+        todo!()
     }
 
     pub fn compile<'ctx>(

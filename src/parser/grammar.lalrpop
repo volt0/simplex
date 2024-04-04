@@ -62,81 +62,89 @@ VariableSignature: (Rc<str>, Option<TypeSpec>) = {
 
 //// Expressions
 
-Expression: ExpressionRef = {
-    #[precedence(level="0")]
-    <name:Identifier> => Box::new(Expression::Identifier(name)),
-    <constant:Constant> => Box::new(Expression::Constant(constant)),
+PrimaryExpression: ExpressionRef = {
+    <name:Identifier> => Expression::new_identifier(name),
+    <constant:Constant> => Expression::new_constant(constant),
     "(" <expression:Expression> ")" => expression,
+}
 
-    #[precedence(level="1")]
-    #[assoc(side="right")]
-    <subject:Expression> "(" <args:Comma<Expression>> ")" => todo!(),
-    <subject:Expression> "[" <expression:Expression> "]" => todo!(),
+PostfixExpression: ExpressionRef = {
+    <inner:PrimaryExpression> => inner,
+    <subject:PostfixExpression> "(" <args:Comma<Expression>> ")" => Expression::new_call(),
+    <subject:PostfixExpression> "[" <expression:Expression> "]" => Expression::new_item_access(),
+    <subject:PostfixExpression> "." <name:Identifier> => Expression::new_member_access(),
+}
 
-    #[precedence(level="1")]
-    <subject:Expression> "." <name:Identifier> => todo!(),
+UnaryExpression: ExpressionRef = {
+    <inner:PostfixExpression> => inner,
+    "+" <subject:UnaryExpression> => Expression::new_prefix_plus(),
+    "-" <subject:UnaryExpression> => Expression::new_prefix_minus(),
+    "~" <subject:UnaryExpression> => Expression::new_bit_not(),
+    "!" <subject:UnaryExpression> => Expression::new_logic_not(),
+}
 
-    #[precedence(level="2")]
-    "+" <subject:Expression> => todo!(),
-    "-" <subject:Expression> => todo!(),
-    "~" <subject:Expression> => todo!(),
-    "!" <subject:Expression> => todo!(),
+CastExpression: ExpressionRef = {
+    <inner:UnaryExpression> => inner,
+    <subject:CastExpression> "as" <typespec:TypeSpec> => Expression::new_cast(),
+}
 
-//    #[precedence(level="1")]
-//    #[assoc(side="left")]
-//    <from:Expression> ".." <to:Expression> => todo!(),
+MultiplicativeExpression: ExpressionRef = {
+    <inner:CastExpression> => inner,
+    <a:MultiplicativeExpression> "*" <b:CastExpression> => Expression::new_mul(),
+    <a:MultiplicativeExpression> "/" <b:CastExpression> => Expression::new_div(),
+    <a:MultiplicativeExpression> "%" <b:CastExpression> => Expression::new_mod(),
+}
 
-    #[precedence(level="3")]
-    <subject:Expression> "as" <typespec:TypeSpec> => todo!(),
+AdditiveExpression: ExpressionRef = {
+    <inner:MultiplicativeExpression> => inner,
+    <a:AdditiveExpression> "+" <b:MultiplicativeExpression> => Expression::new_add(a, b),
+    <a:AdditiveExpression> "-" <b:MultiplicativeExpression> => Expression::new_sub(a, b),
+}
 
-    #[precedence(level="4")]
-    #[assoc(side="left")]
-    <a:Expression> "*" <b:Expression> => todo!(),
-    <a:Expression> "/" <b:Expression> => todo!(),
-    <a:Expression> "%" <b:Expression> => todo!(),
+ShiftExpression: ExpressionRef = {
+    <inner:AdditiveExpression> => inner,
+    <a:ShiftExpression> "<<" <b:AdditiveExpression> => Expression::new_lshift(),
+    <a:ShiftExpression> ">>" <b:AdditiveExpression> => Expression::new_rshift(),
+}
 
-    #[precedence(level="5")]
-    #[assoc(side="left")]
-    <a:Expression> "+" <b:Expression> => Expression::new_add(a, b),
-    <a:Expression> "-" <b:Expression> => todo!(),
+BitwiseAndExpression: ExpressionRef = {
+    <inner:ShiftExpression> => inner,
+    <a:BitwiseAndExpression> "&" <b:ShiftExpression> => Expression::new_bit_and(),
+}
 
-    #[precedence(level="6")]
-    #[assoc(side="left")]
-    <a:Expression> "<<" <b:Expression> => todo!(),
-    <a:Expression> ">>" <b:Expression> => todo!(),
+BitwiseXorExpression: ExpressionRef = {
+    <inner:BitwiseAndExpression> => inner,
+    <a:BitwiseXorExpression> "^" <b:BitwiseAndExpression> => Expression::new_bit_xor(),
+}
 
-    #[precedence(level="7")]
-    #[assoc(side="left")]
-    <a:Expression> "&" <b:Expression> => todo!(),
+BitwiseOrExpression: ExpressionRef = {
+    <inner:BitwiseXorExpression> => inner,
+    <a:BitwiseOrExpression> "|" <b:BitwiseXorExpression> => Expression::new_bit_or(),
+}
 
-    #[precedence(level="8")]
-    #[assoc(side="left")]
-    <a:Expression> "^" <b:Expression> => todo!(),
+ComparisonExpression: ExpressionRef = {
+    <inner:BitwiseOrExpression> => inner,
+    <a:ComparisonExpression> "<" <b:BitwiseOrExpression> => Expression::new_lt(),
+    <a:ComparisonExpression> ">" <b:BitwiseOrExpression> => Expression::new_gt(),
+    <a:ComparisonExpression> "<=" <b:BitwiseOrExpression> => Expression::new_le(),
+    <a:ComparisonExpression> ">=" <b:BitwiseOrExpression> => Expression::new_ge(),
+    <a:ComparisonExpression> "==" <b:BitwiseOrExpression> => Expression::new_eq(),
+    <a:ComparisonExpression> "!=" <b:BitwiseOrExpression> => Expression::new_ne(),
+}
 
-    #[precedence(level="9")]
-    #[assoc(side="left")]
-    <a:Expression> "|" <b:Expression> => todo!(),
+LogicalAndExpression: ExpressionRef = {
+    <inner:ComparisonExpression> => inner,
+    <a:LogicalAndExpression> "&&" <b:ComparisonExpression> => Expression::new_logic_and(),
+}
 
-    #[precedence(level="10")]
-    #[assoc(side="left")]
-    <a:Expression> "<" <b:Expression> => todo!(),
-    <a:Expression> ">" <b:Expression> => todo!(),
-    <a:Expression> "<=" <b:Expression> => todo!(),
-    <a:Expression> ">=" <b:Expression> => todo!(),
-    <a:Expression> "==" <b:Expression> => todo!(),
-    <a:Expression> "!=" <b:Expression> => todo!(),
+LogicalOrExpression: ExpressionRef = {
+    <inner:LogicalAndExpression> => inner,
+    <a:LogicalOrExpression> "||" <b:LogicalAndExpression> => Expression::new_logic_or(),
+}
 
-    #[precedence(level="11")]
-    #[assoc(side="left")]
-    <a:Expression> "&&" <b:Expression> => todo!(),
-
-    #[precedence(level="12")]
-    #[assoc(side="left")]
-    <a:Expression> "||" <b:Expression> => todo!(),
-
-    #[precedence(level="13")]
-    #[assoc(side="right")]
-    <condition:Expression> "?" <case_a:Expression> ":" <case_b:Expression> => todo!(),
+Expression: ExpressionRef = {
+    <inner:LogicalOrExpression> => inner,
+    <condition:LogicalOrExpression> "?" <case_a:Expression> ":" <case_b:Expression> => Expression::new_inline_if(),
 }
 
 // Types
@@ -166,7 +174,7 @@ TypeSpec: TypeSpec = {
 Identifier: Rc<str> = <s:r"[_A-Za-z][_0-9A-Za-z]*"> => s.into();
 
 Constant: Constant = {
-    <value:IntegerConstant> => Constant::SignedInteger(IntegerType::Int, value as i64),
+    <value:IntegerConstant> => Constant::SignedInteger(IntegerType::Int, value),
     <value:RealConstant> => Constant::Float(FloatType::Double, value),
     <value:StringConstant> => Constant::String(value),
     "true" => Constant::True,
