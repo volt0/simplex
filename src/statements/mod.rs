@@ -34,7 +34,7 @@ impl Statement {
 
     #[inline(always)]
     pub fn new_let(name: Rc<str>, value_type: Option<TypeSpec>, value_init: ExpressionRef) -> Self {
-        Statement::Let(Variable::new(name, value_type, value_init))
+        Statement::Let(Variable::new_let(name, value_type, value_init))
     }
 
     #[inline(always)]
@@ -93,7 +93,8 @@ impl Statement {
             Statement::Return(expression) => {
                 let expression = expression.as_ref();
                 let return_value = expression.compile(scope, builder, ctx);
-                builder.build_return(Some(&return_value.ir)).unwrap();
+                // builder.build_return(Some(&return_value.ir)).unwrap();
+                todo!()
             }
         }
 

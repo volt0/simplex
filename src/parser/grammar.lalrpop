@@ -69,14 +69,14 @@ PrimaryExpression: ExpressionRef = {
 }
 
 PostfixExpression: ExpressionRef = {
-    <inner:PrimaryExpression> => inner,
+    PrimaryExpression,
     <subject:PostfixExpression> "(" <args:Comma<Expression>> ")" => Expression::new_call(),
     <subject:PostfixExpression> "[" <expression:Expression> "]" => Expression::new_item_access(),
     <subject:PostfixExpression> "." <name:Identifier> => Expression::new_member_access(),
 }
 
 UnaryExpression: ExpressionRef = {
-    <inner:PostfixExpression> => inner,
+    PostfixExpression,
     "+" <subject:UnaryExpression> => Expression::new_prefix_plus(),
     "-" <subject:UnaryExpression> => Expression::new_prefix_minus(),
     "~" <subject:UnaryExpression> => Expression::new_bit_not(),
@@ -84,66 +84,66 @@ UnaryExpression: ExpressionRef = {
 }
 
 CastExpression: ExpressionRef = {
-    <inner:UnaryExpression> => inner,
+    UnaryExpression,
     <subject:CastExpression> "as" <typespec:TypeSpec> => Expression::new_cast(),
 }
 
 MultiplicativeExpression: ExpressionRef = {
-    <inner:CastExpression> => inner,
-    <a:MultiplicativeExpression> "*" <b:CastExpression> => Expression::new_mul(),
-    <a:MultiplicativeExpression> "/" <b:CastExpression> => Expression::new_div(),
-    <a:MultiplicativeExpression> "%" <b:CastExpression> => Expression::new_mod(),
+    CastExpression,
+    <a:MultiplicativeExpression> "*" <b:CastExpression> => Expression::new_mul(a, b),
+    <a:MultiplicativeExpression> "/" <b:CastExpression> => Expression::new_div(a, b),
+    <a:MultiplicativeExpression> "%" <b:CastExpression> => Expression::new_mod(a, b),
 }
 
 AdditiveExpression: ExpressionRef = {
-    <inner:MultiplicativeExpression> => inner,
+    MultiplicativeExpression,
     <a:AdditiveExpression> "+" <b:MultiplicativeExpression> => Expression::new_add(a, b),
     <a:AdditiveExpression> "-" <b:MultiplicativeExpression> => Expression::new_sub(a, b),
 }
 
 ShiftExpression: ExpressionRef = {
-    <inner:AdditiveExpression> => inner,
-    <a:ShiftExpression> "<<" <b:AdditiveExpression> => Expression::new_lshift(),
-    <a:ShiftExpression> ">>" <b:AdditiveExpression> => Expression::new_rshift(),
+    AdditiveExpression,
+    <a:ShiftExpression> "<<" <b:AdditiveExpression> => Expression::new_shift_left(a, b),
+    <a:ShiftExpression> ">>" <b:AdditiveExpression> => Expression::new_shift_right(a, b),
 }
 
 BitwiseAndExpression: ExpressionRef = {
-    <inner:ShiftExpression> => inner,
-    <a:BitwiseAndExpression> "&" <b:ShiftExpression> => Expression::new_bit_and(),
+    ShiftExpression,
+    <a:BitwiseAndExpression> "&" <b:ShiftExpression> => Expression::new_bit_and(a, b),
 }
 
 BitwiseXorExpression: ExpressionRef = {
-    <inner:BitwiseAndExpression> => inner,
-    <a:BitwiseXorExpression> "^" <b:BitwiseAndExpression> => Expression::new_bit_xor(),
+    BitwiseAndExpression,
+    <a:BitwiseXorExpression> "^" <b:BitwiseAndExpression> => Expression::new_bit_xor(a, b),
 }
 
 BitwiseOrExpression: ExpressionRef = {
-    <inner:BitwiseXorExpression> => inner,
-    <a:BitwiseOrExpression> "|" <b:BitwiseXorExpression> => Expression::new_bit_or(),
+    BitwiseXorExpression,
+    <a:BitwiseOrExpression> "|" <b:BitwiseXorExpression> => Expression::new_bit_or(a, b),
 }
 
 ComparisonExpression: ExpressionRef = {
-    <inner:BitwiseOrExpression> => inner,
-    <a:ComparisonExpression> "<" <b:BitwiseOrExpression> => Expression::new_lt(),
-    <a:ComparisonExpression> ">" <b:BitwiseOrExpression> => Expression::new_gt(),
-    <a:ComparisonExpression> "<=" <b:BitwiseOrExpression> => Expression::new_le(),
-    <a:ComparisonExpression> ">=" <b:BitwiseOrExpression> => Expression::new_ge(),
-    <a:ComparisonExpression> "==" <b:BitwiseOrExpression> => Expression::new_eq(),
-    <a:ComparisonExpression> "!=" <b:BitwiseOrExpression> => Expression::new_ne(),
+    BitwiseOrExpression,
+    <a:ComparisonExpression> "<" <b:BitwiseOrExpression> => Expression::new_lt(a, b),
+    <a:ComparisonExpression> ">" <b:BitwiseOrExpression> => Expression::new_gt(a, b),
+    <a:ComparisonExpression> "<=" <b:BitwiseOrExpression> => Expression::new_le(a, b),
+    <a:ComparisonExpression> ">=" <b:BitwiseOrExpression> => Expression::new_ge(a, b),
+    <a:ComparisonExpression> "==" <b:BitwiseOrExpression> => Expression::new_eq(a, b),
+    <a:ComparisonExpression> "!=" <b:BitwiseOrExpression> => Expression::new_ne(a, b),
 }
 
 LogicalAndExpression: ExpressionRef = {
-    <inner:ComparisonExpression> => inner,
-    <a:LogicalAndExpression> "&&" <b:ComparisonExpression> => Expression::new_logic_and(),
+    ComparisonExpression,
+    <a:LogicalAndExpression> "&&" <b:ComparisonExpression> => Expression::new_logic_and(a, b),
 }
 
 LogicalOrExpression: ExpressionRef = {
-    <inner:LogicalAndExpression> => inner,
-    <a:LogicalOrExpression> "||" <b:LogicalAndExpression> => Expression::new_logic_or(),
+    LogicalAndExpression,
+    <a:LogicalOrExpression> "||" <b:LogicalAndExpression> => Expression::new_logic_or(a, b),
 }
 
 Expression: ExpressionRef = {
-    <inner:LogicalOrExpression> => inner,
+    LogicalOrExpression,
     <condition:LogicalOrExpression> "?" <case_a:Expression> ":" <case_b:Expression> => Expression::new_inline_if(),
 }
 

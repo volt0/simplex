@@ -11,15 +11,15 @@ use crate::types::TypeSpec;
 pub struct Variable {
     pub name: Rc<str>,
     pub value_type: Option<TypeSpec>,
-    pub value_init: ExpressionRef,
+    pub init: ExpressionRef,
 }
 
 impl Variable {
-    pub fn new(name: Rc<str>, value_type: Option<TypeSpec>, value_init: ExpressionRef) -> Rc<Self> {
+    pub fn new_let(name: Rc<str>, value_type: Option<TypeSpec>, init: ExpressionRef) -> Rc<Self> {
         Rc::new(Variable {
             name,
             value_type,
-            value_init,
+            init,
         })
     }
 
@@ -29,8 +29,8 @@ impl Variable {
         builder: &Builder<'ctx>,
         ctx: &'ctx BackendContext,
     ) -> Value<'ctx> {
-        let value = self.value_init.compile(scope, builder, ctx);
-        value.set_name(self.name.as_ref());
+        let value = self.init.compile(scope, builder, ctx);
+        value.as_ir().set_name(self.name.as_ref());
         value
     }
 }

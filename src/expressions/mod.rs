@@ -3,18 +3,17 @@ use std::rc::Rc;
 use inkwell::builder::Builder;
 use inkwell::context::Context as BackendContext;
 
-use binary_operation::{BinaryOperation, BinaryOperationExpression};
+use binary_operation::BinaryOperationExpr;
 pub use constant::Constant;
 use unary_operation::UnaryOperationExpression;
-pub use value::Value;
 
 use crate::scope::Scope;
 use crate::types::TypeSpec;
+use crate::values::Value;
 
 mod binary_operation;
 mod constant;
 mod unary_operation;
-mod value;
 
 pub type ExpressionRef = Box<Expression>;
 
@@ -23,12 +22,35 @@ pub enum Expression {
     Constant(Constant),
     Identifier(Rc<str>),
     Conditional(ConditionalExpression),
-    BinaryOperation(BinaryOperationExpression),
+    BinaryOperation(BinaryOperationExpr),
     UnaryOperation(UnaryOperationExpression),
     Cast(CastExpression),
     Call(CallExpression),
     ItemAccess(ItemAccessExpression),
     MemberAccess(MemberAccessExpression),
+}
+
+impl Expression {
+    pub fn compile<'ctx>(
+        &self,
+        scope: &dyn Scope<'ctx>,
+        builder: &Builder<'ctx>,
+        ctx: &'ctx BackendContext,
+    ) -> Value<'ctx> {
+        let _ = builder;
+        match self {
+            Expression::Constant(constant) => constant.compile(ctx),
+            Expression::Identifier(identifier) => scope.resolve(identifier.clone()).clone(),
+            // Expression::Conditional(_, _, _) => {}
+            Expression::BinaryOperation(op) => op.compile(scope, builder, ctx).unwrap(),
+            // Expression::UnaryOperation(_, _) => {}
+            // Expression::Cast(_, _) => {}
+            // Expression::Call(_, _) => {}
+            // Expression::ItemAccess(_, _) => {}
+            // Expression::MemberAccess(_, _) => {}
+            _ => todo!(),
+        }
+    }
 }
 
 impl Expression {
@@ -83,127 +105,134 @@ impl Expression {
     }
 
     #[inline(always)]
-    pub fn new_mul() -> ExpressionRef {
-        todo!()
-    }
-
-    #[inline(always)]
-    pub fn new_div() -> ExpressionRef {
-        todo!()
-    }
-
-    #[inline(always)]
-    pub fn new_mod() -> ExpressionRef {
-        todo!()
-    }
-
-    #[inline(always)]
     pub fn new_add(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
-        Box::new(Expression::BinaryOperation(BinaryOperationExpression {
-            operation: BinaryOperation::Add,
-            a,
-            b,
-        }))
+        Box::new(Expression::BinaryOperation(BinaryOperationExpr::new_add(
+            a, b,
+        )))
     }
 
     #[inline(always)]
     pub fn new_sub(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
-        Box::new(Expression::BinaryOperation(BinaryOperationExpression {
-            operation: BinaryOperation::Sub,
-            a,
-            b,
-        }))
+        Box::new(Expression::BinaryOperation(BinaryOperationExpr::new_sub(
+            a, b,
+        )))
     }
 
     #[inline(always)]
-    pub fn new_lshift() -> ExpressionRef {
-        todo!()
+    pub fn new_mul(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(BinaryOperationExpr::new_mul(
+            a, b,
+        )))
     }
 
     #[inline(always)]
-    pub fn new_rshift() -> ExpressionRef {
-        todo!()
+    pub fn new_div(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(BinaryOperationExpr::new_div(
+            a, b,
+        )))
     }
 
     #[inline(always)]
-    pub fn new_bit_and() -> ExpressionRef {
-        todo!()
+    pub fn new_mod(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(BinaryOperationExpr::new_mod(
+            a, b,
+        )))
     }
 
     #[inline(always)]
-    pub fn new_bit_xor() -> ExpressionRef {
-        todo!()
+    pub fn new_bit_and(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(
+            BinaryOperationExpr::new_bit_and(a, b),
+        ))
     }
 
     #[inline(always)]
-    pub fn new_bit_or() -> ExpressionRef {
-        todo!()
+    pub fn new_bit_xor(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(
+            BinaryOperationExpr::new_bit_xor(a, b),
+        ))
     }
 
     #[inline(always)]
-    pub fn new_lt() -> ExpressionRef {
-        todo!()
+    pub fn new_bit_or(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(
+            BinaryOperationExpr::new_bit_or(a, b),
+        ))
     }
 
     #[inline(always)]
-    pub fn new_gt() -> ExpressionRef {
-        todo!()
+    pub fn new_shift_left(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(
+            BinaryOperationExpr::new_shift_left(a, b),
+        ))
     }
 
     #[inline(always)]
-    pub fn new_le() -> ExpressionRef {
-        todo!()
+    pub fn new_shift_right(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(
+            BinaryOperationExpr::new_shift_right(a, b),
+        ))
     }
 
     #[inline(always)]
-    pub fn new_ge() -> ExpressionRef {
-        todo!()
+    pub fn new_lt(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(BinaryOperationExpr::new_lt(
+            a, b,
+        )))
     }
 
     #[inline(always)]
-    pub fn new_eq() -> ExpressionRef {
-        todo!()
+    pub fn new_gt(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(BinaryOperationExpr::new_gt(
+            a, b,
+        )))
     }
 
     #[inline(always)]
-    pub fn new_ne() -> ExpressionRef {
-        todo!()
+    pub fn new_le(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(BinaryOperationExpr::new_le(
+            a, b,
+        )))
     }
 
     #[inline(always)]
-    pub fn new_logic_and() -> ExpressionRef {
-        todo!()
+    pub fn new_ge(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(BinaryOperationExpr::new_ge(
+            a, b,
+        )))
     }
 
     #[inline(always)]
-    pub fn new_logic_or() -> ExpressionRef {
-        todo!()
+    pub fn new_eq(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(BinaryOperationExpr::new_eq(
+            a, b,
+        )))
+    }
+
+    #[inline(always)]
+    pub fn new_ne(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(BinaryOperationExpr::new_ne(
+            a, b,
+        )))
+    }
+
+    #[inline(always)]
+    pub fn new_logic_and(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(
+            BinaryOperationExpr::new_logic_and(a, b),
+        ))
+    }
+
+    #[inline(always)]
+    pub fn new_logic_or(a: ExpressionRef, b: ExpressionRef) -> ExpressionRef {
+        Box::new(Expression::BinaryOperation(
+            BinaryOperationExpr::new_logic_or(a, b),
+        ))
     }
 
     #[inline(always)]
     pub fn new_inline_if() -> ExpressionRef {
         todo!()
-    }
-
-    pub fn compile<'ctx>(
-        &self,
-        scope: &dyn Scope<'ctx>,
-        builder: &Builder<'ctx>,
-        ctx: &'ctx BackendContext,
-    ) -> Value<'ctx> {
-        let _ = builder;
-        match self {
-            Expression::Constant(constant) => constant.compile(ctx),
-            Expression::Identifier(identifier) => scope.resolve(identifier.clone()).clone(),
-            // Expression::Conditional(_, _, _) => {}
-            Expression::BinaryOperation(op) => op.compile(scope, builder, ctx).unwrap(),
-            // Expression::UnaryOperation(_, _) => {}
-            // Expression::Cast(_, _) => {}
-            // Expression::Call(_, _) => {}
-            // Expression::ItemAccess(_, _) => {}
-            // Expression::MemberAccess(_, _) => {}
-            _ => todo!(),
-        }
     }
 }
 

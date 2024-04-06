@@ -12,11 +12,12 @@ mod parser;
 mod scope;
 mod statements;
 mod types;
+mod values;
 
 const SRC: &'static str = "\
 fn test(x: int, y: int, z: int): int {
-    let a = x + 99;
-    return a + y + z;
+    let a = 10;
+    return x + y + z + a;
 }
 ";
 

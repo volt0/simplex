@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use inkwell::context::Context as BackendContext;
 
-use crate::expressions::value::Value;
 use crate::types::{FloatType, IntegerType};
+use crate::values::Value;
 
 #[allow(unused)]
 #[derive(Clone)]

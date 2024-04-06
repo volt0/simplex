@@ -10,6 +10,6 @@ pub enum UnaryOperation {
 
 #[allow(unused)]
 pub struct UnaryOperationExpression {
-    pub(super) operation: UnaryOperation,
-    pub(super) val: ExpressionRef,
+    operation: UnaryOperation,
+    val: ExpressionRef,
 }
