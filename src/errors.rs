@@ -5,4 +5,7 @@ use thiserror::Error;
 pub enum CompilationError {
     #[error("IR builder error")]
     BuilderError(#[from] BuilderError),
+
+    #[error("Type mismatch")]
+    TypeMismatch(),
 }

@@ -5,8 +5,8 @@ use inkwell::module::Module as ModuleIr;
 use inkwell::targets::TargetTriple;
 
 use crate::definitions::Definition;
-use crate::expressions::Value;
 use crate::scope::Scope;
+use crate::values::Value;
 
 pub struct Module {
     name: Rc<str>,

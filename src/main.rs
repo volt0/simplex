@@ -15,7 +15,7 @@ mod types;
 mod values;
 
 const SRC: &'static str = "\
-fn test(x: int, y: int, z: int): int {
+fn test(x: byte, y: int, z: int): int {
     let a = 10;
     return x + y + z + a;
 }
@@ -30,7 +30,7 @@ fn main() {
     module_ir.print_to_stderr();
 
     {
-        type TestFunc = unsafe extern "C" fn(u64, u64, u64) -> i64;
+        type TestFunc = unsafe extern "C" fn(i8, i32, i32) -> i32;
 
         let execution_engine = module_ir
             .create_jit_execution_engine(OptimizationLevel::None)
@@ -39,7 +39,7 @@ fn main() {
         let test_fn: JitFunction<TestFunc> =
             unsafe { execution_engine.get_function("test") }.unwrap();
 
-        let x = 1;
+        let x = -1;
         let y = 2;
         let z = 3;
         let result = unsafe { test_fn.call(x, y, z) };

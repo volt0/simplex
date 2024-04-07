@@ -4,7 +4,7 @@ use crate::definitions::{Definition, FunctionArgument};
 use crate::expressions::{Constant, Expression, ExpressionRef};
 use crate::module::Module;
 use crate::statements::{CompoundStatement, Statement};
-use crate::types::{FloatType, IntegerType, TypeSpec};
+use crate::types::{FloatType, TypeSpec};
 
 grammar;
 
@@ -154,14 +154,14 @@ TypeAnnotation: TypeSpec = {
 }
 
 TypeSpec: TypeSpec = {
-    "byte" => TypeSpec::SignedInteger(IntegerType::Byte),
-    "short" => TypeSpec::SignedInteger(IntegerType::Short),
-    "int" => TypeSpec::SignedInteger(IntegerType::Int),
-    "long" => TypeSpec::SignedInteger(IntegerType::Long),
-    "ubyte" => TypeSpec::UnsignedInteger(IntegerType::Byte),
-    "ushort" => TypeSpec::UnsignedInteger(IntegerType::Short),
-    "uint" => TypeSpec::UnsignedInteger(IntegerType::Int),
-    "ulong" => TypeSpec::UnsignedInteger(IntegerType::Long),
+    "byte" => TypeSpec::new_byte(),
+    "short" => TypeSpec::new_short(),
+    "int" => TypeSpec::new_int(),
+    "long" => TypeSpec::new_long(),
+    "ubyte" => TypeSpec::new_ubyte(),
+    "ushort" => TypeSpec::new_ushort(),
+    "uint" => TypeSpec::new_uint(),
+    "ulong" => TypeSpec::new_ulong(),
     "float" => TypeSpec::Float(FloatType::Float),
     "double" => TypeSpec::Float(FloatType::Double),
     "bool" => TypeSpec::Boolean,
@@ -174,7 +174,7 @@ TypeSpec: TypeSpec = {
 Identifier: Rc<str> = <s:r"[_A-Za-z][_0-9A-Za-z]*"> => s.into();
 
 Constant: Constant = {
-    <value:IntegerConstant> => Constant::SignedInteger(IntegerType::Int, value),
+    <value:IntegerConstant> => Constant::Integer(value),
     <value:RealConstant> => Constant::Float(FloatType::Double, value),
     <value:StringConstant> => Constant::String(value),
     "true" => Constant::True,
@@ -182,7 +182,7 @@ Constant: Constant = {
     "void" => Constant::Void,
 }
 
-IntegerConstant: i64 = <s:r"[0-9]+"> => s.parse::<i64>().unwrap();
+IntegerConstant: i32 = <s:r"[0-9]+"> => s.parse::<i32>().unwrap();
 RealConstant: f64 = <s:r#"[0-9]+"."[0-9]*([Ee][+-]?[0-9]+)?[fFlL]?"#> => s.parse::<f64>().unwrap();
 StringConstant: Rc<str> = <s:r#""(\\.|[^\\"])*""#> => s.into();
 

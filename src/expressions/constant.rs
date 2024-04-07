@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use inkwell::context::Context as BackendContext;
 
-use crate::types::{FloatType, IntegerType};
+use crate::types::FloatType;
 use crate::values::Value;
 
 #[allow(unused)]
@@ -11,8 +11,7 @@ pub enum Constant {
     Void,
     True,
     False,
-    SignedInteger(IntegerType, i64),
-    UnsignedInteger(IntegerType, u64),
+    Integer(i32),
     Float(FloatType, f64),
     String(Rc<str>),
 }
@@ -23,11 +22,8 @@ impl Constant {
             Constant::Void => unimplemented!(),
             Constant::True => Value::from_ir(ctx.bool_type().const_int(1, false).into()),
             Constant::False => Value::from_ir(ctx.bool_type().const_int(0, false).into()),
-            Constant::SignedInteger(int_type, value) => {
-                Value::new_integer(int_type.compile(ctx).const_int(*value as u64, true), false)
-            }
-            Constant::UnsignedInteger(int_type, value) => {
-                Value::new_integer(int_type.compile(ctx).const_int(*value, false), true)
+            Constant::Integer(value) => {
+                Value::new_integer(ctx.i32_type().const_int(*value as u64, true), true)
             }
             Constant::Float(float_type, value) => {
                 Value::from_ir(float_type.compile(ctx).const_float(*value).into())
@@ -37,8 +33,8 @@ impl Constant {
     }
 }
 
-impl From<i64> for Constant {
-    fn from(value: i64) -> Self {
-        Constant::SignedInteger(IntegerType::Long, value)
+impl From<i32> for Constant {
+    fn from(value: i32) -> Self {
+        Constant::Integer(value)
     }
 }

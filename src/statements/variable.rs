@@ -4,9 +4,9 @@ use inkwell::builder::Builder;
 use inkwell::context::Context as BackendContext;
 
 use crate::expressions::ExpressionRef;
-use crate::expressions::Value;
 use crate::scope::Scope;
 use crate::types::TypeSpec;
+use crate::values::Value;
 
 pub struct Variable {
     pub name: Rc<str>,

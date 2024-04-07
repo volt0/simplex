@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::expressions::Value;
 use crate::scope::Scope;
+use crate::values::Value;
 
 pub struct LocalScope<'ctx, 'a> {
     pub index: BTreeMap<Rc<str>, Value<'ctx>>,

@@ -4,6 +4,7 @@ use inkwell::context::Context as BackendContext;
 use crate::errors::CompilationError;
 use crate::expressions::{ExpressionRef, Value};
 use crate::scope::Scope;
+use crate::values::IntegerValue;
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -34,8 +35,8 @@ pub struct BinaryOperationExpr {
     b: ExpressionRef,
 }
 
-impl BinaryOperationExpr {
-    pub fn compile<'ctx>(
+impl<'ctx> BinaryOperationExpr {
+    pub fn compile(
         &self,
         scope: &dyn Scope<'ctx>,
         builder: &Builder<'ctx>,
@@ -43,46 +44,62 @@ impl BinaryOperationExpr {
     ) -> Result<Value<'ctx>, CompilationError> {
         let a = self.a.compile(scope, builder, ctx);
         let b = self.b.compile(scope, builder, ctx);
-        // assert_eq!(a.get_type(), b.get_type());
-        todo!()
+        match a {
+            Value::Integer(a) => self.compile_integer(a, b, builder),
+        }
+    }
 
-        // match a.ir {
-        //     // BasicValueEnum::ArrayValue(_) => {}
-        //     BasicValueEnum::IntValue(_) => {
-        //         let a_ir = a.ir.into_int_value();
-        //         let b_ir = b.ir.into_int_value();
-        //
-        //         let result = match self.operation {
-        //             BinaryOperation::Add => builder.build_int_add(a_ir, b_ir, "")?,
-        //             BinaryOperation::Sub => builder.build_int_sub(a_ir, b_ir, "")?,
-        //             BinaryOperation::Mul => builder.build_int_mul(a_ir, b_ir, "")?,
-        //             // BinaryOperation::Div => builder.build_int_unsigned_div(a_ir, b_ir, "")?,
-        //             // BinaryOperation::Mod => builder.build_int_unsigned_rem(a_ir, b_ir, "")?,
-        //             // BinaryOperation::BitAnd => {}
-        //             // BinaryOperation::BitXor => {}
-        //             // BinaryOperation::BitOr => {}
-        //             // BinaryOperation::ShiftLeft => {}
-        //             // BinaryOperation::ShiftRight => {}
-        //             // BinaryOperation::Eq => {}
-        //             // BinaryOperation::Ne => {}
-        //             // BinaryOperation::Gt => {}
-        //             // BinaryOperation::Ge => {}
-        //             // BinaryOperation::Lt => {}
-        //             // BinaryOperation::Le => {}
-        //             // BinaryOperation::LogicalAnd => {}
-        //             // BinaryOperation::LogicalOr => {}
-        //             _ => todo!(),
-        //         };
-        //
-        //         Ok(Value::from_ir(result.into()))
-        //     }
-        //     // BasicValueEnum::FloatValue(_) => {}
-        //     // BasicValueEnum::FunctionValue(_) => {}
-        //     // BasicValueEnum::PointerValue(_) => {}
-        //     // BasicValueEnum::StructValue(_) => {}
-        //     // BasicValueEnum::VectorValue(_) => {}
-        //     _ => todo!(),
-        // }
+    fn compile_integer(
+        &self,
+        a: IntegerValue<'ctx>,
+        b: Value<'ctx>,
+        builder: &Builder<'ctx>,
+    ) -> Result<Value<'ctx>, CompilationError> {
+        let (a, b) = match b {
+            Value::Integer(b) => {
+                if a.sign_extend && !b.sign_extend {
+                    return Err(CompilationError::TypeMismatch());
+                }
+
+                let a_type = a.ir.get_type();
+                let b_type = b.ir.get_type();
+
+                if a_type == b_type {
+                    (a, b)
+                } else {
+                    if a_type.get_bit_width() > b_type.get_bit_width() {
+                        (a.clone(), b.compile_upcast(a_type, b.sign_extend, builder)?)
+                    } else {
+                        (a.compile_upcast(b_type, b.sign_extend, builder)?, b.clone())
+                    }
+                }
+            }
+        };
+
+        let result = {
+            match self.operation {
+                BinaryOperation::Add => builder.build_int_add(a.ir, b.ir, "")?,
+                BinaryOperation::Sub => builder.build_int_sub(a.ir, b.ir, "")?,
+                BinaryOperation::Mul => builder.build_int_mul(a.ir, b.ir, "")?,
+                // BinaryOperation::Div => builder.build_int_unsigned_div(a_ir, b_ir, "")?,
+                // BinaryOperation::Mod => builder.build_int_unsigned_rem(a_ir, b_ir, "")?,
+                // BinaryOperation::BitAnd => {}
+                // BinaryOperation::BitXor => {}
+                // BinaryOperation::BitOr => {}
+                // BinaryOperation::ShiftLeft => {}
+                // BinaryOperation::ShiftRight => {}
+                // BinaryOperation::Eq => {}
+                // BinaryOperation::Ne => {}
+                // BinaryOperation::Gt => {}
+                // BinaryOperation::Ge => {}
+                // BinaryOperation::Lt => {}
+                // BinaryOperation::Le => {}
+                // BinaryOperation::LogicalAnd => {}
+                // BinaryOperation::LogicalOr => {}
+                _ => todo!(),
+            }
+        };
+        Ok(Value::new_integer(result, a.sign_extend))
     }
 }
 

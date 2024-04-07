@@ -6,11 +6,11 @@ use inkwell::module::Module as ModuleIr;
 use inkwell::types::BasicType;
 use inkwell::values::FunctionValue;
 
-use crate::expressions::Value;
 use crate::scope::Scope;
 use crate::statements::CompoundStatement;
 use crate::statements::LocalScope;
 use crate::types::TypeSpec;
+use crate::values::Value;
 
 pub struct FunctionArgument {
     name: Rc<str>,
@@ -25,6 +25,8 @@ impl FunctionArgument {
     pub fn compile<'ctx>(&self, position: u32, function_ir: FunctionValue<'ctx>) -> Value<'ctx> {
         let ir = function_ir.get_nth_param(position).unwrap();
         ir.set_name(self.name.as_ref());
+
+        // fixme
         Value::from_ir(ir)
     }
 }
