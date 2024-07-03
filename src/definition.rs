@@ -3,13 +3,10 @@ use std::rc::Rc;
 use inkwell::context::Context as BackendContext;
 use inkwell::module::Module as ModuleIr;
 
-pub use function::{Function, FunctionArgument};
-
+use crate::function::{Function, FunctionArgument};
 use crate::scope::Scope;
 use crate::statements::CompoundStatement;
 use crate::types::TypeSpec;
-
-mod function;
 
 #[derive(Clone)]
 pub enum DefinitionValue {

@@ -1,10 +1,11 @@
 use std::rc::Rc;
 
-use crate::definitions::{Definition, FunctionArgument};
+use crate::definition::Definition;
 use crate::expressions::{Constant, Expression, ExpressionRef};
+use crate::function::FunctionArgument;
 use crate::module::Module;
 use crate::statements::{CompoundStatement, Statement};
-use crate::types::{FloatType, TypeSpec};
+use crate::types::{FloatType, IntegerSize, TypeSpec};
 
 grammar;
 
@@ -60,7 +61,7 @@ VariableSignature: (Rc<str>, Option<TypeSpec>) = {
     <name:Identifier> <type_spec:TypeAnnotation?> => (name, type_spec),
 }
 
-//// Expressions
+// Expressions
 
 PrimaryExpression: ExpressionRef = {
     <name:Identifier> => Expression::new_identifier(name),
@@ -154,19 +155,19 @@ TypeAnnotation: TypeSpec = {
 }
 
 TypeSpec: TypeSpec = {
-    "byte" => TypeSpec::new_byte(),
-    "short" => TypeSpec::new_short(),
-    "int" => TypeSpec::new_int(),
-    "long" => TypeSpec::new_long(),
-    "ubyte" => TypeSpec::new_ubyte(),
-    "ushort" => TypeSpec::new_ushort(),
-    "uint" => TypeSpec::new_uint(),
-    "ulong" => TypeSpec::new_ulong(),
+    "byte" => TypeSpec::new_integer(IntegerSize::Byte),
+    "short" => TypeSpec::new_integer(IntegerSize::Short),
+    "int" => TypeSpec::new_integer(IntegerSize::Int),
+    "long" => TypeSpec::new_integer(IntegerSize::Long),
+    "ubyte" => TypeSpec::new_unsigned_integer(IntegerSize::Byte),
+    "ushort" => TypeSpec::new_unsigned_integer(IntegerSize::Short),
+    "uint" => TypeSpec::new_unsigned_integer(IntegerSize::Int),
+    "ulong" => TypeSpec::new_unsigned_integer(IntegerSize::Long),
     "float" => TypeSpec::Float(FloatType::Float),
     "double" => TypeSpec::Float(FloatType::Double),
     "bool" => TypeSpec::Boolean,
     "void" => TypeSpec::Void,
-    <name:Identifier> => todo!(),
+    <name:Identifier> => TypeSpec::new_identifier(name),
 }
 
 // Syntax base

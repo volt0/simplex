@@ -4,7 +4,7 @@ use inkwell::context::Context as BackendContext;
 use inkwell::module::Module as ModuleIr;
 use inkwell::targets::TargetTriple;
 
-use crate::definitions::Definition;
+use crate::definition::Definition;
 use crate::scope::Scope;
 use crate::values::Value;
 

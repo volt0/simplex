@@ -1,14 +1,13 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use inkwell::context::Context as BackendContext;
+use inkwell::context::{Context as BackendContext, Context};
 use inkwell::module::Module as ModuleIr;
-use inkwell::types::BasicType;
+use inkwell::types::{BasicType, FunctionType};
 use inkwell::values::FunctionValue;
 
 use crate::scope::Scope;
 use crate::statements::CompoundStatement;
-use crate::statements::LocalScope;
 use crate::types::TypeSpec;
 use crate::values::Value;
 
@@ -28,6 +27,21 @@ impl FunctionArgument {
 
         // fixme
         Value::from_ir(ir)
+    }
+}
+
+pub struct FunctionScope<'ctx, 'a> {
+    pub index: BTreeMap<Rc<str>, Value<'ctx>>,
+    pub parent: &'a dyn Scope<'ctx>,
+}
+
+impl<'ctx, 'a> Scope<'ctx> for FunctionScope<'ctx, 'a> {
+    fn resolve(&self, name: Rc<str>) -> &Value<'ctx> {
+        if let Some(value) = self.index.get(name.as_ref()) {
+            return value;
+        }
+
+        self.parent.resolve(name)
     }
 }
 
@@ -53,26 +67,16 @@ impl Function {
     pub fn compile<'ctx>(
         &self,
         name: &str,
-        outer_scope: &dyn Scope<'ctx>,
+        scope: &dyn Scope<'ctx>,
         module_ir: &ModuleIr<'ctx>,
         ctx: &'ctx BackendContext,
     ) -> FunctionValue<'ctx> {
-        let mut arg_types = vec![];
-        for arg in self.args.iter() {
-            arg_types.push(arg.arg_type.compile(ctx).into());
-        }
+        let type_ir = self.compile_type(ctx);
+        let function_ir = module_ir.add_function(name, type_ir, None);
 
-        let is_var_args = false;
-        let function_type = match &self.return_type {
-            TypeSpec::Void => ctx.void_type().fn_type(&arg_types, is_var_args),
-            return_type => return_type.compile(ctx).fn_type(&arg_types, is_var_args),
-        };
-
-        let function_ir = module_ir.add_function(name, function_type, None);
-
-        let mut scope = LocalScope {
+        let mut scope = FunctionScope {
             index: BTreeMap::new(),
-            parent: outer_scope,
+            parent: scope,
         };
         for (i, arg) in self.args.iter().enumerate() {
             let value = arg.compile(i as u32, function_ir);
@@ -85,5 +89,18 @@ impl Function {
         }
 
         function_ir
+    }
+
+    fn compile_type<'ctx>(&self, ctx: &'ctx Context) -> FunctionType<'ctx> {
+        let mut arg_types = vec![];
+        for arg in self.args.iter() {
+            arg_types.push(arg.arg_type.compile(ctx).into());
+        }
+
+        let is_var_args = false;
+        match &self.return_type {
+            TypeSpec::Void => ctx.void_type().fn_type(&arg_types, is_var_args),
+            return_type => return_type.compile(ctx).fn_type(&arg_types, is_var_args),
+        }
     }
 }

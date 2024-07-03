@@ -4,9 +4,10 @@ use inkwell::OptimizationLevel;
 
 use crate::parser::parse_module;
 
-mod definitions;
+mod definition;
 mod errors;
 mod expressions;
+mod function;
 mod module;
 mod parser;
 mod scope;

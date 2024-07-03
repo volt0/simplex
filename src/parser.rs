@@ -1,7 +1,7 @@
 use crate::module::Module;
 
 mod grammar {
-    include!(concat!(env!("OUT_DIR"), "/parser/grammar.rs"));
+    include!(concat!(env!("OUT_DIR"), "/grammar.rs"));
 }
 
 pub fn parse_module(source: &str) -> Module {
