@@ -5,7 +5,7 @@ use crate::expressions::{Constant, Expression, ExpressionRef};
 use crate::function::FunctionArgument;
 use crate::module::Module;
 use crate::statements::{CompoundStatement, Statement};
-use crate::types::{FloatType, IntegerSize, TypeSpec};
+use crate::types::{FloatTypeSpec, IntegerSize, TypeSpec};
 
 grammar;
 
@@ -163,8 +163,8 @@ TypeSpec: TypeSpec = {
     "ushort" => TypeSpec::new_unsigned_integer(IntegerSize::Short),
     "uint" => TypeSpec::new_unsigned_integer(IntegerSize::Int),
     "ulong" => TypeSpec::new_unsigned_integer(IntegerSize::Long),
-    "float" => TypeSpec::Float(FloatType::Float),
-    "double" => TypeSpec::Float(FloatType::Double),
+    "float" => TypeSpec::Float(FloatTypeSpec::Float),
+    "double" => TypeSpec::Float(FloatTypeSpec::Double),
     "bool" => TypeSpec::Boolean,
     "void" => TypeSpec::Void,
     <name:Identifier> => TypeSpec::new_identifier(name),
@@ -176,7 +176,7 @@ Identifier: Rc<str> = <s:r"[_A-Za-z][_0-9A-Za-z]*"> => s.into();
 
 Constant: Constant = {
     <value:IntegerConstant> => Constant::Integer(value),
-    <value:RealConstant> => Constant::Float(FloatType::Double, value),
+    <value:RealConstant> => Constant::Float(FloatTypeSpec::Double, value),
     <value:StringConstant> => Constant::String(value),
     "true" => Constant::True,
     "false" => Constant::False,

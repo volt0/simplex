@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use inkwell::context::Context as BackendContext;
 
-use crate::types::FloatType;
+use crate::types::FloatTypeSpec;
 use crate::values::Value;
 
 #[allow(unused)]
@@ -12,7 +12,7 @@ pub enum Constant {
     True,
     False,
     Integer(i32),
-    Float(FloatType, f64),
+    Float(FloatTypeSpec, f64),
     String(Rc<str>),
 }
 

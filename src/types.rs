@@ -1,7 +1,23 @@
 use std::rc::Rc;
 
 use inkwell::context::Context as BackendContext;
-use inkwell::types::{BasicTypeEnum, FloatType as FloatTypeIR, IntType as IntTypeIR};
+use inkwell::types::{BasicTypeEnum, FloatType, IntType};
+
+pub enum TypeHint<'ctx> {
+    InferencePending,
+    Known(Type<'ctx>),
+}
+
+pub enum Type<'ctx> {
+    Integer(IntegerType<'ctx>),
+}
+
+#[derive(Clone)]
+pub struct IntegerType<'ctx> {
+    pub ir: IntType<'ctx>,
+    pub sign_extend: bool,
+}
+
 
 #[allow(unused)]
 #[derive(Clone, PartialEq)]
@@ -9,7 +25,7 @@ pub enum TypeSpec {
     Void,
     Boolean,
     Integer(IntegerTypeSpec),
-    Float(FloatType),
+    Float(FloatTypeSpec),
 }
 
 impl TypeSpec {
@@ -63,7 +79,7 @@ pub enum IntegerSize {
 }
 
 impl IntegerTypeSpec {
-    pub fn compile<'ctx>(&self, ctx: &'ctx BackendContext) -> IntTypeIR<'ctx> {
+    pub fn compile<'ctx>(&self, ctx: &'ctx BackendContext) -> IntType<'ctx> {
         match self.size {
             IntegerSize::Byte => ctx.i8_type(),
             IntegerSize::Short => ctx.i16_type(),
@@ -75,16 +91,16 @@ impl IntegerTypeSpec {
 
 #[allow(unused)]
 #[derive(Clone, PartialEq)]
-pub enum FloatType {
+pub enum FloatTypeSpec {
     Float,
     Double,
 }
 
-impl FloatType {
-    pub fn compile<'ctx>(&self, ctx: &'ctx BackendContext) -> FloatTypeIR<'ctx> {
+impl FloatTypeSpec {
+    pub fn compile<'ctx>(&self, ctx: &'ctx BackendContext) -> FloatType<'ctx> {
         match self {
-            FloatType::Float => ctx.f32_type(),
-            FloatType::Double => ctx.f64_type(),
+            FloatTypeSpec::Float => ctx.f32_type(),
+            FloatTypeSpec::Double => ctx.f64_type(),
         }
     }
 }
