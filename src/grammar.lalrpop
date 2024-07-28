@@ -1,18 +1,13 @@
 use std::rc::Rc;
 
-use crate::definition::Definition;
-use crate::expressions::{Constant, Expression, ExpressionRef};
-use crate::function::FunctionArgument;
-use crate::module::Module;
-use crate::statements::{CompoundStatement, Statement};
-use crate::types::{FloatTypeSpec, IntegerSize, TypeSpec};
+use crate::ast::*;
 
 grammar;
 
 // Module
 
 pub Module: Module = {
-    <defs:Definition*> => Module::new("__unknown__".into(), defs)
+    <defs:Definition*> => Module{ defs }
 };
 
 Definition: Definition = {
@@ -22,13 +17,16 @@ Definition: Definition = {
 // Functions
 
 FunctionDefinition: Definition = {
-    "fn" <name:Identifier> "(" <args:Comma<FunctionArgument>> ")" <return_type:TypeAnnotation?> <payload:FunctionPayload> => {
-        Definition::define_function(name, args, return_type.unwrap_or(TypeSpec::Void), payload)
+    "function" <name:Identifier> "(" <args:Comma<FunctionArgument>> ")" <return_type:TypeAnnotation?> <payload:FunctionPayload> => Definition {
+        name,
+        value: DefinitionImpl::Function(
+            Rc::new(Function { args, return_type, payload })
+        ),
     }
 };
 
 FunctionArgument: Rc<FunctionArgument> = {
-    <name:Identifier> <type_spec:TypeAnnotation> => FunctionArgument::new(name, type_spec)
+    <name:Identifier> <type_spec:TypeAnnotation> => Rc::new(FunctionArgument { name, type_spec })
 }
 
 FunctionPayload: Option<CompoundStatement> = {
@@ -39,18 +37,26 @@ FunctionPayload: Option<CompoundStatement> = {
 // Statements
 
 Statement: Statement = {
-    <items:CompoundStatement> => Statement::new_compound(items),
-    "let" <var:VariableSignature> "=" <value:Expression> ";" => Statement::new_let(var.0, var.1, value),
-    "var" <var:VariableSignature> "=" <value:Expression> ";" => Statement::new_var(),
-    "if" <condition:Expression> <body:CompoundStatement> => Statement::new_if(),
-    "while" <condition:Expression> <body:CompoundStatement> => Statement::new_while(),
-    "for" "_" "=" <iterator:Expression> <body:CompoundStatement> => Statement::new_for(),
-    "for" <var:VariableSignature> "=" <iterator:Expression> <body:CompoundStatement> => Statement::new_for(),
-    "break" ";" => Statement::new_break(),
-    "continue" ";" => Statement::new_continue(),
-    "return" ";" => Statement::new_return(None),
-    "return" <expression:Expression> ";" => Statement::new_return(Some(expression)),
-    <expression:Expression> ";" => Statement::new_assign(),
+    <items:CompoundStatement> => Statement::Compound(items),
+    "let" <var:VariableSignature> "=" <value:Expression> ";" => Statement::Let(
+         Rc::new(Variable { name: var.0, value_type: var.1, init: Some(value) })
+    ),
+    "var" <var:VariableSignature> "=" <value:Expression> ";" => Statement::Var(
+         Rc::new(Variable { name: var.0, value_type: var.1, init: Some(value) })
+    ),
+    "if" <cond:Expression> <body:CompoundStatement> => Statement::If(cond, body),
+    "while" <cond:Expression> <body:CompoundStatement> => Statement::While(cond, body),
+    "for" "_" "=" <iterator:Expression> <body:CompoundStatement> => Statement::For(None, iterator, body),
+    "for" <var:VariableSignature> "=" <iterator:Expression> <body:CompoundStatement> => Statement::For(
+        Some(Rc::new(Variable { name: var.0, value_type: var.1, init: None })),
+        iterator,
+        body
+    ),
+    "break" ";" => Statement::Break,
+    "continue" ";" => Statement::Continue,
+    "return" ";" => Statement::ReturnVoid,
+    "return" <expression:Expression> ";" => Statement::Return(expression),
+    <expression:Expression> ";" => Statement::Expression(expression),
 }
 
 CompoundStatement: CompoundStatement = {
@@ -64,88 +70,142 @@ VariableSignature: (Rc<str>, Option<TypeSpec>) = {
 // Expressions
 
 PrimaryExpression: ExpressionRef = {
-    <name:Identifier> => Expression::new_identifier(name),
-    <constant:Constant> => Expression::new_constant(constant),
+    <name:Identifier> => Box::new(Expression::Identifier(name)),
+    <constant:Constant> => Box::new(Expression::Constant(constant)),
     "(" <expression:Expression> ")" => expression,
 }
 
 PostfixExpression: ExpressionRef = {
     PrimaryExpression,
-    <subject:PostfixExpression> "(" <args:Comma<Expression>> ")" => Expression::new_call(),
-    <subject:PostfixExpression> "[" <expression:Expression> "]" => Expression::new_item_access(),
-    <subject:PostfixExpression> "." <name:Identifier> => Expression::new_member_access(),
+    <val:PostfixExpression> "(" <args:Comma<Expression>> ")" => Box::new(Expression::Call(
+        CallExpression(val, args)
+    )),
+    <val:PostfixExpression> "[" <expression:Expression> "]" => Box::new(Expression::ItemAccess(
+        ItemAccessExpression(val, expression))
+    ),
+    <val:PostfixExpression> "." <name:Identifier> => Box::new(Expression::MemberAccess(
+        MemberAccessExpression(val, name))
+    ),
 }
 
 UnaryExpression: ExpressionRef = {
     PostfixExpression,
-    "+" <subject:UnaryExpression> => Expression::new_prefix_plus(),
-    "-" <subject:UnaryExpression> => Expression::new_prefix_minus(),
-    "~" <subject:UnaryExpression> => Expression::new_bit_not(),
-    "!" <subject:UnaryExpression> => Expression::new_logic_not(),
+    "+" <val:UnaryExpression> => Box::new(Expression::UnaryOperation(
+        UnaryOperationExpression { operation: UnaryOperation::Plus, val })
+    ),
+    "-" <val:UnaryExpression> => Box::new(Expression::UnaryOperation(
+        UnaryOperationExpression { operation: UnaryOperation::Minus, val })
+    ),
+    "~" <val:UnaryExpression> => Box::new(Expression::UnaryOperation(
+        UnaryOperationExpression { operation: UnaryOperation::BitNot, val })
+    ),
+    "!" <val:UnaryExpression> => Box::new(Expression::UnaryOperation(
+        UnaryOperationExpression { operation: UnaryOperation::LogicalNot, val })
+    ),
 }
 
 CastExpression: ExpressionRef = {
     UnaryExpression,
-    <subject:CastExpression> "as" <typespec:TypeSpec> => Expression::new_cast(),
+    <val:CastExpression> "as" <type_spec:TypeSpec> => Box::new(Expression::Cast(
+        CastExpression(val, type_spec)
+    )),
 }
 
 MultiplicativeExpression: ExpressionRef = {
     CastExpression,
-    <a:MultiplicativeExpression> "*" <b:CastExpression> => Expression::new_mul(a, b),
-    <a:MultiplicativeExpression> "/" <b:CastExpression> => Expression::new_div(a, b),
-    <a:MultiplicativeExpression> "%" <b:CastExpression> => Expression::new_mod(a, b),
+    <a:MultiplicativeExpression> "*" <b:CastExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::Mul, a, b }
+    )),
+    <a:MultiplicativeExpression> "/" <b:CastExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::Div, a, b }
+    )),
+    <a:MultiplicativeExpression> "%" <b:CastExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::Mod, a, b }
+    )),
 }
 
 AdditiveExpression: ExpressionRef = {
     MultiplicativeExpression,
-    <a:AdditiveExpression> "+" <b:MultiplicativeExpression> => Expression::new_add(a, b),
-    <a:AdditiveExpression> "-" <b:MultiplicativeExpression> => Expression::new_sub(a, b),
+    <a:AdditiveExpression> "+" <b:MultiplicativeExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::Add, a, b }
+    )),
+    <a:AdditiveExpression> "-" <b:MultiplicativeExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::Sub, a, b }
+    )),
 }
 
 ShiftExpression: ExpressionRef = {
     AdditiveExpression,
-    <a:ShiftExpression> "<<" <b:AdditiveExpression> => Expression::new_shift_left(a, b),
-    <a:ShiftExpression> ">>" <b:AdditiveExpression> => Expression::new_shift_right(a, b),
+    <a:ShiftExpression> "<<" <b:AdditiveExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::ShiftLeft, a, b }
+    )),
+    <a:ShiftExpression> ">>" <b:AdditiveExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::ShiftRight, a, b }
+    )),
 }
 
 BitwiseAndExpression: ExpressionRef = {
     ShiftExpression,
-    <a:BitwiseAndExpression> "&" <b:ShiftExpression> => Expression::new_bit_and(a, b),
+    <a:BitwiseAndExpression> "&" <b:ShiftExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::BitAnd, a, b }
+    )),
 }
 
 BitwiseXorExpression: ExpressionRef = {
     BitwiseAndExpression,
-    <a:BitwiseXorExpression> "^" <b:BitwiseAndExpression> => Expression::new_bit_xor(a, b),
+    <a:BitwiseXorExpression> "^" <b:BitwiseAndExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::BitXor, a, b }
+    )),
 }
 
 BitwiseOrExpression: ExpressionRef = {
     BitwiseXorExpression,
-    <a:BitwiseOrExpression> "|" <b:BitwiseXorExpression> => Expression::new_bit_or(a, b),
+    <a:BitwiseOrExpression> "|" <b:BitwiseXorExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::BitOr, a, b }
+    )),
 }
 
 ComparisonExpression: ExpressionRef = {
     BitwiseOrExpression,
-    <a:ComparisonExpression> "<" <b:BitwiseOrExpression> => Expression::new_lt(a, b),
-    <a:ComparisonExpression> ">" <b:BitwiseOrExpression> => Expression::new_gt(a, b),
-    <a:ComparisonExpression> "<=" <b:BitwiseOrExpression> => Expression::new_le(a, b),
-    <a:ComparisonExpression> ">=" <b:BitwiseOrExpression> => Expression::new_ge(a, b),
-    <a:ComparisonExpression> "==" <b:BitwiseOrExpression> => Expression::new_eq(a, b),
-    <a:ComparisonExpression> "!=" <b:BitwiseOrExpression> => Expression::new_ne(a, b),
+    <a:ComparisonExpression> "<" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::Lt, a, b }
+    )),
+    <a:ComparisonExpression> ">" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::Gt, a, b }
+    )),
+    <a:ComparisonExpression> "<=" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::Le, a, b }
+    )),
+    <a:ComparisonExpression> ">=" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::Ge, a, b }
+    )),
+    <a:ComparisonExpression> "==" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::Eq, a, b }
+    )),
+    <a:ComparisonExpression> "!=" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::Ne, a, b }
+    )),
 }
 
 LogicalAndExpression: ExpressionRef = {
     ComparisonExpression,
-    <a:LogicalAndExpression> "&&" <b:ComparisonExpression> => Expression::new_logic_and(a, b),
+    <a:LogicalAndExpression> "&&" <b:ComparisonExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::LogicalAnd, a, b }
+    )),
 }
 
 LogicalOrExpression: ExpressionRef = {
     LogicalAndExpression,
-    <a:LogicalOrExpression> "||" <b:LogicalAndExpression> => Expression::new_logic_or(a, b),
+    <a:LogicalOrExpression> "||" <b:LogicalAndExpression> => Box::new(Expression::BinaryOperation(
+        BinaryOperationExpr { operation: BinaryOperation::LogicalOr, a, b }
+    )),
 }
 
 Expression: ExpressionRef = {
     LogicalOrExpression,
-    <condition:LogicalOrExpression> "?" <case_a:Expression> ":" <case_b:Expression> => Expression::new_inline_if(),
+    <condition:LogicalOrExpression> "?" <case_a:Expression> ":" <case_b:Expression> => Box::new(Expression::Conditional(
+        ConditionalExpression(condition, case_a, case_b)
+    )),
 }
 
 // Types
@@ -155,19 +215,19 @@ TypeAnnotation: TypeSpec = {
 }
 
 TypeSpec: TypeSpec = {
-    "byte" => TypeSpec::new_integer(IntegerSize::Byte),
-    "short" => TypeSpec::new_integer(IntegerSize::Short),
-    "int" => TypeSpec::new_integer(IntegerSize::Int),
-    "long" => TypeSpec::new_integer(IntegerSize::Long),
-    "ubyte" => TypeSpec::new_unsigned_integer(IntegerSize::Byte),
-    "ushort" => TypeSpec::new_unsigned_integer(IntegerSize::Short),
-    "uint" => TypeSpec::new_unsigned_integer(IntegerSize::Int),
-    "ulong" => TypeSpec::new_unsigned_integer(IntegerSize::Long),
-    "float" => TypeSpec::Float(FloatTypeSpec::Float),
-    "double" => TypeSpec::Float(FloatTypeSpec::Double),
+    "i8" => TypeSpec::Integer(IntegerType::I8),
+    "i16" => TypeSpec::Integer(IntegerType::I16),
+    "i32" => TypeSpec::Integer(IntegerType::I32),
+    "i64" => TypeSpec::Integer(IntegerType::I64),
+    "u8" => TypeSpec::Integer(IntegerType::U8),
+    "u16" => TypeSpec::Integer(IntegerType::U16),
+    "u32" => TypeSpec::Integer(IntegerType::U32),
+    "u64" => TypeSpec::Integer(IntegerType::U64),
+    "f32" => TypeSpec::Float(FloatType::F32),
+    "f64" => TypeSpec::Float(FloatType::F64),
     "bool" => TypeSpec::Boolean,
     "void" => TypeSpec::Void,
-    <name:Identifier> => TypeSpec::new_identifier(name),
+    <name:Identifier> => TypeSpec::Identifier(name),
 }
 
 // Syntax base
@@ -176,7 +236,7 @@ Identifier: Rc<str> = <s:r"[_A-Za-z][_0-9A-Za-z]*"> => s.into();
 
 Constant: Constant = {
     <value:IntegerConstant> => Constant::Integer(value),
-    <value:RealConstant> => Constant::Float(FloatTypeSpec::Double, value),
+    <value:RealConstant> => Constant::Float(value),
     <value:StringConstant> => Constant::String(value),
     "true" => Constant::True,
     "false" => Constant::False,

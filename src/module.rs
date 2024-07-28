@@ -1,40 +1,34 @@
-use std::rc::Rc;
+use std::ops::Deref;
 
 use inkwell::context::Context as BackendContext;
 use inkwell::module::Module as ModuleIr;
 use inkwell::targets::TargetTriple;
 
-use crate::definition::Definition;
-use crate::scope::Scope;
-use crate::values::Value;
+use crate::function::Function;
 
-pub struct Module {
-    name: Rc<str>,
-    defs: Vec<Definition>,
+pub struct Module<'ctx> {
+    ir: ModuleIr<'ctx>,
 }
 
-impl Module {
-    pub fn new(name: Rc<str>, defs: Vec<Definition>) -> Self {
-        Module { name, defs }
+impl<'ctx> Deref for Module<'ctx> {
+    type Target = ModuleIr<'ctx>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.ir
+    }
+}
+
+impl<'ctx> Module<'ctx> {
+    pub fn new(name: &str, ctx: &'ctx BackendContext) -> Self {
+        let ir = ctx.create_module(name);
+        ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
+        Module { ir }
     }
 
-    pub fn compile<'ctx>(&self, ctx: &'ctx BackendContext) -> ModuleIr<'ctx> {
-        let module_ir = ctx.create_module(self.name.as_ref());
-        module_ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
-
-        let scope = ModuleScope {};
-        for definition in self.defs.iter().cloned() {
-            definition.compile(&scope, &module_ir, ctx);
+    pub fn compile(&self, defs: Vec<crate::ast::Definition>, ctx: &'ctx BackendContext) {
+        for definition in defs.iter() {
+            let function = Function::new(definition.name.as_ref(), self, ctx);
+            function.compile(vec![], self, ctx);
         }
-
-        module_ir
-    }
-}
-
-pub struct ModuleScope {}
-
-impl<'ctx> Scope<'ctx> for ModuleScope {
-    fn resolve(&self, name: Rc<str>) -> &Value<'ctx> {
-        panic!("Undefined: {}", name.as_ref())
     }
 }
