@@ -10,15 +10,21 @@ pub struct Definition {
 }
 
 pub enum DefinitionImpl {
-    Function(Rc<Function>),
+    Function(Function),
 }
 
 pub struct Function {
-    pub args: Vec<Rc<FunctionArgument>>,
-    pub return_type: Option<TypeSpec>,
+    pub signature: FunctionSignature,
     pub payload: Option<CompoundStatement>,
 }
 
+#[derive(Clone)]
+pub struct FunctionSignature {
+    pub args: Vec<FunctionArgument>,
+    pub return_type: Option<TypeSpec>,
+}
+
+#[derive(Clone)]
 pub struct FunctionArgument {
     pub name: Rc<str>,
     pub type_spec: TypeSpec,
@@ -33,8 +39,7 @@ pub enum Statement {
     For(Option<Rc<Variable>>, ExpressionRef, CompoundStatement),
     Break,
     Continue,
-    ReturnVoid,
-    Return(ExpressionRef),
+    Return(Option<ExpressionRef>),
     Expression(ExpressionRef),
 }
 
@@ -118,6 +123,7 @@ pub enum Constant {
     String(Rc<str>),
 }
 
+#[derive(Clone)]
 pub enum TypeSpec {
     Identifier(Rc<str>),
     Void,
@@ -126,6 +132,7 @@ pub enum TypeSpec {
     Float(FloatType),
 }
 
+#[derive(Clone)]
 pub enum IntegerType {
     I8,
     I16,
@@ -137,6 +144,7 @@ pub enum IntegerType {
     U64,
 }
 
+#[derive(Clone)]
 pub enum FloatType {
     F32,
     F64,

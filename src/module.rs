@@ -4,6 +4,7 @@ use inkwell::context::Context as BackendContext;
 use inkwell::module::Module as ModuleIr;
 use inkwell::targets::TargetTriple;
 
+use crate::ast;
 use crate::function::Function;
 
 pub struct Module<'ctx> {
@@ -19,16 +20,26 @@ impl<'ctx> Deref for Module<'ctx> {
 }
 
 impl<'ctx> Module<'ctx> {
-    pub fn new(name: &str, ctx: &'ctx BackendContext) -> Self {
+    pub fn compile(name: &str, module_ast: ast::Module, ctx: &'ctx BackendContext) -> Self {
         let ir = ctx.create_module(name);
         ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
-        Module { ir }
-    }
+        let module = Module { ir };
 
-    pub fn compile(&self, defs: Vec<crate::ast::Definition>, ctx: &'ctx BackendContext) {
-        for definition in defs.iter() {
-            let function = Function::new(definition.name.as_ref(), self, ctx);
-            function.compile(vec![], self, ctx);
+        for definition in module_ast.defs {
+            let name = definition.name;
+            match definition.value {
+                ast::DefinitionImpl::Function(function_ast) => {
+                    let signature = function_ast.signature;
+                    let payload = function_ast.payload;
+
+                    let function = Function::new(name.as_ref(), signature, &module, ctx);
+                    if let Some(payload) = payload {
+                        function.compile(payload, &module, ctx);
+                    }
+                }
+            }
         }
+
+        module
     }
 }

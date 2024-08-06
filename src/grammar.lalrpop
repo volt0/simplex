@@ -17,16 +17,20 @@ Definition: Definition = {
 // Functions
 
 FunctionDefinition: Definition = {
-    "function" <name:Identifier> "(" <args:Comma<FunctionArgument>> ")" <return_type:TypeAnnotation?> <payload:FunctionPayload> => Definition {
+    "function" <name:Identifier> <signature:FunctionSignature> <payload:FunctionPayload> => Definition {
         name,
-        value: DefinitionImpl::Function(
-            Rc::new(Function { args, return_type, payload })
-        ),
+        value: DefinitionImpl::Function(Function { signature, payload }),
     }
 };
 
-FunctionArgument: Rc<FunctionArgument> = {
-    <name:Identifier> <type_spec:TypeAnnotation> => Rc::new(FunctionArgument { name, type_spec })
+FunctionSignature: FunctionSignature = {
+    "(" <args:Comma<FunctionArgument>> ")" <return_type:TypeAnnotation?> => FunctionSignature {
+        args, return_type
+    }
+}
+
+FunctionArgument: FunctionArgument = {
+    <name:Identifier> <type_spec:TypeAnnotation> => FunctionArgument { name, type_spec }
 }
 
 FunctionPayload: Option<CompoundStatement> = {
@@ -54,8 +58,8 @@ Statement: Statement = {
     ),
     "break" ";" => Statement::Break,
     "continue" ";" => Statement::Continue,
-    "return" ";" => Statement::ReturnVoid,
-    "return" <expression:Expression> ";" => Statement::Return(expression),
+    "return" ";" => Statement::Return(None),
+    "return" <expression:Expression> ";" => Statement::Return(Some(expression)),
     <expression:Expression> ";" => Statement::Expression(expression),
 }
 

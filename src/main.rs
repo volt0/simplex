@@ -5,13 +5,28 @@ use module::Module;
 mod ast;
 mod function;
 mod module;
+mod types;
+
+// function test(x: i8, y: i32, z: i32) {
+//     return;
+// }
+
+// function test(x: i8, y: i32, z: i32): i32 {
+//     return 99;
+// }
 
 const SRC: &'static str = "\
 function test(x: i8, y: i32, z: i32): i32 {
-    let a = 10;
-    return x + y + z + a;
+    return z;
 }
 ";
+
+// const SRC: &'static str = "\
+// function test(x: i8, y: i32, z: i32): i32 {
+//     let a = 10;
+//     return x + y + z + a;
+// }
+// ";
 
 mod grammar {
     include!(concat!(env!("OUT_DIR"), "/grammar.rs"));
@@ -22,8 +37,7 @@ pub fn main() {
     let module_ast = parser.parse(SRC).unwrap();
 
     let ctx = BackendContext::create();
-    let module = Module::new("foo", &ctx);
-    module.compile(module_ast.defs, &ctx);
+    let module = Module::compile("foo", module_ast, &ctx);
     module.print_to_stderr();
 
     // {
