@@ -1,10 +1,12 @@
 use inkwell::context::Context as BackendContext;
 
 use module::Module;
+use scope::Scope;
 
 mod ast;
 mod function;
 mod module;
+mod scope;
 mod types;
 
 // function test(x: i8, y: i32, z: i32) {
@@ -37,7 +39,8 @@ pub fn main() {
     let module_ast = parser.parse(SRC).unwrap();
 
     let ctx = BackendContext::create();
-    let module = Module::compile("foo", module_ast, &ctx);
+    let root_scope = Scope::default();
+    let module = Module::compile("foo", module_ast, &root_scope, &ctx);
     module.print_to_stderr();
 
     // {
