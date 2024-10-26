@@ -2,13 +2,11 @@ use std::ops::Deref;
 
 use inkwell::builder::Builder;
 use inkwell::context::Context as BackendContext;
-use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, FunctionValue};
 
 use crate::ast;
 use crate::module::Module;
-use crate::scope::{Identifier, Scope};
-use crate::types::Type;
+use crate::scope::{Identifier, LocalScope, Scope};
 
 pub struct Function<'ctx> {
     ir: FunctionValue<'ctx>,
@@ -24,53 +22,20 @@ impl<'ctx> Deref for Function<'ctx> {
 }
 
 impl<'ctx> Function<'ctx> {
-    pub fn new(
-        name: &str,
-        signature: ast::FunctionSignature,
-        module: &Module<'ctx>,
-        ctx: &'ctx BackendContext,
-    ) -> Self {
-        let type_ir = {
-            let signature = signature.clone();
-            let args_ast = signature.args;
-            let mut arg_types = vec![];
-            for arg in args_ast {
-                let arg_type_ast = arg.type_spec;
-                let arg_type = Type::compile(arg_type_ast, ctx);
-                let arg_type_ir: BasicTypeEnum = arg_type.try_into().unwrap();
-                arg_types.push(arg_type_ir.into());
-            }
-
-            let return_type_ast = signature.return_type.unwrap_or(ast::TypeSpec::Void);
-            let return_type = Type::compile(return_type_ast, ctx);
-
-            let is_var_args = false;
-            match return_type {
-                Type::Void(_) => ctx.void_type().fn_type(&arg_types, is_var_args),
-                return_type => {
-                    let return_type_ir: BasicTypeEnum = return_type.try_into().unwrap();
-                    return_type_ir.fn_type(&arg_types, is_var_args)
-                }
-            }
-        };
-
-        let function_ir = module.add_function(name, type_ir, None);
-        Function {
-            ir: function_ir,
-            signature,
-        }
+    pub fn new(ir: FunctionValue<'ctx>, signature: ast::FunctionSignature) -> Self {
+        Function { ir, signature }
     }
 }
 
-impl<'ctx, 's> Function<'ctx> {
+impl<'ctx> Function<'ctx> {
     pub fn compile(
         &self,
         payload: ast::CompoundStatement,
-        scope: &Scope<'ctx, 's>,
+        scope: &dyn Scope<'ctx>,
         module: &Module<'ctx>,
         ctx: &'ctx BackendContext,
     ) {
-        let mut scope = Scope::new(scope);
+        let mut scope = LocalScope::new(scope);
         for (arg_id, arg) in self.signature.args.iter().enumerate() {
             let arg_ir = self.get_nth_param(arg_id as u32).unwrap();
             scope.insert(
@@ -89,7 +54,7 @@ impl<'ctx, 's> Function<'ctx> {
     fn add_compound_statement(
         &self,
         stmt: ast::CompoundStatement,
-        scope: &Scope<'ctx, 's>,
+        scope: &dyn Scope<'ctx>,
         builder: &Builder<'ctx>,
         module: &Module<'ctx>,
         ctx: &'ctx BackendContext,
@@ -122,7 +87,7 @@ impl<'ctx, 's> Function<'ctx> {
     fn add_expression(
         &self,
         expr: ast::ExpressionRef,
-        scope: &Scope<'ctx, 's>,
+        scope: &dyn Scope<'ctx>,
         builder: &Builder<'ctx>,
         module: &Module<'ctx>,
         ctx: &'ctx BackendContext,
@@ -138,7 +103,7 @@ impl<'ctx, 's> Function<'ctx> {
                 ast::Constant::Float(val) => Some(ctx.f64_type().const_float(*val).into()),
                 ast::Constant::String(_) => todo!(),
             },
-            ast::Expression::Identifier(name) => match scope.lookup(name.clone()).unwrap() {
+            ast::Expression::Identifier(name) => match scope.lookup(name.as_ref()).unwrap() {
                 Identifier::Value(value) => Some(value.ir),
             },
             ast::Expression::Conditional(_) => todo!(),

@@ -6,6 +6,10 @@ use inkwell::values::BasicValueEnum;
 
 use crate::ast::FunctionArgument;
 
+pub trait Scope<'ctx> {
+    fn lookup(&self, name: &str) -> Option<Identifier<'ctx>>;
+}
+
 #[derive(Clone)]
 pub enum Identifier<'ctx> {
     Value(Value<'ctx>),
@@ -24,12 +28,22 @@ pub struct Value<'ctx> {
 }
 
 #[derive(Default)]
-pub struct Scope<'ctx, 'a> {
+pub struct LocalScope<'ctx, 'a> {
     items: HashMap<Rc<str>, Identifier<'ctx>>,
-    parent: Option<&'a Scope<'ctx, 'a>>,
+    parent: Option<&'a dyn Scope<'ctx>>,
 }
 
-impl<'ctx, 'a> Deref for Scope<'ctx, 'a> {
+impl<'ctx, 'a> Scope<'ctx> for LocalScope<'ctx, 'a> {
+    fn lookup(&self, name: &str) -> Option<Identifier<'ctx>> {
+        if let Some(result) = self.items.get(name).cloned() {
+            return Some(result);
+        };
+
+        self.parent.and_then(|parent| parent.lookup(name))
+    }
+}
+
+impl<'ctx, 'a> Deref for LocalScope<'ctx, 'a> {
     type Target = HashMap<Rc<str>, Identifier<'ctx>>;
 
     fn deref(&self) -> &Self::Target {
@@ -37,24 +51,17 @@ impl<'ctx, 'a> Deref for Scope<'ctx, 'a> {
     }
 }
 
-impl<'ctx, 'a> DerefMut for Scope<'ctx, 'a> {
+impl<'ctx, 'a> DerefMut for LocalScope<'ctx, 'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.items
     }
 }
 
-impl<'ctx, 'a> Scope<'ctx, 'a> {
-    pub fn new(parent: &'a Scope<'ctx, 'a>) -> Self {
-        Scope {
+impl<'ctx, 'a> LocalScope<'ctx, 'a> {
+    pub fn new(parent: &'a dyn Scope<'ctx>) -> Self {
+        LocalScope {
             items: Default::default(),
             parent: Some(parent),
         }
-    }
-
-    pub fn lookup(&self, name: Rc<str>) -> Option<Identifier<'ctx>> {
-        self.items
-            .get(&name)
-            .cloned()
-            .or_else(|| self.parent.unwrap().lookup(name))
     }
 }

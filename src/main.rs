@@ -1,9 +1,9 @@
+use crate::compiler::Compiler;
 use inkwell::context::Context as BackendContext;
-
 use module::Module;
-use scope::Scope;
 
 mod ast;
+mod compiler;
 mod function;
 mod module;
 mod scope;
@@ -39,9 +39,9 @@ pub fn main() {
     let module_ast = parser.parse(SRC).unwrap();
 
     let ctx = BackendContext::create();
-    let root_scope = Scope::default();
-    let module = Module::compile("foo", module_ast, &root_scope, &ctx);
-    module.print_to_stderr();
+    let ctx = Compiler::new(&ctx);
+    let module = Module::compile("foo", module_ast, &ctx);
+    module._print_to_stderr();
 
     // {
     //     type TestFunc = unsafe extern "C" fn(i8, i32, i32) -> i32;
