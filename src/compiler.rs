@@ -15,7 +15,7 @@ impl<'ctx> Deref for Compiler<'ctx> {
 }
 
 impl<'ctx> Scope<'ctx> for Compiler<'ctx> {
-    fn lookup(&self, _name: &str) -> Option<Identifier<'ctx>> {
+    fn lookup(&self, _: &str) -> Option<Identifier<'ctx>> {
         None
     }
 }

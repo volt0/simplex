@@ -10,29 +10,6 @@ pub trait Scope<'ctx> {
     fn lookup(&self, name: &str) -> Option<Identifier<'ctx>>;
 }
 
-#[derive(Clone)]
-pub enum Identifier<'ctx> {
-    Value(Value<'ctx>),
-}
-
-impl<'ctx> Identifier<'ctx> {
-    pub fn new_argument(arg: FunctionArgument, ir: BasicValueEnum<'ctx>) -> Self {
-        Identifier::Value(Value { ir })
-    }
-}
-
-#[derive(Clone)]
-pub struct Value<'ctx> {
-    pub ir: BasicValueEnum<'ctx>,
-    // pub value_type: Type<'ctx>,
-}
-
-#[derive(Default)]
-pub struct LocalScope<'ctx, 'a> {
-    items: HashMap<Rc<str>, Identifier<'ctx>>,
-    parent: Option<&'a dyn Scope<'ctx>>,
-}
-
 impl<'ctx, 'a> Scope<'ctx> for LocalScope<'ctx, 'a> {
     fn lookup(&self, name: &str) -> Option<Identifier<'ctx>> {
         if let Some(result) = self.items.get(name).cloned() {
@@ -64,4 +41,27 @@ impl<'ctx, 'a> LocalScope<'ctx, 'a> {
             parent: Some(parent),
         }
     }
+}
+
+#[derive(Clone)]
+pub enum Identifier<'ctx> {
+    Value(Value<'ctx>),
+}
+
+impl<'ctx> Identifier<'ctx> {
+    pub fn new_argument(arg: FunctionArgument, ir: BasicValueEnum<'ctx>) -> Self {
+        Identifier::Value(Value { ir })
+    }
+}
+
+#[derive(Clone)]
+pub struct Value<'ctx> {
+    pub ir: BasicValueEnum<'ctx>,
+    // pub value_type: Type<'ctx>,
+}
+
+#[derive(Default)]
+pub struct LocalScope<'ctx, 'a> {
+    items: HashMap<Rc<str>, Identifier<'ctx>>,
+    parent: Option<&'a dyn Scope<'ctx>>,
 }

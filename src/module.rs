@@ -1,6 +1,7 @@
 use crate::ast;
 use crate::compiler::Compiler;
 use crate::function::Function;
+use crate::scope::{Identifier, Scope};
 use crate::types::Type;
 use inkwell::module::Module as ModuleIr;
 use inkwell::targets::TargetTriple;
@@ -35,7 +36,7 @@ impl<'ctx> Module<'ctx> {
 
                     let function = module.add_function(name.as_ref(), signature);
                     if let Some(payload) = payload {
-                        function.compile(payload, module.compiler, &module, module.compiler);
+                        function.compile(payload, &module);
                     }
                 }
             }
@@ -75,5 +76,11 @@ impl<'ctx> Module<'ctx> {
 
     pub fn _print_to_stderr(&self) {
         self.ir.print_to_stderr();
+    }
+}
+
+impl<'ctx> Scope<'ctx> for Module<'ctx> {
+    fn lookup(&self, name: &str) -> Option<Identifier<'ctx>> {
+        self.compiler.lookup(name)
     }
 }

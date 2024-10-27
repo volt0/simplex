@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use inkwell::builder::Builder;
 use inkwell::context::Context as BackendContext;
 use inkwell::values::{BasicValueEnum, FunctionValue};
@@ -13,13 +11,13 @@ pub struct Function<'ctx> {
     signature: ast::FunctionSignature,
 }
 
-impl<'ctx> Deref for Function<'ctx> {
-    type Target = FunctionValue<'ctx>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.ir
-    }
-}
+// impl<'ctx> Deref for Function<'ctx> {
+//     type Target = FunctionValue<'ctx>;
+//
+//     fn deref(&self) -> &Self::Target {
+//         &self.ir
+//     }
+// }
 
 impl<'ctx> Function<'ctx> {
     pub fn new(ir: FunctionValue<'ctx>, signature: ast::FunctionSignature) -> Self {
@@ -28,16 +26,12 @@ impl<'ctx> Function<'ctx> {
 }
 
 impl<'ctx> Function<'ctx> {
-    pub fn compile(
-        &self,
-        payload: ast::CompoundStatement,
-        scope: &dyn Scope<'ctx>,
-        module: &Module<'ctx>,
-        ctx: &'ctx BackendContext,
-    ) {
-        let mut scope = LocalScope::new(scope);
+    pub fn compile(&self, payload: ast::CompoundStatement, module: &Module<'ctx>) {
+        let ctx = module.context();
+
+        let mut scope = LocalScope::new(module);
         for (arg_id, arg) in self.signature.args.iter().enumerate() {
-            let arg_ir = self.get_nth_param(arg_id as u32).unwrap();
+            let arg_ir = self.ir.get_nth_param(arg_id as u32).unwrap();
             scope.insert(
                 arg.name.clone(),
                 Identifier::new_argument(arg.clone(), arg_ir),
