@@ -1,4 +1,5 @@
-use crate::scope::{Identifier, Scope};
+use crate::scope::Scope;
+use crate::value::Identifier;
 use inkwell::context::Context as BackendContext;
 use std::ops::Deref;
 

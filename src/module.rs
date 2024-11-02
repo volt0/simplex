@@ -1,8 +1,9 @@
 use crate::ast;
 use crate::compiler::Compiler;
 use crate::function::Function;
-use crate::scope::{Identifier, Scope};
+use crate::scope::Scope;
 use crate::types::Type;
+use crate::value::Identifier;
 use inkwell::module::Module as ModuleIr;
 use inkwell::targets::TargetTriple;
 use inkwell::types::{BasicType, BasicTypeEnum};
@@ -45,7 +46,11 @@ impl<'ctx> Module<'ctx> {
         module
     }
 
-    pub fn add_function(&self, name: &str, signature: ast::FunctionSignature) -> Function<'ctx> {
+    pub fn add_function(
+        &self,
+        name: &str,
+        signature: ast::FunctionSignature,
+    ) -> Function<'ctx, '_> {
         let type_ir = {
             let ctx = self.context();
             let signature = signature.clone();
@@ -71,7 +76,7 @@ impl<'ctx> Module<'ctx> {
         };
 
         let function_ir = self.ir.add_function(name, type_ir, None);
-        Function::new(function_ir, signature)
+        Function::new(function_ir, signature, self)
     }
 
     pub fn _print_to_stderr(&self) {

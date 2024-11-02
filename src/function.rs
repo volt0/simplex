@@ -1,31 +1,41 @@
 use inkwell::builder::Builder;
-use inkwell::context::Context as BackendContext;
 use inkwell::values::{BasicValueEnum, FunctionValue};
+use std::ops::Deref;
 
 use crate::ast;
 use crate::module::Module;
-use crate::scope::{Identifier, LocalScope, Scope};
+use crate::scope::{LocalScope, Scope};
+use crate::value::Identifier;
 
-pub struct Function<'ctx> {
+pub struct Function<'ctx, 'a> {
+    module: &'a Module<'ctx>,
     ir: FunctionValue<'ctx>,
     signature: ast::FunctionSignature,
 }
 
-// impl<'ctx> Deref for Function<'ctx> {
-//     type Target = FunctionValue<'ctx>;
-//
-//     fn deref(&self) -> &Self::Target {
-//         &self.ir
-//     }
-// }
+impl<'ctx, 'a> Deref for Function<'ctx, 'a> {
+    type Target = Module<'ctx>;
 
-impl<'ctx> Function<'ctx> {
-    pub fn new(ir: FunctionValue<'ctx>, signature: ast::FunctionSignature) -> Self {
-        Function { ir, signature }
+    fn deref(&self) -> &Self::Target {
+        self.module
     }
 }
 
-impl<'ctx> Function<'ctx> {
+impl<'ctx, 'a> Function<'ctx, 'a> {
+    pub fn new(
+        ir: FunctionValue<'ctx>,
+        signature: ast::FunctionSignature,
+        module: &'a Module<'ctx>,
+    ) -> Self {
+        Function {
+            module,
+            ir,
+            signature,
+        }
+    }
+}
+
+impl<'ctx, 'a> Function<'ctx, 'a> {
     pub fn compile(&self, payload: ast::CompoundStatement, module: &Module<'ctx>) {
         let ctx = module.context();
 
@@ -42,50 +52,62 @@ impl<'ctx> Function<'ctx> {
         let builder = ctx.create_builder();
         builder.position_at_end(entry_block);
 
-        self.add_compound_statement(payload, &scope, &builder, module, ctx);
+        self.compile_compound_statement(payload, &scope, &builder);
     }
 
-    fn add_compound_statement(
+    fn compile_statement(
+        &self,
+        stmt: ast::Statement,
+        scope: &dyn Scope<'ctx>,
+        builder: &Builder<'ctx>,
+    ) {
+        match stmt {
+            ast::Statement::Compound(inner) => {
+                self.compile_compound_statement(inner, scope, builder)
+            }
+            ast::Statement::Let(_) => todo!(),
+            ast::Statement::Var(_) => todo!(),
+            ast::Statement::If(_, _) => todo!(),
+            ast::Statement::While(_, _) => todo!(),
+            ast::Statement::For(_, _, _) => todo!(),
+            ast::Statement::Break => todo!(),
+            ast::Statement::Continue => todo!(),
+            ast::Statement::Return(expr) => self.compile_return_statement(expr, scope, builder),
+            ast::Statement::Expression(_) => todo!(),
+        }
+    }
+
+    fn compile_compound_statement(
         &self,
         stmt: ast::CompoundStatement,
         scope: &dyn Scope<'ctx>,
         builder: &Builder<'ctx>,
-        module: &Module<'ctx>,
-        ctx: &'ctx BackendContext,
     ) {
-        for statement in stmt.0 {
-            match statement {
-                ast::Statement::Compound(inner) => {
-                    self.add_compound_statement(inner, scope, builder, module, ctx)
-                }
-                ast::Statement::Let(_) => todo!(),
-                ast::Statement::Var(_) => todo!(),
-                ast::Statement::If(_, _) => todo!(),
-                ast::Statement::While(_, _) => todo!(),
-                ast::Statement::For(_, _, _) => todo!(),
-                ast::Statement::Break => todo!(),
-                ast::Statement::Continue => todo!(),
-                ast::Statement::Return(expr) => {
-                    let res = expr
-                        .and_then(|expr| self.add_expression(expr, scope, builder, module, ctx));
-
-                    builder
-                        .build_return(res.as_ref().map(|val| val as _))
-                        .unwrap();
-                }
-                ast::Statement::Expression(_) => todo!(),
-            }
+        let scope = LocalScope::new(scope);
+        for stmt in stmt.0 {
+            self.compile_statement(stmt, &scope, builder);
         }
     }
 
-    fn add_expression(
+    fn compile_return_statement(
+        &self,
+        expr: Option<ast::ExpressionRef>,
+        scope: &dyn Scope<'ctx>,
+        builder: &Builder<'ctx>,
+    ) {
+        let res = expr.and_then(|expr| self.compile_expression(expr, scope, builder));
+        let res = res.as_ref().map(|val| val as _);
+        builder.build_return(res).unwrap();
+    }
+
+    fn compile_expression(
         &self,
         expr: ast::ExpressionRef,
         scope: &dyn Scope<'ctx>,
         builder: &Builder<'ctx>,
-        module: &Module<'ctx>,
-        ctx: &'ctx BackendContext,
     ) -> Option<BasicValueEnum> {
+        let ctx = self.context();
+
         match expr.as_ref() {
             ast::Expression::Constant(inner) => match inner {
                 ast::Constant::Void => None,

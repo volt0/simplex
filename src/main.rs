@@ -8,6 +8,7 @@ mod function;
 mod module;
 mod scope;
 mod types;
+mod value;
 
 // function test(x: i8, y: i32, z: i32) {
 //     return;
