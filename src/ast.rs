@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
-pub type Module = crate::module::Module;
-pub type Definition = crate::module::Definition;
-pub type DefinitionValue = crate::module::DefinitionValue;
-pub type Function = crate::function::Function;
-pub type FunctionArgument = crate::function::FunctionArgument;
-pub type FunctionSignature = crate::function::FunctionSignature;
+// pub type Module = crate::module::Module;
+// pub type Definition = crate::module::Definition;
+// pub type DefinitionValue = crate::module::DefinitionValue;
+// pub type Function = crate::function::Function;
+// pub type FunctionArgument = crate::function::FunctionArgument;
+// pub type FunctionSignature = crate::function::FunctionSignature;
 
 pub enum Statement {
     Compound(CompoundStatement),
