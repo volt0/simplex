@@ -1,34 +1,11 @@
 use std::rc::Rc;
 
-pub struct Module {
-    pub defs: Vec<Definition>,
-}
-
-pub struct Definition {
-    pub name: Rc<str>,
-    pub value: DefinitionImpl,
-}
-
-pub enum DefinitionImpl {
-    Function(Function),
-}
-
-pub struct Function {
-    pub signature: FunctionSignature,
-    pub payload: Option<CompoundStatement>,
-}
-
-#[derive(Clone)]
-pub struct FunctionSignature {
-    pub args: Vec<FunctionArgument>,
-    pub return_type: Option<TypeSpec>,
-}
-
-#[derive(Clone)]
-pub struct FunctionArgument {
-    pub name: Rc<str>,
-    pub type_spec: TypeSpec,
-}
+pub type Module = crate::module::Module;
+pub type Definition = crate::module::Definition;
+pub type DefinitionValue = crate::module::DefinitionValue;
+pub type Function = crate::function::Function;
+pub type FunctionArgument = crate::function::FunctionArgument;
+pub type FunctionSignature = crate::function::FunctionSignature;
 
 pub enum Statement {
     Compound(CompoundStatement),

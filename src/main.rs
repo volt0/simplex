@@ -1,6 +1,5 @@
 use crate::compiler::Compiler;
 use inkwell::context::Context as BackendContext;
-use module::Module;
 
 mod ast;
 mod compiler;
@@ -37,12 +36,11 @@ mod grammar {
 
 pub fn main() {
     let parser = grammar::ModuleParser::new();
-    let module_ast = parser.parse(SRC).unwrap();
+    let module = parser.parse(SRC).unwrap();
 
     let ctx = BackendContext::create();
     let ctx = Compiler::new(&ctx);
-    let module = Module::compile("foo", module_ast, &ctx);
-    module._print_to_stderr();
+    module.compile(&ctx);
 
     // {
     //     type TestFunc = unsafe extern "C" fn(i8, i32, i32) -> i32;

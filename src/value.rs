@@ -1,4 +1,4 @@
-use crate::ast::FunctionArgument;
+use crate::function::FunctionArgument;
 use inkwell::values::BasicValueEnum;
 
 #[derive(Clone)]

@@ -1,6 +1,6 @@
 use crate::ast;
 use crate::compiler::Compiler;
-use crate::function::Function;
+use crate::function::{Function, FunctionCompiler};
 use crate::scope::Scope;
 use crate::types::Type;
 use crate::value::Identifier;
@@ -8,13 +8,35 @@ use inkwell::module::Module as ModuleIr;
 use inkwell::targets::TargetTriple;
 use inkwell::types::{BasicType, BasicTypeEnum};
 use std::ops::Deref;
+use std::rc::Rc;
 
-pub struct Module<'ctx> {
+pub struct Definition {
+    pub name: Rc<str>,
+    pub value: DefinitionValue,
+}
+
+#[derive(Clone)]
+pub enum DefinitionValue {
+    Function(Rc<Function>),
+}
+
+pub struct Module {
+    pub defs: Vec<Definition>,
+}
+
+impl Module {
+    pub fn compile<'ctx>(&self, compiler: &'ctx Compiler<'ctx>) {
+        let module_compiler = ModuleCompiler::compile("foo", self, compiler);
+        module_compiler._print_to_stderr();
+    }
+}
+
+pub struct ModuleCompiler<'ctx> {
     compiler: &'ctx Compiler<'ctx>,
     ir: ModuleIr<'ctx>,
 }
 
-impl<'ctx> Deref for Module<'ctx> {
+impl<'ctx> Deref for ModuleCompiler<'ctx> {
     type Target = Compiler<'ctx>;
 
     fn deref(&self) -> &Self::Target {
@@ -22,49 +44,51 @@ impl<'ctx> Deref for Module<'ctx> {
     }
 }
 
-impl<'ctx> Module<'ctx> {
-    pub fn compile(name: &str, module_ast: ast::Module, compiler: &'ctx Compiler<'ctx>) -> Self {
+impl<'ctx> ModuleCompiler<'ctx> {
+    fn compile(name: &str, module: &Module, compiler: &'ctx Compiler<'ctx>) -> Self {
         let ir = compiler.create_module(name);
         ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
-        let module = Module { ir, compiler };
+        let module_compiler = ModuleCompiler { ir, compiler };
 
-        for definition in module_ast.defs {
-            let name = definition.name;
-            match definition.value {
-                ast::DefinitionImpl::Function(function_ast) => {
-                    let signature = function_ast.signature;
-                    let payload = function_ast.payload;
-
-                    let function = module.add_function(name.as_ref(), signature);
-                    if let Some(payload) = payload {
-                        function.compile(payload, &module);
-                    }
-                }
-            }
+        for def in module.defs.iter() {
+            module_compiler.add_definition(def);
         }
 
-        module
+        module_compiler
+    }
+    
+    fn add_definition(&self, def: &Definition) {
+        let name = def.name.clone();
+        let value = def.value.clone();
+        match value {
+            DefinitionValue::Function(function_ast) => {
+            }
+        }
+        
     }
 
     pub fn add_function(
         &self,
         name: &str,
-        signature: ast::FunctionSignature,
-    ) -> Function<'ctx, '_> {
+        function: Function,
+    ) -> FunctionCompiler<'ctx, '_> {
+        
+        let signature = &function.signature;
+
         let type_ir = {
             let ctx = self.context();
             let signature = signature.clone();
-
+        
             let mut arg_types = vec![];
             for arg_ast in signature.args {
                 let arg_type = Type::compile(arg_ast.type_spec, &ctx);
                 let arg_type_ir: BasicTypeEnum = arg_type.try_into().unwrap();
                 arg_types.push(arg_type_ir.into());
             }
-
+        
             let return_type_ast = signature.return_type.unwrap_or(ast::TypeSpec::Void);
             let return_type = Type::compile(return_type_ast, &ctx);
-
+        
             let is_var_args = false;
             match return_type {
                 Type::Void(_) => ctx.void_type().fn_type(&arg_types, is_var_args),
@@ -74,9 +98,11 @@ impl<'ctx> Module<'ctx> {
                 }
             }
         };
-
+        
         let function_ir = self.ir.add_function(name, type_ir, None);
-        Function::new(function_ir, signature, self)
+        let function_compiler = FunctionCompiler::new(function_ir, self);
+        
+        function_compiler        
     }
 
     pub fn _print_to_stderr(&self) {
@@ -84,7 +110,7 @@ impl<'ctx> Module<'ctx> {
     }
 }
 
-impl<'ctx> Scope<'ctx> for Module<'ctx> {
+impl<'ctx> Scope<'ctx> for ModuleCompiler<'ctx> {
     fn lookup(&self, name: &str) -> Option<Identifier<'ctx>> {
         self.compiler.lookup(name)
     }

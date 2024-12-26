@@ -19,7 +19,7 @@ Definition: Definition = {
 FunctionDefinition: Definition = {
     "function" <name:Identifier> <signature:FunctionSignature> <payload:FunctionPayload> => Definition {
         name,
-        value: DefinitionImpl::Function(Function { signature, payload }),
+        value: DefinitionValue::Function(Rc::new(Function { signature, payload })),
     }
 };
 
