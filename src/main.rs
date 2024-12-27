@@ -9,8 +9,7 @@ mod value;
 use basic_block::BasicBlock;
 use expression::{BinaryOperation, Expression, IntegerExpression};
 use function::{Function, FunctionArgument};
-use inkwell::context::Context;
-use module::{Module, ModuleCompiler};
+use module::{compile_module, Module};
 use statement::Statement;
 use std::rc::Rc;
 use type_spec::TypeSpec;
@@ -27,16 +26,19 @@ fn main() {
     let x = Rc::new(FunctionArgument {
         name: "x".to_string(),
         arg_type: TypeSpec::I64,
+        pos_id: 0,
         ir_id: Default::default(),
     });
     let y = Rc::new(FunctionArgument {
         name: "y".to_string(),
         arg_type: TypeSpec::I64,
+        pos_id: 1,
         ir_id: Default::default(),
     });
     let z = Rc::new(FunctionArgument {
         name: "z".to_string(),
         arg_type: TypeSpec::I64,
+        pos_id: 2,
         ir_id: Default::default(),
     });
 
@@ -61,7 +63,5 @@ fn main() {
         })],
     });
 
-    let context = Context::create();
-    let module_compiler = ModuleCompiler::new(&context);
-    module.compile(&module_compiler);
+    compile_module(module);
 }

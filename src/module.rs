@@ -1,9 +1,10 @@
-use crate::function::{Function, FunctionCompiler};
+use crate::function::{compile_function, Function};
 use crate::value::Value;
 use crate::SumFunc;
 use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use inkwell::module::Module as ModuleIR;
+use inkwell::values::FunctionValue;
 use inkwell::OptimizationLevel;
 use slotmap::{DefaultKey, SlotMap};
 use std::cell::RefCell;
@@ -13,27 +14,7 @@ pub struct Module {
     pub functions: Vec<Rc<Function>>,
 }
 
-impl Module {
-    pub fn compile(&self, builder: &ModuleCompiler) {
-        for function in self.functions.iter().cloned() {
-            let builder = builder.add_function(function.as_ref());
-            function.compile(&builder)
-        }
-
-        let execution_engine = builder
-            .ir
-            .create_jit_execution_engine(OptimizationLevel::None)
-            .unwrap();
-
-        unsafe {
-            let sum: JitFunction<SumFunc> = execution_engine.get_function("sum").unwrap();
-            let x = 1u64;
-            let y = 2u64;
-            let z = 3u64;
-            dbg!(sum.call(x, y, z));
-        }
-    }
-}
+impl Module {}
 
 pub struct ModuleCompiler<'ctx> {
     context: &'ctx Context,
@@ -42,15 +23,6 @@ pub struct ModuleCompiler<'ctx> {
 }
 
 impl<'ctx> ModuleCompiler<'ctx> {
-    pub fn new(context: &'ctx Context) -> Self {
-        let module_ir = context.create_module("sum");
-        ModuleCompiler {
-            context,
-            ir: module_ir,
-            values: Default::default(),
-        }
-    }
-
     pub fn context(&self) -> &'ctx Context {
         self.context
     }
@@ -63,14 +35,35 @@ impl<'ctx> ModuleCompiler<'ctx> {
         self.values.borrow().get(id).cloned()
     }
 
-    pub fn add_function(&self, function: &Function) -> FunctionCompiler<'ctx, '_> {
+    pub fn add_function(&self, function: &Function) -> FunctionValue<'ctx> {
         let fn_type = function.compile_type(self);
-        let function_ir = self.ir.add_function("sum", fn_type, None);
+        self.ir.add_function("sum", fn_type, None)
+    }
+}
 
-        FunctionCompiler {
-            context: &self.context,
-            module_compiler: self,
-            ir: function_ir,
-        }
+pub fn compile_module(module: Rc<Module>) {
+    let context = Context::create();
+    let module_ir = context.create_module("sum");
+    let module_compiler = ModuleCompiler {
+        context: &context,
+        ir: module_ir,
+        values: Default::default(),
+    };
+
+    for function in module.functions.iter().cloned() {
+        compile_function(function, &module_compiler);
+    }
+
+    let execution_engine = module_compiler
+        .ir
+        .create_jit_execution_engine(OptimizationLevel::None)
+        .unwrap();
+
+    unsafe {
+        let sum: JitFunction<SumFunc> = execution_engine.get_function("sum").unwrap();
+        let x = 1u64;
+        let y = 2u64;
+        let z = 3u64;
+        dbg!(sum.call(x, y, z));
     }
 }
