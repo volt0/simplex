@@ -1,23 +1,28 @@
+use crate::ast;
 use crate::expression::{Expression, ExpressionCompiler};
 use crate::function::FunctionCompiler;
-use crate::statement::Statement;
-use inkwell::basic_block::BasicBlock as BasicBlockIR;
-use inkwell::builder::Builder;
-use inkwell::context::Context;
+use crate::statement::{Statement, Value};
 use inkwell::values::BasicValueEnum;
 use std::ops::Deref;
 
+#[repr(transparent)]
 pub struct BasicBlock {
     pub statements: Vec<Statement>,
 }
 
-impl BasicBlock {}
+impl BasicBlock {
+    pub fn from_ast(basic_block_ast: &Vec<ast::Statement>) -> Self {
+        let mut basic_block = BasicBlock { statements: vec![] };
+        for statement in basic_block_ast {
+            basic_block.statements.push(Statement::from_ast(statement));
+        }
+        basic_block
+    }
+}
 
+#[repr(transparent)]
 pub struct BasicBlockCompiler<'ctx, 'm, 'f> {
-    context: &'ctx Context,
     function_compiler: &'f FunctionCompiler<'ctx, 'm>,
-    builder: &'f Builder<'ctx>,
-    basic_block: BasicBlockIR<'ctx>,
 }
 
 impl<'ctx, 'm, 'f> Deref for BasicBlockCompiler<'ctx, 'm, 'f> {
@@ -30,33 +35,33 @@ impl<'ctx, 'm, 'f> Deref for BasicBlockCompiler<'ctx, 'm, 'f> {
 
 impl<'ctx, 'm, 'f> BasicBlockCompiler<'ctx, 'm, 'f> {
     pub fn compile_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
-        let exp_compiler = ExpressionCompiler {
-            basic_block_compiler: self,
-        };
-
+        let exp_compiler = ExpressionCompiler::new(self);
         exp_compiler.compile_expression(exp)
+    }
+
+    pub fn compile_statement_let(&self, val: &Value) {
+        let value = self.compile_expression(val.assigned_exp.as_ref());
+        let value_id = self.store_value(value);
+        val.ir_id.set(value_id).unwrap();
     }
 
     pub fn compile_statement_return(&self, exp: &Expression) {
         let result = self.compile_expression(exp);
-        self.builder.build_return(Some(&result)).unwrap();
+        self.builder().build_return(Some(&result)).unwrap();
     }
 }
 
-pub fn compile_basic_block(basic_block: &BasicBlock, function_compiler: &FunctionCompiler) {
-    let basic_block_ir = function_compiler.add_basic_block();
-
-    let basic_block_compiler = BasicBlockCompiler {
-        context: function_compiler.context(),
-        builder: function_compiler.builder(),
-        function_compiler,
-        basic_block: basic_block_ir,
-    };
-
-    for statement in basic_block.statements.iter() {
-        match statement {
-            Statement::Return(exp) => {
-                basic_block_compiler.compile_statement_return(exp);
+impl BasicBlock {
+    pub fn compile(&self, function_compiler: &FunctionCompiler) {
+        let basic_block_compiler = BasicBlockCompiler { function_compiler };
+        for statement in self.statements.iter() {
+            match statement {
+                Statement::Let(var) => {
+                    basic_block_compiler.compile_statement_let(var.as_ref());
+                }
+                Statement::Return(exp) => {
+                    basic_block_compiler.compile_statement_return(exp);
+                }
             }
         }
     }

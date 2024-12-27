@@ -1,38 +1,57 @@
-use std::rc::Rc;
-
-// pub type Module = crate::module::Module;
-// pub type Definition = crate::module::Definition;
-// pub type DefinitionValue = crate::module::DefinitionValue;
-// pub type Function = crate::function::Function;
-// pub type FunctionArgument = crate::function::FunctionArgument;
-// pub type FunctionSignature = crate::function::FunctionSignature;
-
-pub enum Statement {
-    Compound(CompoundStatement),
-    Let(Rc<Variable>),
-    Var(Rc<Variable>),
-    If(ExpressionRef, CompoundStatement),
-    While(ExpressionRef, CompoundStatement),
-    For(Option<Rc<Variable>>, ExpressionRef, CompoundStatement),
-    Break,
-    Continue,
-    Return(Option<ExpressionRef>),
-    Expression(ExpressionRef),
+pub struct Module {
+    pub definitions: Vec<Definition>,
 }
 
-pub struct CompoundStatement(pub Vec<Statement>);
+pub struct Definition {
+    pub name: String,
+    pub value: DefinitionValue,
+}
+
+pub enum DefinitionValue {
+    Function(Function),
+}
+
+pub struct FunctionArgument {
+    pub name: String,
+    pub arg_type: TypeSpec,
+}
+
+pub struct FunctionSignature {
+    pub args: Vec<FunctionArgument>,
+    pub return_type: Option<TypeSpec>,
+}
+
+pub struct Function {
+    pub signature: FunctionSignature,
+    pub payload: Option<BasicBlock>,
+}
 
 pub struct Variable {
-    pub name: Rc<str>,
+    pub name: String,
     pub value_type: Option<TypeSpec>,
-    pub init: Option<ExpressionRef>,
+    pub init_expression: Option<Box<Expression>>,
 }
 
-pub type ExpressionRef = Box<Expression>;
+pub struct BasicBlock {
+    pub statements: Vec<Statement>,
+}
+
+pub enum Statement {
+    BasicBlock(BasicBlock),
+    Let(Variable),
+    Var(Variable),
+    If(Box<Expression>, BasicBlock),
+    While(Box<Expression>, BasicBlock),
+    For(Option<Variable>, Box<Expression>, BasicBlock),
+    Break,
+    Continue,
+    Return(Option<Box<Expression>>),
+    Expression(Box<Expression>),
+}
 
 pub enum Expression {
     Constant(Constant),
-    Identifier(Rc<str>),
+    Identifier(String),
     Conditional(ConditionalExpression),
     BinaryOperation(BinaryOperationExpr),
     UnaryOperation(UnaryOperationExpression),
@@ -65,8 +84,8 @@ pub enum BinaryOperation {
 
 pub struct BinaryOperationExpr {
     pub operation: BinaryOperation,
-    pub a: ExpressionRef,
-    pub b: ExpressionRef,
+    pub a: Box<Expression>,
+    pub b: Box<Expression>,
 }
 
 pub enum UnaryOperation {
@@ -78,18 +97,22 @@ pub enum UnaryOperation {
 
 pub struct UnaryOperationExpression {
     pub operation: UnaryOperation,
-    pub val: ExpressionRef,
+    pub val: Box<Expression>,
 }
 
-pub struct ConditionalExpression(pub ExpressionRef, pub ExpressionRef, pub ExpressionRef);
+pub struct ConditionalExpression(
+    pub Box<Expression>,
+    pub Box<Expression>,
+    pub Box<Expression>,
+);
 
-pub struct CastExpression(pub ExpressionRef, pub TypeSpec);
+pub struct CastExpression(pub Box<Expression>, pub TypeSpec);
 
-pub struct CallExpression(pub ExpressionRef, pub Vec<ExpressionRef>);
+pub struct CallExpression(pub Box<Expression>, pub Vec<Box<Expression>>);
 
-pub struct ItemAccessExpression(pub ExpressionRef, pub ExpressionRef);
+pub struct ItemAccessExpression(pub Box<Expression>, pub Box<Expression>);
 
-pub struct MemberAccessExpression(pub ExpressionRef, pub Rc<str>);
+pub struct MemberAccessExpression(pub Box<Expression>, pub String);
 
 pub enum Constant {
     Void,
@@ -97,12 +120,12 @@ pub enum Constant {
     False,
     Integer(i32),
     Float(f64),
-    String(Rc<str>),
+    String(String),
 }
 
 #[derive(Clone)]
 pub enum TypeSpec {
-    Identifier(Rc<str>),
+    Identifier(String),
     Void,
     Boolean,
     Integer(IntegerType),

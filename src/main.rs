@@ -1,67 +1,41 @@
+mod ast;
 mod basic_block;
 mod expression;
 mod function;
 mod module;
 mod statement;
 mod type_spec;
-mod value;
 
-use basic_block::BasicBlock;
-use expression::{BinaryOperation, Expression, IntegerExpression};
-use function::{Function, FunctionArgument};
-use module::{compile_module, Module};
-use statement::Statement;
-use std::rc::Rc;
-use type_spec::TypeSpec;
+use crate::module::Module;
 
-// mod ast;
-//
-// mod grammar {
-//     include!(concat!(env!("OUT_DIR"), "/grammar.rs"));
+// function test(x: i8, y: i32, z: i32) {
+//     return;
 // }
 
-type SumFunc = unsafe extern "C" fn(u64, u64, u64) -> u64;
+// function test(x: i8, y: i32, z: i32): i32 {
+//     return 99;
+// }
+
+const SRC: &'static str = "\
+function sum(x: i8, y: i32, z: i32): i32 {
+    return z;
+}
+";
+
+// const SRC: &'static str = "\
+// function test(x: i8, y: i32, z: i32): i32 {
+//     let a = 10;
+//     return x + y + z + a;
+// }
+// ";
 
 fn main() {
-    let x = Rc::new(FunctionArgument {
-        name: "x".to_string(),
-        arg_type: TypeSpec::I64,
-        pos_id: 0,
-        ir_id: Default::default(),
-    });
-    let y = Rc::new(FunctionArgument {
-        name: "y".to_string(),
-        arg_type: TypeSpec::I64,
-        pos_id: 1,
-        ir_id: Default::default(),
-    });
-    let z = Rc::new(FunctionArgument {
-        name: "z".to_string(),
-        arg_type: TypeSpec::I64,
-        pos_id: 2,
-        ir_id: Default::default(),
-    });
+    let parser = grammar::ModuleParser::new();
+    let module_ast = parser.parse(SRC).unwrap();
+    let module = Module::from_ast(&module_ast);
+    module.compile();
+}
 
-    let module = Rc::new(Module {
-        functions: vec![Rc::new(Function {
-            name: "sum".to_string(),
-            args: vec![x.clone(), y.clone(), z.clone()],
-            return_type: TypeSpec::I64,
-            entry: BasicBlock {
-                statements: vec![Statement::Return(Expression::Integer(
-                    IntegerExpression::BinaryOperation(
-                        BinaryOperation::Add,
-                        Box::new(IntegerExpression::BinaryOperation(
-                            BinaryOperation::Add,
-                            Box::new(IntegerExpression::LoadArgument(x)),
-                            Box::new(IntegerExpression::LoadArgument(y)),
-                        )),
-                        Box::new(IntegerExpression::LoadArgument(z)),
-                    ),
-                ))],
-            },
-        })],
-    });
-
-    compile_module(module);
+mod grammar {
+    include!(concat!(env!("OUT_DIR"), "/grammar.rs"));
 }

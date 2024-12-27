@@ -1,3 +1,4 @@
+use crate::ast;
 use inkwell::context::Context;
 use inkwell::types::{BasicType, BasicTypeEnum};
 
@@ -7,6 +8,13 @@ pub enum TypeSpec {
 }
 
 impl TypeSpec {
+    pub fn from_ast(type_spec_ast: &ast::TypeSpec) -> Self {
+        match type_spec_ast {
+            ast::TypeSpec::Integer(_) => TypeSpec::I64,
+            _ => todo!(),
+        }
+    }
+
     pub fn into_ir(self, context: &Context) -> BasicTypeEnum {
         match self {
             TypeSpec::I64 => context.i64_type().as_basic_type_enum(),

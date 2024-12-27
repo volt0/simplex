@@ -1,10 +1,10 @@
-use crate::function::{compile_function, Function};
-use crate::value::Value;
-use crate::SumFunc;
+use crate::ast;
+use crate::function::Function;
 use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use inkwell::module::Module as ModuleIR;
-use inkwell::values::FunctionValue;
+use inkwell::targets::TargetTriple;
+use inkwell::values::{BasicValueEnum, FunctionValue};
 use inkwell::OptimizationLevel;
 use slotmap::{DefaultKey, SlotMap};
 use std::cell::RefCell;
@@ -14,12 +14,36 @@ pub struct Module {
     pub functions: Vec<Rc<Function>>,
 }
 
-impl Module {}
+impl Module {
+    pub fn from_ast(module_ast: &ast::Module) -> Rc<Self> {
+        let mut module = Module { functions: vec![] };
+
+        let mut queue = vec![];
+        for def in module_ast.definitions.iter() {
+            match &def.value {
+                ast::DefinitionValue::Function(function_ast) => {
+                    let function = Function::from_ast(&function_ast.signature);
+                    module.functions.push(function.clone());
+
+                    if let Some(entry_basic_block) = &function_ast.payload {
+                        queue.push((entry_basic_block, function));
+                    }
+                }
+            }
+        }
+
+        for (entry_basic_block, function) in queue {
+            function.init_implementation(entry_basic_block);
+        }
+
+        Rc::new(module)
+    }
+}
 
 pub struct ModuleCompiler<'ctx> {
     context: &'ctx Context,
     ir: ModuleIR<'ctx>,
-    values: RefCell<SlotMap<DefaultKey, Value<'ctx>>>,
+    values: RefCell<SlotMap<DefaultKey, BasicValueEnum<'ctx>>>,
 }
 
 impl<'ctx> ModuleCompiler<'ctx> {
@@ -27,11 +51,11 @@ impl<'ctx> ModuleCompiler<'ctx> {
         self.context
     }
 
-    pub fn store_value(&self, value: Value<'ctx>) -> DefaultKey {
+    pub fn store_value(&self, value: BasicValueEnum<'ctx>) -> DefaultKey {
         self.values.borrow_mut().insert(value)
     }
 
-    pub fn load_value(&self, id: DefaultKey) -> Option<Value<'ctx>> {
+    pub fn load_value(&self, id: DefaultKey) -> Option<BasicValueEnum<'ctx>> {
         self.values.borrow().get(id).cloned()
     }
 
@@ -41,29 +65,37 @@ impl<'ctx> ModuleCompiler<'ctx> {
     }
 }
 
-pub fn compile_module(module: Rc<Module>) {
-    let context = Context::create();
-    let module_ir = context.create_module("sum");
-    let module_compiler = ModuleCompiler {
-        context: &context,
-        ir: module_ir,
-        values: Default::default(),
-    };
+impl Module {
+    pub fn compile(&self) {
+        let context = Context::create();
+        let module_ir = context.create_module("sum");
+        module_ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
 
-    for function in module.functions.iter().cloned() {
-        compile_function(function, &module_compiler);
-    }
+        let module_compiler = ModuleCompiler {
+            context: &context,
+            ir: module_ir,
+            values: Default::default(),
+        };
 
-    let execution_engine = module_compiler
-        .ir
-        .create_jit_execution_engine(OptimizationLevel::None)
-        .unwrap();
+        for function in self.functions.iter().cloned() {
+            function.compile(&module_compiler);
+        }
 
-    unsafe {
-        let sum: JitFunction<SumFunc> = execution_engine.get_function("sum").unwrap();
-        let x = 1u64;
-        let y = 2u64;
-        let z = 3u64;
-        dbg!(sum.call(x, y, z));
+        module_compiler.ir.print_to_stderr();
+
+        let execution_engine = module_compiler
+            .ir
+            .create_jit_execution_engine(OptimizationLevel::None)
+            .unwrap();
+
+        unsafe {
+            type SumFunc = unsafe extern "C" fn(u64, u64, u64) -> u64;
+
+            let sum: JitFunction<SumFunc> = execution_engine.get_function("sum").unwrap();
+            let x = 1u64;
+            let y = 2u64;
+            let z = 3u64;
+            dbg!(sum.call(x, y, z));
+        }
     }
 }

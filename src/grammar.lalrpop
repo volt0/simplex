@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::ast::*;
 
 grammar;
@@ -7,7 +5,7 @@ grammar;
 // Module
 
 pub Module: Module = {
-    <defs:Definition*> => Module{ defs }
+    <definitions:Definition*> => Module { definitions }
 };
 
 Definition: Definition = {
@@ -19,7 +17,7 @@ Definition: Definition = {
 FunctionDefinition: Definition = {
     "function" <name:Identifier> <signature:FunctionSignature> <payload:FunctionPayload> => Definition {
         name,
-        value: DefinitionValue::Function(Rc::new(Function { signature, payload })),
+        value: DefinitionValue::Function(Function { signature, payload }),
     }
 };
 
@@ -30,29 +28,29 @@ FunctionSignature: FunctionSignature = {
 }
 
 FunctionArgument: FunctionArgument = {
-    <name:Identifier> <type_spec:TypeAnnotation> => FunctionArgument { name, type_spec }
+    <name:Identifier> <arg_type:TypeAnnotation> => FunctionArgument {name, arg_type}
 }
 
-FunctionPayload: Option<CompoundStatement> = {
+FunctionPayload: Option<BasicBlock> = {
     ";" => None,
-    <body:CompoundStatement> => Some(body),
+    <body:BasicBlock> => Some(body),
 }
 
 // Statements
 
 Statement: Statement = {
-    <items:CompoundStatement> => Statement::Compound(items),
+    <items:BasicBlock> => Statement::BasicBlock(items),
     "let" <var:VariableSignature> "=" <value:Expression> ";" => Statement::Let(
-         Rc::new(Variable { name: var.0, value_type: var.1, init: Some(value) })
+         Variable { name: var.0, value_type: var.1, init_expression: Some(value) }
     ),
     "var" <var:VariableSignature> "=" <value:Expression> ";" => Statement::Var(
-         Rc::new(Variable { name: var.0, value_type: var.1, init: Some(value) })
+         Variable { name: var.0, value_type: var.1, init_expression: Some(value) }
     ),
-    "if" <cond:Expression> <body:CompoundStatement> => Statement::If(cond, body),
-    "while" <cond:Expression> <body:CompoundStatement> => Statement::While(cond, body),
-    "for" "_" "=" <iterator:Expression> <body:CompoundStatement> => Statement::For(None, iterator, body),
-    "for" <var:VariableSignature> "=" <iterator:Expression> <body:CompoundStatement> => Statement::For(
-        Some(Rc::new(Variable { name: var.0, value_type: var.1, init: None })),
+    "if" <cond:Expression> <body:BasicBlock> => Statement::If(cond, body),
+    "while" <cond:Expression> <body:BasicBlock> => Statement::While(cond, body),
+    "for" "_" "=" <iterator:Expression> <body:BasicBlock> => Statement::For(None, iterator, body),
+    "for" <var:VariableSignature> "=" <iterator:Expression> <body:BasicBlock> => Statement::For(
+        Some(Variable { name: var.0, value_type: var.1, init_expression: None }),
         iterator,
         body
     ),
@@ -63,23 +61,23 @@ Statement: Statement = {
     <expression:Expression> ";" => Statement::Expression(expression),
 }
 
-CompoundStatement: CompoundStatement = {
-    "{" <items:(<Statement>)*> "}" => CompoundStatement(items)
+BasicBlock: BasicBlock = {
+    "{" <statements:(<Statement>)*> "}" => BasicBlock { statements }
 }
 
-VariableSignature: (Rc<str>, Option<TypeSpec>) = {
+VariableSignature: (String, Option<TypeSpec>) = {
     <name:Identifier> <type_spec:TypeAnnotation?> => (name, type_spec),
 }
 
 // Expressions
 
-PrimaryExpression: ExpressionRef = {
+PrimaryExpression: Box<Expression> = {
     <name:Identifier> => Box::new(Expression::Identifier(name)),
     <constant:Constant> => Box::new(Expression::Constant(constant)),
     "(" <expression:Expression> ")" => expression,
 }
 
-PostfixExpression: ExpressionRef = {
+PostfixExpression: Box<Expression> = {
     PrimaryExpression,
     <val:PostfixExpression> "(" <args:Comma<Expression>> ")" => Box::new(Expression::Call(
         CallExpression(val, args)
@@ -92,7 +90,7 @@ PostfixExpression: ExpressionRef = {
     ),
 }
 
-UnaryExpression: ExpressionRef = {
+UnaryExpression: Box<Expression> = {
     PostfixExpression,
     "+" <val:UnaryExpression> => Box::new(Expression::UnaryOperation(
         UnaryOperationExpression { operation: UnaryOperation::Plus, val })
@@ -108,14 +106,14 @@ UnaryExpression: ExpressionRef = {
     ),
 }
 
-CastExpression: ExpressionRef = {
+CastExpression: Box<Expression> = {
     UnaryExpression,
     <val:CastExpression> "as" <type_spec:TypeSpec> => Box::new(Expression::Cast(
         CastExpression(val, type_spec)
     )),
 }
 
-MultiplicativeExpression: ExpressionRef = {
+MultiplicativeExpression: Box<Expression> = {
     CastExpression,
     <a:MultiplicativeExpression> "*" <b:CastExpression> => Box::new(Expression::BinaryOperation(
         BinaryOperationExpr { operation: BinaryOperation::Mul, a, b }
@@ -128,7 +126,7 @@ MultiplicativeExpression: ExpressionRef = {
     )),
 }
 
-AdditiveExpression: ExpressionRef = {
+AdditiveExpression: Box<Expression> = {
     MultiplicativeExpression,
     <a:AdditiveExpression> "+" <b:MultiplicativeExpression> => Box::new(Expression::BinaryOperation(
         BinaryOperationExpr { operation: BinaryOperation::Add, a, b }
@@ -138,7 +136,7 @@ AdditiveExpression: ExpressionRef = {
     )),
 }
 
-ShiftExpression: ExpressionRef = {
+ShiftExpression: Box<Expression> = {
     AdditiveExpression,
     <a:ShiftExpression> "<<" <b:AdditiveExpression> => Box::new(Expression::BinaryOperation(
         BinaryOperationExpr { operation: BinaryOperation::ShiftLeft, a, b }
@@ -148,28 +146,28 @@ ShiftExpression: ExpressionRef = {
     )),
 }
 
-BitwiseAndExpression: ExpressionRef = {
+BitwiseAndExpression: Box<Expression> = {
     ShiftExpression,
     <a:BitwiseAndExpression> "&" <b:ShiftExpression> => Box::new(Expression::BinaryOperation(
         BinaryOperationExpr { operation: BinaryOperation::BitAnd, a, b }
     )),
 }
 
-BitwiseXorExpression: ExpressionRef = {
+BitwiseXorExpression: Box<Expression> = {
     BitwiseAndExpression,
     <a:BitwiseXorExpression> "^" <b:BitwiseAndExpression> => Box::new(Expression::BinaryOperation(
         BinaryOperationExpr { operation: BinaryOperation::BitXor, a, b }
     )),
 }
 
-BitwiseOrExpression: ExpressionRef = {
+BitwiseOrExpression: Box<Expression> = {
     BitwiseXorExpression,
     <a:BitwiseOrExpression> "|" <b:BitwiseXorExpression> => Box::new(Expression::BinaryOperation(
         BinaryOperationExpr { operation: BinaryOperation::BitOr, a, b }
     )),
 }
 
-ComparisonExpression: ExpressionRef = {
+ComparisonExpression: Box<Expression> = {
     BitwiseOrExpression,
     <a:ComparisonExpression> "<" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
         BinaryOperationExpr { operation: BinaryOperation::Lt, a, b }
@@ -191,21 +189,21 @@ ComparisonExpression: ExpressionRef = {
     )),
 }
 
-LogicalAndExpression: ExpressionRef = {
+LogicalAndExpression: Box<Expression> = {
     ComparisonExpression,
     <a:LogicalAndExpression> "&&" <b:ComparisonExpression> => Box::new(Expression::BinaryOperation(
         BinaryOperationExpr { operation: BinaryOperation::LogicalAnd, a, b }
     )),
 }
 
-LogicalOrExpression: ExpressionRef = {
+LogicalOrExpression: Box<Expression> = {
     LogicalAndExpression,
     <a:LogicalOrExpression> "||" <b:LogicalAndExpression> => Box::new(Expression::BinaryOperation(
         BinaryOperationExpr { operation: BinaryOperation::LogicalOr, a, b }
     )),
 }
 
-Expression: ExpressionRef = {
+Expression: Box<Expression> = {
     LogicalOrExpression,
     <condition:LogicalOrExpression> "?" <case_a:Expression> ":" <case_b:Expression> => Box::new(Expression::Conditional(
         ConditionalExpression(condition, case_a, case_b)
@@ -236,7 +234,7 @@ TypeSpec: TypeSpec = {
 
 // Syntax base
 
-Identifier: Rc<str> = <s:r"[_A-Za-z][_0-9A-Za-z]*"> => s.into();
+Identifier: String = <s:r"[_A-Za-z][_0-9A-Za-z]*"> => s.to_string();
 
 Constant: Constant = {
     <value:IntegerConstant> => Constant::Integer(value),
@@ -249,7 +247,7 @@ Constant: Constant = {
 
 IntegerConstant: i32 = <s:r"[0-9]+"> => s.parse::<i32>().unwrap();
 RealConstant: f64 = <s:r#"[0-9]+"."[0-9]*([Ee][+-]?[0-9]+)?[fFlL]?"#> => s.parse::<f64>().unwrap();
-StringConstant: Rc<str> = <s:r#""(\\.|[^\\"])*""#> => s.into();
+StringConstant: String = <s:r#""(\\.|[^\\"])*""#> => s.to_string();
 
 Comma<T>: Vec<T> = {
     <mut v:(<T> ",")*> <e:T?> => match e {
