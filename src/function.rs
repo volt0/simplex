@@ -12,15 +12,15 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 pub struct FunctionArgument {
-    pub name: String,
-    pub arg_type: TypeSpec,
-    pub pos_id: u32,
+    name: String,
+    arg_type: TypeSpec,
+    pos_id: u32,
 }
 
 pub struct Function {
-    pub args: Vec<Rc<FunctionArgument>>,
-    pub return_type: TypeSpec,
-    pub entry_basic_block: OnceCell<BasicBlock>,
+    args: Vec<Rc<FunctionArgument>>,
+    return_type: TypeSpec,
+    entry_basic_block: OnceCell<BasicBlock>,
 }
 
 impl Function {

@@ -10,8 +10,9 @@ use slotmap::{DefaultKey, SlotMap};
 use std::cell::RefCell;
 use std::rc::Rc;
 
+#[derive(Default)]
 pub struct Module {
-    pub functions: Vec<Rc<Function>>,
+    functions: Vec<Rc<Function>>,
 }
 
 impl Module {
