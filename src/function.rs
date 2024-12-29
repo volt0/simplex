@@ -1,6 +1,7 @@
 use crate::ast;
 use crate::basic_block::BasicBlock;
-use crate::module::ModuleCompiler;
+use crate::module::{Module, ModuleCompiler};
+use crate::scope::{LocalScope, LocalScopeItem};
 use crate::type_spec::TypeSpec;
 use inkwell::basic_block::BasicBlock as BasicBlockIR;
 use inkwell::builder::Builder;
@@ -9,7 +10,7 @@ use inkwell::types::{BasicMetadataTypeEnum, BasicType, FunctionType};
 use inkwell::values::{BasicValueEnum, FunctionValue};
 use std::cell::OnceCell;
 use std::ops::Deref;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 pub struct FunctionArgument {
     name: String,
@@ -20,15 +21,29 @@ pub struct FunctionArgument {
 pub struct Function {
     args: Vec<Rc<FunctionArgument>>,
     return_type: TypeSpec,
-    entry_basic_block: OnceCell<BasicBlock>,
+    entry_basic_block: OnceCell<Rc<BasicBlock>>,
+    module: Weak<Module>,
+}
+
+impl LocalScope for Function {
+    fn resolve(&self, name: &String) -> Option<LocalScopeItem> {
+        for arg in &self.args {
+            let arg_ref = arg.as_ref();
+            if arg_ref.name == *name {
+                return Some(LocalScopeItem::Argument(arg.clone()));
+            }
+        }
+        None
+    }
 }
 
 impl Function {
-    pub fn from_ast(signature: &ast::FunctionSignature) -> Rc<Self> {
+    pub fn from_ast(signature: &ast::FunctionSignature, module: Rc<Module>) -> Rc<Self> {
         let mut function = Function {
             args: vec![],
             return_type: TypeSpec::I64,
             entry_basic_block: Default::default(),
+            module: Rc::downgrade(&module),
         };
 
         let mut arg_id = 0;
@@ -44,58 +59,9 @@ impl Function {
         Rc::new(function)
     }
 
-    pub fn init_implementation(&self, entry_basic_block_ast: &ast::BasicBlock) {
-        use crate::expression::{BinaryOperation, Expression, IntegerExpression};
-        use crate::statement::{Statement, Value};
-
-        let x = Rc::new(FunctionArgument {
-            name: "x".to_string(),
-            arg_type: TypeSpec::I64,
-            pos_id: 0,
-        });
-        let y = Rc::new(FunctionArgument {
-            name: "y".to_string(),
-            arg_type: TypeSpec::I64,
-            pos_id: 1,
-        });
-        let z = Rc::new(FunctionArgument {
-            name: "z".to_string(),
-            arg_type: TypeSpec::I64,
-            pos_id: 2,
-        });
-        let a = Rc::new(Value {
-            type_spec: TypeSpec::I64,
-            assigned_exp: Box::new(
-                IntegerExpression::BinaryOperation(
-                    BinaryOperation::Add,
-                    Box::new(IntegerExpression::Force(Box::new(
-                        Expression::LoadArgument(x.clone()),
-                    ))),
-                    Box::new(IntegerExpression::Force(Box::new(
-                        Expression::LoadArgument(y.clone()),
-                    ))),
-                )
-                .into(),
-            ),
-            ir_id: Default::default(),
-        });
-
-        let entry_basic_block = BasicBlock {
-            statements: vec![
-                Statement::Let(a.clone()),
-                Statement::Return(Box::new(Expression::Integer(
-                    IntegerExpression::BinaryOperation(
-                        BinaryOperation::Add,
-                        Box::new(IntegerExpression::Force(Box::new(Expression::LoadValue(a)))),
-                        Box::new(IntegerExpression::Force(Box::new(
-                            Expression::LoadArgument(z),
-                        ))),
-                    ),
-                ))),
-            ],
-        };
-
-        // let entry_basic_block = BasicBlock::from_ast(&entry_basic_block_ast.statements);
+    pub fn init_implementation(self: Rc<Self>, entry_basic_block_ast: &ast::BasicBlock) {
+        let entry_basic_block =
+            BasicBlock::from_ast(&entry_basic_block_ast.statements, self.clone());
         self.entry_basic_block.set(entry_basic_block).ok().unwrap();
     }
 }

@@ -10,21 +10,26 @@ use slotmap::{DefaultKey, SlotMap};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-#[derive(Default)]
 pub struct Module {
-    functions: Vec<Rc<Function>>,
+    inner: RefCell<ModuleInner>,
 }
 
 impl Module {
+    pub fn new() -> Rc<Self> {
+        Rc::new(Module {
+            inner: RefCell::default(),
+        })
+    }
+
     pub fn from_ast(module_ast: &ast::Module) -> Rc<Self> {
-        let mut module = Module { functions: vec![] };
+        let module = Self::new();
 
         let mut queue = vec![];
         for def in module_ast.definitions.iter() {
             match &def.value {
                 ast::DefinitionValue::Function(function_ast) => {
-                    let function = Function::from_ast(&function_ast.signature);
-                    module.functions.push(function.clone());
+                    let function = Function::from_ast(&function_ast.signature, module.clone());
+                    module.add_function(function.clone());
 
                     if let Some(entry_basic_block) = &function_ast.payload {
                         queue.push((entry_basic_block, function));
@@ -37,7 +42,19 @@ impl Module {
             function.init_implementation(entry_basic_block);
         }
 
-        Rc::new(module)
+        module
+    }
+}
+
+#[derive(Default)]
+pub struct ModuleInner {
+    functions: Vec<Rc<Function>>,
+}
+
+impl Module {
+    pub fn add_function(&self, function: Rc<Function>) {
+        let mut inner = self.inner.borrow_mut();
+        inner.functions.push(function);
     }
 }
 
@@ -78,7 +95,8 @@ impl Module {
             values: Default::default(),
         };
 
-        for function in self.functions.iter().cloned() {
+        let module_inner = self.inner.borrow();
+        for function in module_inner.functions.iter().cloned() {
             function.compile(&module_compiler);
         }
 

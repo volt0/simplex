@@ -116,90 +116,90 @@ CastExpression: Box<Expression> = {
 MultiplicativeExpression: Box<Expression> = {
     CastExpression,
     <a:MultiplicativeExpression> "*" <b:CastExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::Mul, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::Mul, lhs:a, rhs:b }
     )),
     <a:MultiplicativeExpression> "/" <b:CastExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::Div, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::Div, lhs:a, rhs:b }
     )),
     <a:MultiplicativeExpression> "%" <b:CastExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::Mod, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::Mod, lhs:a, rhs:b }
     )),
 }
 
 AdditiveExpression: Box<Expression> = {
     MultiplicativeExpression,
     <a:AdditiveExpression> "+" <b:MultiplicativeExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::Add, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::Add, lhs:a, rhs:b }
     )),
     <a:AdditiveExpression> "-" <b:MultiplicativeExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::Sub, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::Sub, lhs:a, rhs:b }
     )),
 }
 
 ShiftExpression: Box<Expression> = {
     AdditiveExpression,
     <a:ShiftExpression> "<<" <b:AdditiveExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::ShiftLeft, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::ShiftLeft, lhs:a, rhs:b }
     )),
     <a:ShiftExpression> ">>" <b:AdditiveExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::ShiftRight, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::ShiftRight, lhs:a, rhs:b }
     )),
 }
 
 BitwiseAndExpression: Box<Expression> = {
     ShiftExpression,
     <a:BitwiseAndExpression> "&" <b:ShiftExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::BitAnd, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::BitAnd, lhs:a, rhs:b }
     )),
 }
 
 BitwiseXorExpression: Box<Expression> = {
     BitwiseAndExpression,
     <a:BitwiseXorExpression> "^" <b:BitwiseAndExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::BitXor, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::BitXor, lhs:a, rhs:b }
     )),
 }
 
 BitwiseOrExpression: Box<Expression> = {
     BitwiseXorExpression,
     <a:BitwiseOrExpression> "|" <b:BitwiseXorExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::BitOr, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::BitOr, lhs:a, rhs:b }
     )),
 }
 
 ComparisonExpression: Box<Expression> = {
     BitwiseOrExpression,
     <a:ComparisonExpression> "<" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::Lt, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::Lt, lhs:a, rhs:b }
     )),
     <a:ComparisonExpression> ">" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::Gt, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::Gt, lhs:a, rhs:b }
     )),
     <a:ComparisonExpression> "<=" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::Le, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::Le, lhs:a, rhs:b }
     )),
     <a:ComparisonExpression> ">=" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::Ge, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::Ge, lhs:a, rhs:b }
     )),
     <a:ComparisonExpression> "==" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::Eq, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::Eq, lhs:a, rhs:b }
     )),
     <a:ComparisonExpression> "!=" <b:BitwiseOrExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::Ne, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::Ne, lhs:a, rhs:b }
     )),
 }
 
 LogicalAndExpression: Box<Expression> = {
     ComparisonExpression,
     <a:LogicalAndExpression> "&&" <b:ComparisonExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::LogicalAnd, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::LogicalAnd, lhs:a, rhs:b }
     )),
 }
 
 LogicalOrExpression: Box<Expression> = {
     LogicalAndExpression,
     <a:LogicalOrExpression> "||" <b:LogicalAndExpression> => Box::new(Expression::BinaryOperation(
-        BinaryOperationExpr { operation: BinaryOperation::LogicalOr, a, b }
+        BinaryOperationExpr { operation: BinaryOperation::LogicalOr, lhs:a, rhs:b }
     )),
 }
 

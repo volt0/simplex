@@ -11,7 +11,10 @@ impl TypeSpec {
     pub fn from_ast(type_spec_ast: &ast::TypeSpec) -> Self {
         match type_spec_ast {
             ast::TypeSpec::Integer(_) => TypeSpec::I64,
-            _ => todo!(),
+            ast::TypeSpec::Identifier(_) => todo!(),
+            ast::TypeSpec::Void => todo!(),
+            ast::TypeSpec::Boolean => todo!(),
+            ast::TypeSpec::Float(_) => todo!(),
         }
     }
 

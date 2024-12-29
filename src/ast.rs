@@ -61,31 +61,12 @@ pub enum Expression {
     MemberAccess(MemberAccessExpression),
 }
 
-pub enum BinaryOperation {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Mod,
-    BitAnd,
-    BitXor,
-    BitOr,
-    ShiftLeft,
-    ShiftRight,
-    Eq,
-    Ne,
-    Gt,
-    Ge,
-    Lt,
-    Le,
-    LogicalAnd,
-    LogicalOr,
-}
+pub type BinaryOperation = crate::expression::BinaryOperation;
 
 pub struct BinaryOperationExpr {
     pub operation: BinaryOperation,
-    pub a: Box<Expression>,
-    pub b: Box<Expression>,
+    pub lhs: Box<Expression>,
+    pub rhs: Box<Expression>,
 }
 
 pub enum UnaryOperation {

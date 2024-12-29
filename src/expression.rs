@@ -1,7 +1,9 @@
 use crate::ast;
+use crate::ast::Constant;
 use crate::basic_block::BasicBlockCompiler;
 use crate::function::FunctionArgument;
-use crate::statement::Value;
+use crate::scope::{LocalScope, LocalScopeItem};
+use crate::statement::ValueAssignment;
 use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
 use std::ops::Deref;
 use std::rc::Rc;
@@ -9,9 +11,27 @@ use std::rc::Rc;
 #[derive(Clone)]
 pub enum BinaryOperation {
     Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    BitAnd,
+    BitXor,
+    BitOr,
+    ShiftLeft,
+    ShiftRight,
+    Eq,
+    Ne,
+    Gt,
+    Ge,
+    Lt,
+    Le,
+    LogicalAnd,
+    LogicalOr,
 }
 
 pub enum IntegerExpression {
+    LoadConstant(i32),
     BinaryOperation(
         BinaryOperation,
         Box<IntegerExpression>,
@@ -23,20 +43,48 @@ pub enum IntegerExpression {
 pub enum Expression {
     Integer(IntegerExpression),
     LoadArgument(Rc<FunctionArgument>),
-    LoadValue(Rc<Value>),
+    LoadValue(Rc<ValueAssignment>),
 }
 
 impl Expression {
-    pub fn from_ast(expression_ast: &ast::Expression) -> Box<Self> {
-        match expression_ast {
-            ast::Expression::Identifier(name) => {
-                todo!()
-            }
+    pub fn from_ast(expression_ast: &ast::Expression, scope: &dyn LocalScope) -> Box<Self> {
+        Box::new(match expression_ast {
+            ast::Expression::Identifier(name) => match scope.resolve(name).expect("not found") {
+                LocalScopeItem::Argument(arg) => Expression::LoadArgument(arg),
+                LocalScopeItem::Value(val) => Expression::LoadValue(val),
+            },
             ast::Expression::BinaryOperation(binary_operation_ast) => {
-                todo!()
+                let lhs = Box::new(IntegerExpression::Force(Expression::from_ast(
+                    &binary_operation_ast.lhs,
+                    scope,
+                )));
+                let rhs = Box::new(IntegerExpression::Force(Expression::from_ast(
+                    &binary_operation_ast.rhs,
+                    scope,
+                )));
+                Expression::Integer(IntegerExpression::BinaryOperation(
+                    binary_operation_ast.operation.clone(),
+                    lhs,
+                    rhs,
+                ))
             }
-            _ => todo!(),
-        }
+            ast::Expression::Constant(constant) => match constant {
+                Constant::Void => todo!(),
+                Constant::True => todo!(),
+                Constant::False => todo!(),
+                Constant::Integer(value) => {
+                    Expression::Integer(IntegerExpression::LoadConstant(*value))
+                }
+                Constant::Float(_) => todo!(),
+                Constant::String(_) => todo!(),
+            },
+            ast::Expression::Conditional(_) => todo!(),
+            ast::Expression::UnaryOperation(_) => todo!(),
+            ast::Expression::Cast(_) => todo!(),
+            ast::Expression::Call(_) => todo!(),
+            ast::Expression::ItemAccess(_) => todo!(),
+            ast::Expression::MemberAccess(_) => todo!(),
+        })
     }
 }
 
@@ -70,7 +118,7 @@ impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
         self.load_argument(arg.as_ref())
     }
 
-    pub fn compile_load_value(&self, val: Rc<Value>) -> BasicValueEnum<'ctx> {
+    pub fn compile_load_value(&self, val: Rc<ValueAssignment>) -> BasicValueEnum<'ctx> {
         let id = val.ir_id.get().unwrap();
         self.load_value(*id).unwrap()
     }
@@ -86,6 +134,23 @@ impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
         let builder = self.builder();
         match op {
             BinaryOperation::Add => builder.build_int_add(lhs, rhs, "").unwrap(),
+            BinaryOperation::Sub => todo!(),
+            BinaryOperation::Mul => todo!(),
+            BinaryOperation::Div => todo!(),
+            BinaryOperation::Mod => todo!(),
+            BinaryOperation::BitAnd => todo!(),
+            BinaryOperation::BitXor => todo!(),
+            BinaryOperation::BitOr => todo!(),
+            BinaryOperation::ShiftLeft => todo!(),
+            BinaryOperation::ShiftRight => todo!(),
+            BinaryOperation::Eq => todo!(),
+            BinaryOperation::Ne => todo!(),
+            BinaryOperation::Gt => todo!(),
+            BinaryOperation::Ge => todo!(),
+            BinaryOperation::Lt => todo!(),
+            BinaryOperation::Le => todo!(),
+            BinaryOperation::LogicalAnd => todo!(),
+            BinaryOperation::LogicalOr => todo!(),
         }
     }
 
@@ -95,6 +160,10 @@ impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
 
     pub fn compile_integer_expression(&self, exp: &IntegerExpression) -> IntValue<'ctx> {
         match exp {
+            IntegerExpression::LoadConstant(value) => {
+                let i64_type = self.context().i64_type();
+                i64_type.const_int(*value as u64, false)
+            }
             IntegerExpression::BinaryOperation(op, lhs, rhs) => {
                 let lhs = lhs.as_ref();
                 let rhs = rhs.as_ref();

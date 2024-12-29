@@ -3,6 +3,7 @@ mod basic_block;
 mod expression;
 mod function;
 mod module;
+mod scope;
 mod statement;
 mod type_spec;
 
@@ -16,18 +17,24 @@ use crate::module::Module;
 //     return 99;
 // }
 
-const SRC: &'static str = "\
-function sum(x: i8, y: i32, z: i32): i32 {
-    return z;
-}
-";
-
 // const SRC: &'static str = "\
-// function test(x: i8, y: i32, z: i32): i32 {
-//     let a = 10;
-//     return x + y + z + a;
+// function sum(x: i8, y: i32, z: i32): i32 {
+//     return z;
 // }
 // ";
+
+// const SRC: &'static str = "\
+// function test(x: i64, y: i64, z: i64): i64 {
+//     return x + y + z;
+// }
+// ";
+
+const SRC: &'static str = "\
+function test(x: i64, y: i64, z: i64): i64 {
+    let a: i64 = 10;
+    return x + y + z + a;
+}
+";
 
 fn main() {
     let parser = grammar::ModuleParser::new();
