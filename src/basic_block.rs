@@ -1,5 +1,5 @@
 use crate::ast;
-use crate::expression::{Expression, ExpressionCompiler};
+use crate::expression::{ExpressionCompiler, ExpressionNode};
 use crate::function::FunctionCompiler;
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::statement::{Statement, ValueAssignment};
@@ -69,7 +69,7 @@ impl<'ctx, 'm, 'f> Deref for BasicBlockCompiler<'ctx, 'm, 'f> {
 }
 
 impl<'ctx, 'm, 'f> BasicBlockCompiler<'ctx, 'm, 'f> {
-    pub fn compile_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
+    pub fn compile_expression(&self, exp: &ExpressionNode) -> BasicValueEnum<'ctx> {
         let exp_compiler = ExpressionCompiler::new(self);
         exp_compiler.compile_expression(exp)
     }
@@ -80,7 +80,7 @@ impl<'ctx, 'm, 'f> BasicBlockCompiler<'ctx, 'm, 'f> {
         val.ir_id.set(value_id).unwrap();
     }
 
-    pub fn compile_statement_return(&self, exp: &Expression) {
+    pub fn compile_statement_return(&self, exp: &ExpressionNode) {
         let result = self.compile_expression(exp);
         self.builder().build_return(Some(&result)).unwrap();
     }

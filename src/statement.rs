@@ -1,5 +1,5 @@
 use crate::ast;
-use crate::expression::Expression;
+use crate::expression::ExpressionNode;
 use crate::scope::LocalScope;
 use crate::type_spec::TypeSpec;
 use slotmap::DefaultKey;
@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 pub enum Statement {
     Let(Rc<ValueAssignment>),
-    Return(Box<Expression>),
+    Return(Box<ExpressionNode>),
 }
 
 impl Statement {
@@ -20,14 +20,14 @@ impl Statement {
                 let value = Rc::new(ValueAssignment {
                     name: var.name.clone(),
                     type_spec: TypeSpec::from_ast(value_type),
-                    assigned_exp: Expression::from_ast(init_expression, scope),
+                    assigned_exp: ExpressionNode::from_ast(init_expression, scope),
                     ir_id: Default::default(),
                 });
                 Statement::Let(value)
             }
             ast::Statement::Return(exp) => {
                 let exp = exp.as_ref().unwrap();
-                Statement::Return(Expression::from_ast(exp, scope))
+                Statement::Return(ExpressionNode::from_ast(exp, scope))
             }
             ast::Statement::BasicBlock(_) => todo!(),
             ast::Statement::Var(_) => todo!(),
@@ -44,6 +44,6 @@ impl Statement {
 pub struct ValueAssignment {
     pub name: String,
     pub type_spec: TypeSpec,
-    pub assigned_exp: Box<Expression>,
+    pub assigned_exp: Box<ExpressionNode>,
     pub ir_id: OnceCell<DefaultKey>,
 }

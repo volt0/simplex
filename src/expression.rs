@@ -1,10 +1,12 @@
 use crate::ast;
-use crate::ast::Constant;
+use crate::ast::{Constant, TypeSpec};
 use crate::basic_block::BasicBlockCompiler;
 use crate::function::FunctionArgument;
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::statement::ValueAssignment;
+use crate::type_spec::TypeHint;
 use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
+use std::cell::OnceCell;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -37,7 +39,7 @@ pub enum IntegerExpression {
         Box<IntegerExpression>,
         Box<IntegerExpression>,
     ),
-    Force(Box<Expression>),
+    Force(Box<ExpressionNode>),
 }
 
 pub enum Expression {
@@ -54,14 +56,14 @@ impl Expression {
                 LocalScopeItem::Value(val) => Expression::LoadValue(val),
             },
             ast::Expression::BinaryOperation(binary_operation_ast) => {
-                let lhs = Box::new(IntegerExpression::Force(Expression::from_ast(
-                    &binary_operation_ast.lhs,
-                    scope,
-                )));
-                let rhs = Box::new(IntegerExpression::Force(Expression::from_ast(
-                    &binary_operation_ast.rhs,
-                    scope,
-                )));
+                let lhs = Box::new(IntegerExpression::Force(Box::new(ExpressionNode {
+                    inner: Expression::from_ast(&binary_operation_ast.lhs, scope),
+                    inferred_type: Default::default(),
+                })));
+                let rhs = Box::new(IntegerExpression::Force(Box::new(ExpressionNode {
+                    inner: Expression::from_ast(&binary_operation_ast.rhs, scope),
+                    inferred_type: Default::default(),
+                })));
                 Expression::Integer(IntegerExpression::BinaryOperation(
                     binary_operation_ast.operation.clone(),
                     lhs,
@@ -85,6 +87,29 @@ impl Expression {
             ast::Expression::ItemAccess(_) => todo!(),
             ast::Expression::MemberAccess(_) => todo!(),
         })
+    }
+}
+
+pub struct ExpressionNode {
+    inner: Box<Expression>,
+    inferred_type: OnceCell<TypeSpec>,
+}
+
+impl ExpressionNode {
+    pub fn from_ast(expression_ast: &ast::Expression, scope: &dyn LocalScope) -> Box<Self> {
+        Box::new(ExpressionNode {
+            inner: Expression::from_ast(expression_ast, scope),
+            inferred_type: Default::default(),
+        })
+    }
+
+    pub fn infer_type(&self, type_hint: &TypeHint) -> TypeSpec {
+        todo!()
+        // match self.inner.as_ref() {
+        //     Expression::Integer(_) => {}
+        //     Expression::LoadArgument(_) => {}
+        //     Expression::LoadValue(_) => {}
+        // }
     }
 }
 
@@ -154,7 +179,7 @@ impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
         }
     }
 
-    pub fn compile_integer_force(&self, exp: &Expression) -> IntValue<'ctx> {
+    pub fn compile_integer_force(&self, exp: &ExpressionNode) -> IntValue<'ctx> {
         self.compile_expression(exp).into_int_value()
     }
 
@@ -173,8 +198,8 @@ impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
         }
     }
 
-    pub fn compile_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
-        match exp {
+    pub fn compile_expression(&self, exp: &ExpressionNode) -> BasicValueEnum<'ctx> {
+        match exp.inner.as_ref() {
             Expression::Integer(exp) => self.compile_integer_expression(exp).as_basic_value_enum(),
             Expression::LoadArgument(arg) => self.compile_load_argument(arg.clone()),
             Expression::LoadValue(val) => self.compile_load_value(val.clone()),

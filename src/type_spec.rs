@@ -24,3 +24,8 @@ impl TypeSpec {
         }
     }
 }
+
+pub enum TypeHint {
+    Explicit(TypeSpec),
+    Inferred,
+}
