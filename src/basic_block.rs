@@ -1,6 +1,6 @@
 use crate::ast;
-use crate::expression::{ExpressionCompiler, ExpressionNode};
-use crate::function::FunctionCompiler;
+use crate::expression::{ExpressionCompiler, ExpressionEdge};
+use crate::function::{Function, FunctionCompiler};
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::statement::{Statement, ValueAssignment};
 use inkwell::values::BasicValueEnum;
@@ -10,15 +10,14 @@ use std::rc::{Rc, Weak};
 
 pub struct BasicBlock {
     inner: RefCell<BasicBlockInner>,
+    parent_scope: Weak<dyn LocalScope>,
 }
 
 impl BasicBlock {
     pub fn from_ast(basic_block_ast: &Vec<ast::Statement>, parent: Rc<dyn LocalScope>) -> Rc<Self> {
         let basic_block = Rc::new(BasicBlock {
-            inner: RefCell::new(BasicBlockInner {
-                statements: vec![],
-                parent_scope: Rc::downgrade(&parent),
-            }),
+            inner: RefCell::new(BasicBlockInner { statements: vec![] }),
+            parent_scope: Rc::downgrade(&parent),
         });
 
         for statement_ast in basic_block_ast {
@@ -45,14 +44,18 @@ impl LocalScope for BasicBlock {
             }
         }
 
-        let parent = inner.parent_scope.upgrade().unwrap();
+        let parent = self.parent_scope.upgrade().unwrap();
         parent.resolve(name)
+    }
+
+    fn function(self: Rc<Self>) -> Rc<Function> {
+        let scope = self.parent_scope.upgrade().unwrap();
+        scope.function()
     }
 }
 
 pub struct BasicBlockInner {
     statements: Vec<Statement>,
-    parent_scope: Weak<dyn LocalScope>,
 }
 
 #[repr(transparent)]
@@ -69,7 +72,7 @@ impl<'ctx, 'm, 'f> Deref for BasicBlockCompiler<'ctx, 'm, 'f> {
 }
 
 impl<'ctx, 'm, 'f> BasicBlockCompiler<'ctx, 'm, 'f> {
-    pub fn compile_expression(&self, exp: &ExpressionNode) -> BasicValueEnum<'ctx> {
+    pub fn compile_expression(&self, exp: &ExpressionEdge) -> BasicValueEnum<'ctx> {
         let exp_compiler = ExpressionCompiler::new(self);
         exp_compiler.compile_expression(exp)
     }
@@ -80,7 +83,7 @@ impl<'ctx, 'm, 'f> BasicBlockCompiler<'ctx, 'm, 'f> {
         val.ir_id.set(value_id).unwrap();
     }
 
-    pub fn compile_statement_return(&self, exp: &ExpressionNode) {
+    pub fn compile_statement_return(&self, exp: &ExpressionEdge) {
         let result = self.compile_expression(exp);
         self.builder().build_return(Some(&result)).unwrap();
     }

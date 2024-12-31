@@ -18,6 +18,12 @@ pub struct FunctionArgument {
     pos_id: u32,
 }
 
+impl FunctionArgument {
+    pub fn arg_type(&self) -> TypeSpec {
+        self.arg_type.clone()
+    }
+}
+
 pub struct Function {
     args: Vec<Rc<FunctionArgument>>,
     return_type: TypeSpec,
@@ -34,6 +40,10 @@ impl LocalScope for Function {
             }
         }
         None
+    }
+
+    fn function(self: Rc<Self>) -> Rc<Function> {
+        self.clone()
     }
 }
 
@@ -63,6 +73,10 @@ impl Function {
         let entry_basic_block =
             BasicBlock::from_ast(&entry_basic_block_ast.statements, self.clone());
         self.entry_basic_block.set(entry_basic_block).ok().unwrap();
+    }
+
+    pub fn return_type(&self) -> TypeSpec {
+        self.return_type.clone()
     }
 }
 
