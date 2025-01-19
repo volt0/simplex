@@ -1,10 +1,10 @@
 use crate::ast;
-use crate::function::Function;
+use crate::function::{Function, FunctionCompiler};
 use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use inkwell::module::Module as ModuleIR;
 use inkwell::targets::TargetTriple;
-use inkwell::values::{BasicValueEnum, FunctionValue};
+use inkwell::values::BasicValueEnum;
 use inkwell::OptimizationLevel;
 use slotmap::{DefaultKey, SlotMap};
 use std::cell::RefCell;
@@ -58,6 +58,15 @@ impl Module {
     }
 }
 
+impl<'ctx> Module {
+    pub fn compile(&self, module_compiler: &ModuleCompiler<'ctx>) {
+        let inner = self.inner.borrow();
+        for function in inner.functions.iter().cloned() {
+            module_compiler.add_function(&function);
+        }
+    }
+}
+
 pub struct ModuleCompiler<'ctx> {
     context: &'ctx Context,
     ir: ModuleIR<'ctx>,
@@ -65,6 +74,18 @@ pub struct ModuleCompiler<'ctx> {
 }
 
 impl<'ctx> ModuleCompiler<'ctx> {
+    pub fn new(context: &'ctx Context) -> ModuleCompiler<'ctx> {
+        let ir = context.create_module("test_module");
+        ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
+
+        ModuleCompiler {
+            context,
+            ir,
+            values: Default::default(),
+        }
+    }
+
+    #[inline(always)]
     pub fn context(&self) -> &'ctx Context {
         self.context
     }
@@ -77,44 +98,33 @@ impl<'ctx> ModuleCompiler<'ctx> {
         self.values.borrow().get(id).cloned()
     }
 
-    pub fn add_function(&self, function: &Function) -> FunctionValue<'ctx> {
-        let fn_type = function.compile_type(self);
-        self.ir.add_function("sum", fn_type, None)
+    pub fn add_function(&self, function: &Function) {
+        let function_type = function.compile_type(self);
+        let function_ir = self.ir.add_function("sum", function_type, None);
+        let function_compiler = FunctionCompiler::new(self, function_ir);
+        function.compile(&function_compiler);
     }
 }
 
-impl Module {
-    pub fn compile(&self) {
-        let context = Context::create();
-        let module_ir = context.create_module("sum");
-        module_ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
+pub fn compile_module(module: &Module) {
+    let context = Context::create();
+    let module_compiler = ModuleCompiler::new(&context);
+    module.compile(&module_compiler);
 
-        let module_compiler = ModuleCompiler {
-            context: &context,
-            ir: module_ir,
-            values: Default::default(),
-        };
+    module_compiler.ir.print_to_stderr();
 
-        let module_inner = self.inner.borrow();
-        for function in module_inner.functions.iter().cloned() {
-            function.compile(&module_compiler);
-        }
+    let execution_engine = module_compiler
+        .ir
+        .create_jit_execution_engine(OptimizationLevel::None)
+        .unwrap();
 
-        module_compiler.ir.print_to_stderr();
+    unsafe {
+        type SumFunc = unsafe extern "C" fn(u64, u64, u64) -> u64;
 
-        let execution_engine = module_compiler
-            .ir
-            .create_jit_execution_engine(OptimizationLevel::None)
-            .unwrap();
-
-        unsafe {
-            type SumFunc = unsafe extern "C" fn(u64, u64, u64) -> u64;
-
-            let sum: JitFunction<SumFunc> = execution_engine.get_function("sum").unwrap();
-            let x = 1u64;
-            let y = 2u64;
-            let z = 3u64;
-            dbg!(sum.call(x, y, z));
-        }
+        let sum: JitFunction<SumFunc> = execution_engine.get_function("sum").unwrap();
+        let x = 1u64;
+        let y = 2u64;
+        let z = 3u64;
+        dbg!(sum.call(x, y, z));
     }
 }

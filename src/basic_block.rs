@@ -1,6 +1,6 @@
 use crate::ast;
 use crate::expression::{ExpressionCompiler, ExpressionEdge};
-use crate::function::{Function, FunctionCompiler};
+use crate::function::FunctionCompiler;
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::statement::{Statement, ValueAssignment};
 use inkwell::values::BasicValueEnum;
@@ -46,11 +46,6 @@ impl LocalScope for BasicBlock {
 
         let parent = self.parent_scope.upgrade().unwrap();
         parent.resolve(name)
-    }
-
-    fn function(self: Rc<Self>) -> Rc<Function> {
-        let scope = self.parent_scope.upgrade().unwrap();
-        scope.function()
     }
 }
 

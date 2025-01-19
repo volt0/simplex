@@ -5,7 +5,6 @@ use crate::scope::{LocalScope, LocalScopeItem};
 use crate::type_spec::TypeSpec;
 use inkwell::basic_block::BasicBlock as BasicBlockIR;
 use inkwell::builder::Builder;
-use inkwell::context::Context;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, FunctionType};
 use inkwell::values::{BasicValueEnum, FunctionValue};
 use std::cell::OnceCell;
@@ -41,10 +40,6 @@ impl LocalScope for Function {
         }
         None
     }
-
-    fn function(self: Rc<Self>) -> Rc<Function> {
-        self.clone()
-    }
 }
 
 impl Function {
@@ -56,32 +51,51 @@ impl Function {
             module: Rc::downgrade(&module),
         };
 
-        let mut arg_id = 0;
-        for arg_ast in &signature.args {
+        for (arg_id, arg_ast) in signature.args.iter().enumerate() {
             function.args.push(Rc::new(FunctionArgument {
                 name: arg_ast.name.clone(),
                 arg_type: TypeSpec::from_ast(&arg_ast.arg_type),
-                pos_id: arg_id,
+                pos_id: arg_id as u32,
             }));
-            arg_id += 1;
         }
 
         Rc::new(function)
     }
 
     pub fn init_implementation(self: Rc<Self>, entry_basic_block_ast: &ast::BasicBlock) {
-        let entry_basic_block =
-            BasicBlock::from_ast(&entry_basic_block_ast.statements, self.clone());
-        self.entry_basic_block.set(entry_basic_block).ok().unwrap();
+        self.entry_basic_block
+            .set(BasicBlock::from_ast(
+                &entry_basic_block_ast.statements,
+                self.clone(),
+            ))
+            .ok()
+            .unwrap();
+    }
+}
+
+impl<'ctx> Function {
+    pub fn compile(&self, compiler: &FunctionCompiler<'ctx, '_>) {
+        let basic_block = compiler.add_basic_block();
+        compiler.builder.position_at_end(basic_block);
+
+        let entry_basic_block = self.entry_basic_block.get().unwrap();
+        entry_basic_block.compile(&compiler);
     }
 
-    pub fn return_type(&self) -> TypeSpec {
-        self.return_type.clone()
+    pub fn compile_type(&self, builder: &ModuleCompiler<'ctx>) -> FunctionType<'ctx> {
+        let return_type_ir = self.return_type.clone().into_ir(&builder.context());
+
+        let arg_type_irs: Vec<BasicMetadataTypeEnum> = self
+            .args
+            .iter()
+            .map(|arg| arg.arg_type.clone().into_ir(&builder.context()).into())
+            .collect();
+
+        return_type_ir.fn_type(&arg_type_irs, false)
     }
 }
 
 pub struct FunctionCompiler<'ctx, 'm> {
-    pub context: &'ctx Context,
     pub module_compiler: &'m ModuleCompiler<'ctx>,
     pub ir: FunctionValue<'ctx>,
     builder: Builder<'ctx>,
@@ -96,6 +110,16 @@ impl<'ctx, 'm> Deref for FunctionCompiler<'ctx, 'm> {
 }
 
 impl<'ctx, 'm> FunctionCompiler<'ctx, 'm> {
+    pub fn new(module_compiler: &'m ModuleCompiler<'ctx>, ir: FunctionValue<'ctx>) -> Self {
+        let context = module_compiler.context();
+        let builder = context.create_builder();
+        FunctionCompiler {
+            module_compiler,
+            ir,
+            builder,
+        }
+    }
+
     #[inline(always)]
     pub fn builder(&self) -> &Builder<'ctx> {
         &self.builder
@@ -107,37 +131,5 @@ impl<'ctx, 'm> FunctionCompiler<'ctx, 'm> {
 
     pub fn add_basic_block(&self) -> BasicBlockIR<'ctx> {
         self.context().append_basic_block(self.ir, "")
-    }
-}
-
-impl Function {
-    pub fn compile_type<'ctx>(&self, builder: &ModuleCompiler<'ctx>) -> FunctionType<'ctx> {
-        let return_type_ir = self.return_type.clone().into_ir(&builder.context());
-
-        let arg_type_irs: Vec<BasicMetadataTypeEnum> = self
-            .args
-            .iter()
-            .map(|arg| arg.arg_type.clone().into_ir(&builder.context()).into())
-            .collect();
-
-        return_type_ir.fn_type(&arg_type_irs, false)
-    }
-
-    pub fn compile(&self, module_compiler: &ModuleCompiler) {
-        let context = module_compiler.context();
-        let builder = context.create_builder();
-        let function_ir = module_compiler.add_function(self);
-        let function_compiler = FunctionCompiler {
-            context: module_compiler.context(),
-            module_compiler,
-            ir: function_ir,
-            builder,
-        };
-
-        let basic_block = function_compiler.add_basic_block();
-        function_compiler.builder.position_at_end(basic_block);
-
-        let entry_basic_block = self.entry_basic_block.get().unwrap();
-        entry_basic_block.compile(&function_compiler);
     }
 }

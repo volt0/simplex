@@ -7,7 +7,7 @@ mod scope;
 mod statement;
 mod type_spec;
 
-use crate::module::Module;
+use crate::module::{compile_module, Module};
 
 // function test(x: i8, y: i32, z: i32) {
 //     return;
@@ -40,7 +40,7 @@ fn main() {
     let parser = grammar::ModuleParser::new();
     let module_ast = parser.parse(SRC).unwrap();
     let module = Module::from_ast(&module_ast);
-    module.compile();
+    compile_module(&module);
 }
 
 mod grammar {
