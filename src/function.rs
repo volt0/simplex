@@ -1,31 +1,30 @@
 use crate::ast;
-use crate::basic_block::BasicBlock;
+use crate::basic_block::{BasicBlock, BasicBlockCompiler};
 use crate::module::{Module, ModuleCompiler};
 use crate::scope::{LocalScope, LocalScopeItem};
-use crate::type_spec::TypeSpec;
-use inkwell::basic_block::BasicBlock as BasicBlockIR;
+use crate::types::Type;
 use inkwell::builder::Builder;
-use inkwell::types::{BasicMetadataTypeEnum, BasicType, FunctionType};
 use inkwell::values::{BasicValueEnum, FunctionValue};
 use std::cell::OnceCell;
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
 
+#[derive(Debug)]
 pub struct FunctionArgument {
     name: String,
-    arg_type: TypeSpec,
+    arg_type: Type,
     pos_id: u32,
 }
 
 impl FunctionArgument {
-    pub fn arg_type(&self) -> TypeSpec {
+    pub fn arg_type(&self) -> Type {
         self.arg_type.clone()
     }
 }
 
 pub struct Function {
     args: Vec<Rc<FunctionArgument>>,
-    return_type: TypeSpec,
+    return_type: Type,
     entry_basic_block: OnceCell<Rc<BasicBlock>>,
     module: Weak<Module>,
 }
@@ -46,7 +45,7 @@ impl Function {
     pub fn from_ast(signature: &ast::FunctionSignature, module: Rc<Module>) -> Rc<Self> {
         let mut function = Function {
             args: vec![],
-            return_type: TypeSpec::I64,
+            return_type: Type::I64,
             entry_basic_block: Default::default(),
             module: Rc::downgrade(&module),
         };
@@ -54,7 +53,7 @@ impl Function {
         for (arg_id, arg_ast) in signature.args.iter().enumerate() {
             function.args.push(Rc::new(FunctionArgument {
                 name: arg_ast.name.clone(),
-                arg_type: TypeSpec::from_ast(&arg_ast.arg_type),
+                arg_type: Type::from_ast(&arg_ast.arg_type),
                 pos_id: arg_id as u32,
             }));
         }
@@ -71,27 +70,20 @@ impl Function {
             .ok()
             .unwrap();
     }
+
+    pub fn iter_args(&self) -> impl Iterator<Item = &Rc<FunctionArgument>> + use<'_> {
+        self.args.iter()
+    }
+
+    pub fn return_type(&self) -> Type {
+        self.return_type.clone()
+    }
 }
 
 impl<'ctx> Function {
     pub fn compile(&self, compiler: &FunctionCompiler<'ctx, '_>) {
-        let basic_block = compiler.add_basic_block();
-        compiler.builder.position_at_end(basic_block);
-
         let entry_basic_block = self.entry_basic_block.get().unwrap();
-        entry_basic_block.compile(&compiler);
-    }
-
-    pub fn compile_type(&self, builder: &ModuleCompiler<'ctx>) -> FunctionType<'ctx> {
-        let return_type_ir = self.return_type.clone().into_ir(&builder.context());
-
-        let arg_type_irs: Vec<BasicMetadataTypeEnum> = self
-            .args
-            .iter()
-            .map(|arg| arg.arg_type.clone().into_ir(&builder.context()).into())
-            .collect();
-
-        return_type_ir.fn_type(&arg_type_irs, false)
+        compiler.add_basic_block(entry_basic_block.clone());
     }
 }
 
@@ -129,7 +121,11 @@ impl<'ctx, 'm> FunctionCompiler<'ctx, 'm> {
         self.ir.get_nth_param(arg.pos_id).unwrap()
     }
 
-    pub fn add_basic_block(&self) -> BasicBlockIR<'ctx> {
-        self.context().append_basic_block(self.ir, "")
+    fn add_basic_block(&self, basic_block: Rc<BasicBlock>) {
+        let basic_block_ir = self.context().append_basic_block(self.ir, "");
+        self.builder.position_at_end(basic_block_ir);
+
+        let basic_block_compiler = BasicBlockCompiler::new(self);
+        basic_block.compile(&basic_block_compiler);
     }
 }

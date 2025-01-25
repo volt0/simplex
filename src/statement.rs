@@ -1,7 +1,7 @@
 use crate::ast;
 use crate::expression::ExpressionEdge;
 use crate::scope::LocalScope;
-use crate::type_spec::{TypeHint, TypeSpec};
+use crate::types::{Type, TypeHint};
 use slotmap::DefaultKey;
 use std::cell::OnceCell;
 use std::rc::Rc;
@@ -56,9 +56,10 @@ impl Statement {
     }
 }
 
+#[derive(Debug)]
 pub struct ValueAssignment {
     pub name: String,
-    pub type_spec: TypeSpec,
+    pub type_spec: Type,
     pub assigned_exp: Box<ExpressionEdge>,
     pub ir_id: OnceCell<DefaultKey>,
 }

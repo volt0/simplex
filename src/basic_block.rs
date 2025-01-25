@@ -49,54 +49,61 @@ impl LocalScope for BasicBlock {
     }
 }
 
+impl BasicBlock {
+    pub fn compile(&self, basic_block_compiler: &BasicBlockCompiler) {
+        let inner = self.inner.borrow();
+        for stmt in inner.statements.iter() {
+            basic_block_compiler.compile_statement(stmt);
+        }
+    }
+}
+
 pub struct BasicBlockInner {
     statements: Vec<Statement>,
 }
 
 #[repr(transparent)]
 pub struct BasicBlockCompiler<'ctx, 'm, 'f> {
-    function_compiler: &'f FunctionCompiler<'ctx, 'm>,
+    parent: &'f FunctionCompiler<'ctx, 'm>,
 }
 
 impl<'ctx, 'm, 'f> Deref for BasicBlockCompiler<'ctx, 'm, 'f> {
     type Target = FunctionCompiler<'ctx, 'm>;
 
     fn deref(&self) -> &Self::Target {
-        self.function_compiler
+        self.parent
     }
 }
 
 impl<'ctx, 'm, 'f> BasicBlockCompiler<'ctx, 'm, 'f> {
-    pub fn compile_expression(&self, exp: &ExpressionEdge) -> BasicValueEnum<'ctx> {
+    pub fn new(parent: &'f FunctionCompiler<'ctx, 'm>) -> Self {
+        Self { parent }
+    }
+
+    fn compile_statement(&self, stmt: &Statement) {
+        match stmt {
+            Statement::Let(var) => {
+                self.compile_statement_let(var);
+            }
+            Statement::Return(exp) => {
+                self.compile_statement_return(exp);
+            }
+        }
+    }
+
+    fn compile_expression(&self, exp: &ExpressionEdge) -> BasicValueEnum<'ctx> {
         let exp_compiler = ExpressionCompiler::new(self);
         exp_compiler.compile_expression(exp)
     }
 
-    pub fn compile_statement_let(&self, val: &ValueAssignment) {
+    fn compile_statement_let(&self, val: &ValueAssignment) {
         let value = self.compile_expression(val.assigned_exp.as_ref());
         let value_id = self.store_value(value);
         val.ir_id.set(value_id).unwrap();
     }
 
-    pub fn compile_statement_return(&self, exp: &ExpressionEdge) {
+    fn compile_statement_return(&self, exp: &ExpressionEdge) {
         let result = self.compile_expression(exp);
         self.builder().build_return(Some(&result)).unwrap();
-    }
-}
-
-impl BasicBlock {
-    pub fn compile(&self, function_compiler: &FunctionCompiler) {
-        let basic_block_compiler = BasicBlockCompiler { function_compiler };
-        let inner = self.inner.borrow();
-        for statement in inner.statements.iter() {
-            match statement {
-                Statement::Let(var) => {
-                    basic_block_compiler.compile_statement_let(var.as_ref());
-                }
-                Statement::Return(exp) => {
-                    basic_block_compiler.compile_statement_return(exp);
-                }
-            }
-        }
     }
 }

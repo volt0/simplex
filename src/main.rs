@@ -5,7 +5,7 @@ mod function;
 mod module;
 mod scope;
 mod statement;
-mod type_spec;
+mod types;
 
 use crate::module::{compile_module, Module};
 

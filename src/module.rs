@@ -1,5 +1,6 @@
 use crate::ast;
 use crate::function::{Function, FunctionCompiler};
+use crate::types::TypeCompiler;
 use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use inkwell::module::Module as ModuleIR;
@@ -99,7 +100,9 @@ impl<'ctx> ModuleCompiler<'ctx> {
     }
 
     pub fn add_function(&self, function: &Function) {
-        let function_type = function.compile_type(self);
+        let type_compiler = TypeCompiler::new(self);
+        let function_type = type_compiler.compile_function_type(function);
+
         let function_ir = self.ir.add_function("sum", function_type, None);
         let function_compiler = FunctionCompiler::new(self, function_ir);
         function.compile(&function_compiler);

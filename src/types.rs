@@ -1,28 +1,24 @@
 use crate::ast;
 use crate::expression::{BinaryOperation, ExpressionCompiler};
-use inkwell::context::Context;
-use inkwell::types::{BasicType, BasicTypeEnum};
+use crate::function::Function;
+use crate::module::ModuleCompiler;
+use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
 use inkwell::values::{BasicValue, BasicValueEnum};
+use std::ops::Deref;
 
-#[derive(Clone)]
-pub enum TypeSpec {
+#[derive(Clone, Debug)]
+pub enum Type {
     I64,
 }
 
-impl TypeSpec {
+impl Type {
     pub fn from_ast(type_spec_ast: &ast::TypeSpec) -> Self {
         match type_spec_ast {
-            ast::TypeSpec::Integer(_) => TypeSpec::I64,
+            ast::TypeSpec::Integer(_) => Type::I64,
             ast::TypeSpec::Identifier(_) => todo!(),
             ast::TypeSpec::Void => todo!(),
             ast::TypeSpec::Boolean => todo!(),
             ast::TypeSpec::Float(_) => todo!(),
-        }
-    }
-
-    pub fn into_ir(self, context: &Context) -> BasicTypeEnum {
-        match self {
-            TypeSpec::I64 => context.i64_type().as_basic_type_enum(),
         }
     }
 
@@ -61,7 +57,7 @@ impl TypeSpec {
 }
 
 pub enum TypeHint {
-    Explicit(TypeSpec),
+    Explicit(Type),
     Inferred,
 }
 
@@ -69,7 +65,48 @@ impl TypeHint {
     pub fn from_type_spec(type_spec: Option<&ast::TypeSpec>) -> Self {
         match type_spec {
             None => TypeHint::Inferred,
-            Some(type_ast) => TypeHint::Explicit(TypeSpec::from_ast(type_ast)),
+            Some(type_ast) => TypeHint::Explicit(Type::from_ast(type_ast)),
+        }
+    }
+}
+
+#[repr(transparent)]
+pub struct TypeCompiler<'ctx, 'm> {
+    parent: &'m ModuleCompiler<'ctx>,
+}
+
+impl<'ctx, 'm> Deref for TypeCompiler<'ctx, 'm> {
+    type Target = ModuleCompiler<'ctx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.parent
+    }
+}
+
+impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
+    pub fn new(parent: &'m ModuleCompiler<'ctx>) -> Self {
+        TypeCompiler { parent }
+    }
+
+    pub fn compile_function_type(&self, function: &Function) -> FunctionType<'ctx> {
+        let return_type = function.return_type();
+        let return_type_ir = self.compile_type(&return_type);
+
+        let arg_type_irs: Vec<BasicMetadataTypeEnum> = function
+            .iter_args()
+            .map(|arg| {
+                let arg_type = arg.arg_type();
+                self.compile_type(&arg_type).into()
+            })
+            .collect();
+
+        return_type_ir.fn_type(&arg_type_irs, false)
+    }
+
+    pub fn compile_type(&self, type_spec: &Type) -> BasicTypeEnum<'ctx> {
+        let context = self.context();
+        match type_spec {
+            Type::I64 => context.i64_type().as_basic_type_enum(),
         }
     }
 }
