@@ -5,7 +5,6 @@ use crate::scope::{LocalScope, LocalScopeItem};
 use crate::statement::ValueAssignment;
 use crate::types::{Type, TypeHint};
 use inkwell::values::{BasicValue, BasicValueEnum};
-use std::cell::OnceCell;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -40,7 +39,11 @@ pub enum ExpressionNode {
 }
 
 impl ExpressionNode {
-    pub fn from_ast(expression_ast: &ast::Expression, scope: &dyn LocalScope) -> Box<Self> {
+    pub fn from_ast(
+        expression_ast: &ast::Expression,
+        scope: &dyn LocalScope,
+        type_hint: &TypeHint,
+    ) -> Box<Self> {
         Box::new(match expression_ast {
             ast::Expression::Identifier(name) => {
                 let resolved = scope.resolve(name).expect("not found");
@@ -50,8 +53,8 @@ impl ExpressionNode {
                 }
             }
             ast::Expression::BinaryOperation(binary_operation_ast) => {
-                let lhs = ExpressionEdge::from_ast(&binary_operation_ast.lhs, scope);
-                let rhs = ExpressionEdge::from_ast(&binary_operation_ast.rhs, scope);
+                let lhs = ExpressionEdge::from_ast(&binary_operation_ast.lhs, scope, type_hint);
+                let rhs = ExpressionEdge::from_ast(&binary_operation_ast.rhs, scope, type_hint);
                 ExpressionNode::BinaryOperation(binary_operation_ast.operation.clone(), lhs, rhs)
             }
             ast::Expression::Constant(constant) => match constant {
@@ -75,44 +78,54 @@ impl ExpressionNode {
 #[derive(Debug)]
 pub struct ExpressionEdge {
     node: Box<ExpressionNode>,
-    type_spec: OnceCell<Type>,
+    exp_type: ExpressionType,
+}
+
+#[derive(Debug)]
+pub enum ExpressionType {
+    Use(Type),
 }
 
 impl ExpressionEdge {
-    pub fn from_ast(expression_ast: &ast::Expression, scope: &dyn LocalScope) -> Box<Self> {
+    pub fn from_ast(
+        expression_ast: &ast::Expression,
+        scope: &dyn LocalScope,
+        type_hint: &TypeHint,
+    ) -> Box<Self> {
+        let node = ExpressionNode::from_ast(expression_ast, scope, type_hint);
+
+        let type_spec = match node.as_ref() {
+            ExpressionNode::LoadArgument(arg) => arg.arg_type(),
+            ExpressionNode::LoadValue(val) => val.type_spec(),
+            ExpressionNode::LoadIntegerConstant(_) => Type::I64,
+            ExpressionNode::BinaryOperation(op, lhs, rhs) => {
+                Self::infer_binary_operation_type(type_hint, op.clone(), lhs, rhs)
+            }
+        };
+
         let expression_edge = Box::new(ExpressionEdge {
-            node: ExpressionNode::from_ast(expression_ast, scope),
-            type_spec: Default::default(),
+            node,
+            exp_type: ExpressionType::Use(type_spec),
         });
         expression_edge
     }
 
-    pub fn get_or_infer_type(&self, type_hint: &TypeHint) -> Type {
-        if let Some(type_spec) = self.type_spec.get() {
-            return type_spec.clone();
+    pub fn type_spec(&self) -> Type {
+        match &self.exp_type {
+            ExpressionType::Use(type_spec) => type_spec.clone(),
         }
-
-        let type_spec = match self.node.as_ref() {
-            ExpressionNode::LoadArgument(arg) => arg.arg_type(),
-            ExpressionNode::LoadValue(val) => val.type_spec.clone(),
-            ExpressionNode::LoadIntegerConstant(_) => Type::I64,
-            ExpressionNode::BinaryOperation(op, lhs, rhs) => {
-                dbg!();
-                self.infer_binary_operation_type(type_hint, op.clone(), lhs, rhs)
-            }
-        };
-        self.type_spec.set(type_spec.clone()).ok().unwrap();
-        type_spec
     }
 
-    pub fn infer_binary_operation_type(
-        &self,
+    fn infer_binary_operation_type(
         type_hint: &TypeHint,
         op: BinaryOperation,
         lhs: &Box<ExpressionEdge>,
         rhs: &Box<ExpressionEdge>,
     ) -> Type {
-        todo!()
+        let lhs_type = lhs.type_spec();
+        let rhs_type = rhs.type_spec();
+        assert_eq!(lhs_type, rhs_type);
+        lhs_type.clone()
     }
 }
 
@@ -137,8 +150,7 @@ impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
     }
 
     pub fn compile_expression(&self, exp: &ExpressionEdge) -> BasicValueEnum<'ctx> {
-        dbg!(exp);
-        let exp_type = exp.type_spec.get().unwrap().clone();
+        let exp_type = exp.type_spec();
         match exp.node.as_ref() {
             ExpressionNode::LoadArgument(arg) => self.compile_load_argument(arg),
             ExpressionNode::LoadValue(val) => self.compile_load_value(val),
@@ -154,8 +166,8 @@ impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
     }
 
     fn compile_load_value(&self, val: &ValueAssignment) -> BasicValueEnum<'ctx> {
-        let id = val.ir_id.get().unwrap();
-        self.load_value(*id).unwrap()
+        let ir_id = val.ir_id();
+        self.load_value(ir_id).unwrap()
     }
 
     fn compile_load_integer_constant(&self, value: i32) -> BasicValueEnum<'ctx> {

@@ -6,7 +6,7 @@ use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionTy
 use inkwell::values::{BasicValue, BasicValueEnum};
 use std::ops::Deref;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Type {
     I64,
 }
@@ -56,6 +56,7 @@ impl Type {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum TypeHint {
     Explicit(Type),
     Inferred,

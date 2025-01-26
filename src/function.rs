@@ -27,6 +27,7 @@ pub struct Function {
     return_type: Type,
     entry_basic_block: OnceCell<Rc<BasicBlock>>,
     module: Weak<Module>,
+    weak_self: Weak<Function>,
 }
 
 impl LocalScope for Function {
@@ -39,33 +40,39 @@ impl LocalScope for Function {
         }
         None
     }
+
+    fn function(&self) -> Rc<Function> {
+        self.weak_self.upgrade().unwrap()
+    }
 }
 
 impl Function {
     pub fn from_ast(signature: &ast::FunctionSignature, module: Rc<Module>) -> Rc<Self> {
-        let mut function = Function {
-            args: vec![],
-            return_type: Type::I64,
-            entry_basic_block: Default::default(),
-            module: Rc::downgrade(&module),
-        };
-
+        let mut args = vec![];
         for (arg_id, arg_ast) in signature.args.iter().enumerate() {
-            function.args.push(Rc::new(FunctionArgument {
+            args.push(Rc::new(FunctionArgument {
                 name: arg_ast.name.clone(),
                 arg_type: Type::from_ast(&arg_ast.arg_type),
                 pos_id: arg_id as u32,
             }));
         }
 
-        Rc::new(function)
+        let return_type = Type::from_ast(&signature.return_type.clone().unwrap());
+        Rc::new_cyclic(|weak_self| Function {
+            args,
+            return_type,
+            entry_basic_block: Default::default(),
+            module: Rc::downgrade(&module),
+            weak_self: weak_self.clone(),
+        })
     }
 
     pub fn init_implementation(self: Rc<Self>, entry_basic_block_ast: &ast::BasicBlock) {
+        let scope = self.clone() as Rc<dyn LocalScope>;
         self.entry_basic_block
             .set(BasicBlock::from_ast(
                 &entry_basic_block_ast.statements,
-                self.clone(),
+                &scope,
             ))
             .ok()
             .unwrap();

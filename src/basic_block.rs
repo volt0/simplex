@@ -1,51 +1,62 @@
 use crate::ast;
 use crate::expression::{ExpressionCompiler, ExpressionEdge};
-use crate::function::FunctionCompiler;
+use crate::function::{Function, FunctionCompiler};
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::statement::{Statement, ValueAssignment};
 use inkwell::values::BasicValueEnum;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
 
 pub struct BasicBlock {
     inner: RefCell<BasicBlockInner>,
-    parent_scope: Weak<dyn LocalScope>,
+    parent: Weak<dyn LocalScope>,
 }
 
 impl BasicBlock {
-    pub fn from_ast(basic_block_ast: &Vec<ast::Statement>, parent: Rc<dyn LocalScope>) -> Rc<Self> {
+    pub fn from_ast(
+        basic_block_ast: &Vec<ast::Statement>,
+        parent: &Rc<dyn LocalScope>,
+    ) -> Rc<Self> {
         let basic_block = Rc::new(BasicBlock {
-            inner: RefCell::new(BasicBlockInner { statements: vec![] }),
-            parent_scope: Rc::downgrade(&parent),
+            inner: RefCell::new(BasicBlockInner {
+                statements: vec![],
+                locals: Default::default(),
+            }),
+            parent: Rc::downgrade(parent),
         });
 
         for statement_ast in basic_block_ast {
             let statement = Statement::from_ast(statement_ast, basic_block.as_ref());
-            let mut inner = basic_block.inner.borrow_mut();
-            inner.statements.push(statement);
+            basic_block.add_statement(statement);
         }
-        basic_block.clone()
+
+        basic_block
+    }
+
+    pub fn parent(&self) -> Rc<dyn LocalScope> {
+        self.parent.upgrade().unwrap()
+    }
+
+    fn add_statement(&self, statement: Statement) {
+        let mut inner = self.inner.borrow_mut();
+        inner.add_statement(statement);
     }
 }
 
 impl LocalScope for BasicBlock {
     fn resolve(&self, name: &String) -> Option<LocalScopeItem> {
         let inner = self.inner.borrow();
-        for statement in inner.statements.iter() {
-            match statement {
-                Statement::Let(val) => {
-                    let val = val.clone();
-                    if val.name == *name {
-                        return Some(LocalScopeItem::Value(val));
-                    }
-                }
-                _ => (),
-            }
+        if let Some(value) = inner.resolve_local(name) {
+            return Some(value);
         }
 
-        let parent = self.parent_scope.upgrade().unwrap();
-        parent.resolve(name)
+        self.parent().resolve(name)
+    }
+
+    fn function(&self) -> Rc<Function> {
+        self.parent().function()
     }
 }
 
@@ -60,6 +71,24 @@ impl BasicBlock {
 
 pub struct BasicBlockInner {
     statements: Vec<Statement>,
+    locals: HashMap<String, LocalScopeItem>,
+}
+
+impl BasicBlockInner {
+    fn add_statement(&mut self, statement: Statement) {
+        match &statement {
+            Statement::ValueAssignment(value) => {
+                self.locals.insert(value.name.clone(), value.into());
+            }
+            _ => (),
+        }
+
+        self.statements.push(statement);
+    }
+
+    fn resolve_local(&self, name: &String) -> Option<LocalScopeItem> {
+        self.locals.get(name).cloned()
+    }
 }
 
 #[repr(transparent)]
@@ -82,7 +111,7 @@ impl<'ctx, 'm, 'f> BasicBlockCompiler<'ctx, 'm, 'f> {
 
     fn compile_statement(&self, stmt: &Statement) {
         match stmt {
-            Statement::Let(var) => {
+            Statement::ValueAssignment(var) => {
                 self.compile_statement_let(var);
             }
             Statement::Return(exp) => {
@@ -97,7 +126,7 @@ impl<'ctx, 'm, 'f> BasicBlockCompiler<'ctx, 'm, 'f> {
     }
 
     fn compile_statement_let(&self, val: &ValueAssignment) {
-        let value = self.compile_expression(val.assigned_exp.as_ref());
+        let value = self.compile_expression(val.exp.as_ref());
         let value_id = self.store_value(value);
         val.ir_id.set(value_id).unwrap();
     }
