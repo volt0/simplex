@@ -8,34 +8,12 @@ use inkwell::values::{BasicValue, BasicValueEnum};
 use std::ops::Deref;
 use std::rc::Rc;
 
-#[derive(Clone, Debug)]
-pub enum BinaryOperation {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Mod,
-    BitAnd,
-    BitXor,
-    BitOr,
-    ShiftLeft,
-    ShiftRight,
-    Eq,
-    Ne,
-    Gt,
-    Ge,
-    Lt,
-    Le,
-    LogicalAnd,
-    LogicalOr,
-}
-
 #[derive(Debug)]
 pub enum ExpressionNode {
     LoadArgument(Rc<FunctionArgument>),
     LoadValue(Rc<ValueAssignment>),
     LoadIntegerConstant(i32),
-    BinaryOperation(BinaryOperation, Box<ExpressionEdge>, Box<ExpressionEdge>),
+    BinaryOperation(BinaryOperationExpression),
 }
 
 impl ExpressionNode {
@@ -52,11 +30,9 @@ impl ExpressionNode {
                     LocalScopeItem::Value(val) => ExpressionNode::LoadValue(val),
                 }
             }
-            ast::Expression::BinaryOperation(binary_operation_ast) => {
-                let lhs = ExpressionEdge::from_ast(&binary_operation_ast.lhs, scope, type_hint);
-                let rhs = ExpressionEdge::from_ast(&binary_operation_ast.rhs, scope, type_hint);
-                ExpressionNode::BinaryOperation(binary_operation_ast.operation.clone(), lhs, rhs)
-            }
+            ast::Expression::BinaryOperation(exp_ast) => ExpressionNode::BinaryOperation(
+                BinaryOperationExpression::from_ast(exp_ast, scope, type_hint),
+            ),
             ast::Expression::Constant(constant) => match constant {
                 ast::Constant::Void => todo!(),
                 ast::Constant::True => todo!(),
@@ -72,6 +48,15 @@ impl ExpressionNode {
             ast::Expression::ItemAccess(_) => todo!(),
             ast::Expression::MemberAccess(_) => todo!(),
         })
+    }
+
+    fn infer_type(&self, type_hint: &TypeHint) -> Type {
+        match self {
+            ExpressionNode::LoadArgument(arg) => arg.arg_type(),
+            ExpressionNode::LoadValue(val) => val.type_spec(),
+            ExpressionNode::LoadIntegerConstant(_) => Type::I64,
+            ExpressionNode::BinaryOperation(op_exp) => op_exp.type_spec(type_hint),
+        }
     }
 }
 
@@ -93,19 +78,10 @@ impl ExpressionEdge {
         type_hint: &TypeHint,
     ) -> Box<Self> {
         let node = ExpressionNode::from_ast(expression_ast, scope, type_hint);
-
-        let type_spec = match node.as_ref() {
-            ExpressionNode::LoadArgument(arg) => arg.arg_type(),
-            ExpressionNode::LoadValue(val) => val.type_spec(),
-            ExpressionNode::LoadIntegerConstant(_) => Type::I64,
-            ExpressionNode::BinaryOperation(op, lhs, rhs) => {
-                Self::infer_binary_operation_type(type_hint, op.clone(), lhs, rhs)
-            }
-        };
-
+        let node_type = node.infer_type(type_hint);
         let expression_edge = Box::new(ExpressionEdge {
             node,
-            exp_type: ExpressionType::Use(type_spec),
+            exp_type: ExpressionType::Use(node_type),
         });
         expression_edge
     }
@@ -114,18 +90,6 @@ impl ExpressionEdge {
         match &self.exp_type {
             ExpressionType::Use(type_spec) => type_spec.clone(),
         }
-    }
-
-    fn infer_binary_operation_type(
-        type_hint: &TypeHint,
-        op: BinaryOperation,
-        lhs: &Box<ExpressionEdge>,
-        rhs: &Box<ExpressionEdge>,
-    ) -> Type {
-        let lhs_type = lhs.type_spec();
-        let rhs_type = rhs.type_spec();
-        assert_eq!(lhs_type, rhs_type);
-        lhs_type.clone()
     }
 }
 
@@ -155,8 +119,8 @@ impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
             ExpressionNode::LoadArgument(arg) => self.compile_load_argument(arg),
             ExpressionNode::LoadValue(val) => self.compile_load_value(val),
             ExpressionNode::LoadIntegerConstant(val) => self.compile_load_integer_constant(*val),
-            ExpressionNode::BinaryOperation(op, lhs, rhs) => {
-                self.compile_binary_operation(op.clone(), lhs, rhs, exp_type)
+            ExpressionNode::BinaryOperation(op_exp) => {
+                self.compile_binary_operation(op_exp, exp_type)
             }
         }
     }
@@ -179,13 +143,65 @@ impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
 
     fn compile_binary_operation(
         &self,
-        op: BinaryOperation,
-        lhs: &Box<ExpressionEdge>,
-        rhs: &Box<ExpressionEdge>,
+        binary_op: &BinaryOperationExpression,
         type_spec: Type,
     ) -> BasicValueEnum<'ctx> {
-        let lhs_ir = self.compile_expression(lhs);
-        let rhs_ir = self.compile_expression(rhs);
-        type_spec.compile_binary_operation(op, lhs_ir, rhs_ir, self)
+        let lhs_ir = self.compile_expression(binary_op.lhs.as_ref());
+        let rhs_ir = self.compile_expression(binary_op.rhs.as_ref());
+        type_spec.compile_binary_operation(binary_op.op.clone(), lhs_ir, rhs_ir, self)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum BinaryOperation {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    BitAnd,
+    BitXor,
+    BitOr,
+    ShiftLeft,
+    ShiftRight,
+    Eq,
+    Ne,
+    Gt,
+    Ge,
+    Lt,
+    Le,
+    LogicalAnd,
+    LogicalOr,
+}
+
+#[derive(Debug)]
+pub struct BinaryOperationExpression {
+    op: BinaryOperation,
+    lhs: Box<ExpressionEdge>,
+    rhs: Box<ExpressionEdge>,
+}
+
+impl BinaryOperationExpression {
+    fn from_ast(
+        binary_operation_expr: &ast::BinaryOperationExpr,
+        scope: &dyn LocalScope,
+        type_hint: &TypeHint,
+    ) -> Self {
+        let lhs = ExpressionEdge::from_ast(&binary_operation_expr.lhs, scope, type_hint);
+        let rhs = ExpressionEdge::from_ast(&binary_operation_expr.rhs, scope, type_hint);
+        let op = binary_operation_expr.operation.clone();
+        Self { op, lhs, rhs }
+    }
+
+    fn type_spec(&self, type_hint: &TypeHint) -> Type {
+        match type_hint {
+            TypeHint::Explicit(type_spec) => type_spec.clone(),
+            TypeHint::Inferred => {
+                let lhs_type = self.lhs.type_spec();
+                let rhs_type = self.rhs.type_spec();
+                assert_eq!(lhs_type, rhs_type);
+                lhs_type
+            }
+        }
     }
 }
