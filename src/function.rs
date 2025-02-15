@@ -1,19 +1,20 @@
 use crate::ast;
-use crate::basic_block::{BasicBlock, BasicBlockCompiler};
-use crate::module::{Module, ModuleCompiler};
+use crate::basic_block::BasicBlock;
+use crate::module::Module;
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::types::Type;
-use inkwell::builder::Builder;
-use inkwell::values::{BasicValueEnum, FunctionValue};
 use std::cell::OnceCell;
-use std::ops::Deref;
 use std::rc::{Rc, Weak};
+
+pub trait FunctionVisitor {
+    fn visit_basic_block(&self, basic_block: Rc<BasicBlock>);
+}
 
 #[derive(Debug)]
 pub struct FunctionArgument {
-    name: String,
-    arg_type: Type,
-    pos_id: u32,
+    pub name: String,
+    pub arg_type: Type,
+    pub pos_id: u32,
 }
 
 impl FunctionArgument {
@@ -26,7 +27,6 @@ pub struct Function {
     args: Vec<Rc<FunctionArgument>>,
     return_type: Type,
     entry_basic_block: OnceCell<Rc<BasicBlock>>,
-    module: Weak<Module>,
     weak_self: Weak<Function>,
 }
 
@@ -41,13 +41,15 @@ impl LocalScope for Function {
         None
     }
 
-    fn function(&self) -> Rc<Function> {
+    fn current_function(&self) -> Rc<Function> {
         self.weak_self.upgrade().unwrap()
     }
 }
 
 impl Function {
     pub fn from_ast(signature: &ast::FunctionSignature, module: Rc<Module>) -> Rc<Self> {
+        _ = module;
+
         let mut args = vec![];
         for (arg_id, arg_ast) in signature.args.iter().enumerate() {
             args.push(Rc::new(FunctionArgument {
@@ -62,7 +64,6 @@ impl Function {
             args,
             return_type,
             entry_basic_block: Default::default(),
-            module: Rc::downgrade(&module),
             weak_self: weak_self.clone(),
         })
     }
@@ -85,54 +86,9 @@ impl Function {
     pub fn return_type(&self) -> Type {
         self.return_type.clone()
     }
-}
 
-impl<'ctx> Function {
-    pub fn compile(&self, compiler: &FunctionCompiler<'ctx, '_>) {
+    pub fn traversal(&self, visitor: &dyn FunctionVisitor) {
         let entry_basic_block = self.entry_basic_block.get().unwrap();
-        compiler.add_basic_block(entry_basic_block.clone());
-    }
-}
-
-pub struct FunctionCompiler<'ctx, 'm> {
-    pub module_compiler: &'m ModuleCompiler<'ctx>,
-    pub ir: FunctionValue<'ctx>,
-    builder: Builder<'ctx>,
-}
-
-impl<'ctx, 'm> Deref for FunctionCompiler<'ctx, 'm> {
-    type Target = ModuleCompiler<'ctx>;
-
-    fn deref(&self) -> &Self::Target {
-        self.module_compiler
-    }
-}
-
-impl<'ctx, 'm> FunctionCompiler<'ctx, 'm> {
-    pub fn new(module_compiler: &'m ModuleCompiler<'ctx>, ir: FunctionValue<'ctx>) -> Self {
-        let context = module_compiler.context();
-        let builder = context.create_builder();
-        FunctionCompiler {
-            module_compiler,
-            ir,
-            builder,
-        }
-    }
-
-    #[inline(always)]
-    pub fn builder(&self) -> &Builder<'ctx> {
-        &self.builder
-    }
-
-    pub fn load_argument(&self, arg: &FunctionArgument) -> BasicValueEnum<'ctx> {
-        self.ir.get_nth_param(arg.pos_id).unwrap()
-    }
-
-    fn add_basic_block(&self, basic_block: Rc<BasicBlock>) {
-        let basic_block_ir = self.context().append_basic_block(self.ir, "");
-        self.builder.position_at_end(basic_block_ir);
-
-        let basic_block_compiler = BasicBlockCompiler::new(self);
-        basic_block.compile(&basic_block_compiler);
+        visitor.visit_basic_block(entry_basic_block.clone());
     }
 }

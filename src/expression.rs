@@ -1,11 +1,8 @@
 use crate::ast;
-use crate::basic_block::BasicBlockCompiler;
 use crate::function::FunctionArgument;
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::statement::ValueAssignment;
 use crate::types::{Type, TypeHint};
-use inkwell::values::{BasicValue, BasicValueEnum};
-use std::ops::Deref;
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -53,7 +50,7 @@ impl ExpressionNode {
     fn infer_type(&self, type_hint: &TypeHint) -> Type {
         match self {
             ExpressionNode::LoadArgument(arg) => arg.arg_type(),
-            ExpressionNode::LoadValue(val) => val.type_spec(),
+            ExpressionNode::LoadValue(val) => val.type_spec.clone(),
             ExpressionNode::LoadIntegerConstant(_) => Type::I64,
             ExpressionNode::BinaryOperation(op_exp) => op_exp.type_spec(type_hint),
         }
@@ -67,7 +64,7 @@ pub struct ExpressionEdge {
 }
 
 #[derive(Debug)]
-pub enum ExpressionType {
+enum ExpressionType {
     Use(Type),
 }
 
@@ -86,69 +83,14 @@ impl ExpressionEdge {
         expression_edge
     }
 
-    pub fn type_spec(&self) -> Type {
+    pub fn exp_type(&self) -> Type {
         match &self.exp_type {
             ExpressionType::Use(type_spec) => type_spec.clone(),
         }
     }
-}
 
-#[repr(transparent)]
-pub struct ExpressionCompiler<'ctx, 'm, 'f, 'b> {
-    basic_block_compiler: &'b BasicBlockCompiler<'ctx, 'm, 'f>,
-}
-
-impl<'ctx, 'm, 'f, 'b> Deref for ExpressionCompiler<'ctx, 'm, 'f, 'b> {
-    type Target = BasicBlockCompiler<'ctx, 'm, 'f>;
-
-    fn deref(&self) -> &Self::Target {
-        self.basic_block_compiler
-    }
-}
-
-impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
-    pub fn new(basic_block_compiler: &'b BasicBlockCompiler<'ctx, 'm, 'f>) -> Self {
-        ExpressionCompiler::<'ctx, 'm, 'f, 'b> {
-            basic_block_compiler,
-        }
-    }
-
-    pub fn compile_expression(&self, exp: &ExpressionEdge) -> BasicValueEnum<'ctx> {
-        let exp_type = exp.type_spec();
-        match exp.node.as_ref() {
-            ExpressionNode::LoadArgument(arg) => self.compile_load_argument(arg),
-            ExpressionNode::LoadValue(val) => self.compile_load_value(val),
-            ExpressionNode::LoadIntegerConstant(val) => self.compile_load_integer_constant(*val),
-            ExpressionNode::BinaryOperation(op_exp) => {
-                self.compile_binary_operation(op_exp, exp_type)
-            }
-        }
-    }
-
-    fn compile_load_argument(&self, arg: &FunctionArgument) -> BasicValueEnum<'ctx> {
-        self.load_argument(arg)
-    }
-
-    fn compile_load_value(&self, val: &ValueAssignment) -> BasicValueEnum<'ctx> {
-        let ir_id = val.ir_id();
-        self.load_value(ir_id).unwrap()
-    }
-
-    fn compile_load_integer_constant(&self, value: i32) -> BasicValueEnum<'ctx> {
-        let ctx = self.context();
-        ctx.i64_type()
-            .const_int(value as u64, true)
-            .as_basic_value_enum()
-    }
-
-    fn compile_binary_operation(
-        &self,
-        binary_op: &BinaryOperationExpression,
-        type_spec: Type,
-    ) -> BasicValueEnum<'ctx> {
-        let lhs_ir = self.compile_expression(binary_op.lhs.as_ref());
-        let rhs_ir = self.compile_expression(binary_op.rhs.as_ref());
-        type_spec.compile_binary_operation(binary_op.op.clone(), lhs_ir, rhs_ir, self)
+    pub fn node(&self) -> &ExpressionNode {
+        &self.node
     }
 }
 
@@ -176,9 +118,9 @@ pub enum BinaryOperation {
 
 #[derive(Debug)]
 pub struct BinaryOperationExpression {
-    op: BinaryOperation,
-    lhs: Box<ExpressionEdge>,
-    rhs: Box<ExpressionEdge>,
+    pub op: BinaryOperation,
+    pub lhs: Box<ExpressionEdge>,
+    pub rhs: Box<ExpressionEdge>,
 }
 
 impl BinaryOperationExpression {
@@ -197,8 +139,8 @@ impl BinaryOperationExpression {
         match type_hint {
             TypeHint::Explicit(type_spec) => type_spec.clone(),
             TypeHint::Inferred => {
-                let lhs_type = self.lhs.type_spec();
-                let rhs_type = self.rhs.type_spec();
+                let lhs_type = self.lhs.exp_type();
+                let rhs_type = self.rhs.exp_type();
                 assert_eq!(lhs_type, rhs_type);
                 lhs_type
             }

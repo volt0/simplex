@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 pub trait LocalScope {
     fn resolve(&self, name: &String) -> Option<LocalScopeItem>;
-    fn function(&self) -> Rc<Function>;
+    fn current_function(&self) -> Rc<Function>;
 }
 
 #[derive(Clone)]

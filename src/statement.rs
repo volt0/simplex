@@ -41,7 +41,7 @@ impl Statement {
     }
 
     pub fn from_ast_return(exp_ast: &ast::Expression, scope: &dyn LocalScope) -> Self {
-        let function = scope.function();
+        let function = scope.current_function();
         let type_hint = TypeHint::Explicit(function.return_type());
         let exp = ExpressionEdge::from_ast(exp_ast, scope, &type_hint);
         Statement::Return(exp)
@@ -59,18 +59,10 @@ pub struct ValueAssignment {
 impl ValueAssignment {
     pub fn new(name: String, exp: Box<ExpressionEdge>) -> Rc<Self> {
         Rc::new(ValueAssignment {
-            type_spec: exp.type_spec(),
+            type_spec: exp.exp_type(),
             name,
             exp,
             ir_id: Default::default(),
         })
-    }
-
-    pub fn type_spec(&self) -> Type {
-        self.type_spec.clone()
-    }
-
-    pub fn ir_id(&self) -> DefaultKey {
-        *self.ir_id.get().unwrap()
     }
 }

@@ -1,4 +1,5 @@
 mod ast;
+mod backend;
 mod basic_block;
 mod expression;
 mod function;
@@ -7,7 +8,8 @@ mod scope;
 mod statement;
 mod types;
 
-use crate::module::{compile_module, Module};
+use backend::compile_module;
+use module::Module;
 
 // function test(x: i8, y: i32, z: i32) {
 //     return;

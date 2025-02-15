@@ -1,13 +1,14 @@
 use crate::ast;
-use crate::expression::{ExpressionCompiler, ExpressionEdge};
-use crate::function::{Function, FunctionCompiler};
+use crate::function::Function;
 use crate::scope::{LocalScope, LocalScopeItem};
-use crate::statement::{Statement, ValueAssignment};
-use inkwell::values::BasicValueEnum;
+use crate::statement::Statement;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ops::Deref;
 use std::rc::{Rc, Weak};
+
+pub trait BasicBlockVisitor {
+    fn visit_statement(&self, stmt: &Statement);
+}
 
 pub struct BasicBlock {
     inner: RefCell<BasicBlockInner>,
@@ -43,6 +44,13 @@ impl BasicBlock {
         let mut inner = self.inner.borrow_mut();
         inner.add_statement(statement);
     }
+
+    pub fn traversal(&self, visitor: &dyn BasicBlockVisitor) {
+        let inner = self.inner.borrow();
+        for stmt in inner.statements.iter() {
+            visitor.visit_statement(stmt);
+        }
+    }
 }
 
 impl LocalScope for BasicBlock {
@@ -55,17 +63,8 @@ impl LocalScope for BasicBlock {
         self.parent().resolve(name)
     }
 
-    fn function(&self) -> Rc<Function> {
-        self.parent().function()
-    }
-}
-
-impl BasicBlock {
-    pub fn compile(&self, basic_block_compiler: &BasicBlockCompiler) {
-        let inner = self.inner.borrow();
-        for stmt in inner.statements.iter() {
-            basic_block_compiler.compile_statement(stmt);
-        }
+    fn current_function(&self) -> Rc<Function> {
+        self.parent().current_function()
     }
 }
 
@@ -88,51 +87,5 @@ impl BasicBlockInner {
 
     fn resolve_local(&self, name: &String) -> Option<LocalScopeItem> {
         self.locals.get(name).cloned()
-    }
-}
-
-#[repr(transparent)]
-pub struct BasicBlockCompiler<'ctx, 'm, 'f> {
-    parent: &'f FunctionCompiler<'ctx, 'm>,
-}
-
-impl<'ctx, 'm, 'f> Deref for BasicBlockCompiler<'ctx, 'm, 'f> {
-    type Target = FunctionCompiler<'ctx, 'm>;
-
-    fn deref(&self) -> &Self::Target {
-        self.parent
-    }
-}
-
-impl<'ctx, 'm, 'f> BasicBlockCompiler<'ctx, 'm, 'f> {
-    pub fn new(parent: &'f FunctionCompiler<'ctx, 'm>) -> Self {
-        Self { parent }
-    }
-
-    fn compile_statement(&self, stmt: &Statement) {
-        match stmt {
-            Statement::ValueAssignment(var) => {
-                self.compile_statement_let(var);
-            }
-            Statement::Return(exp) => {
-                self.compile_statement_return(exp);
-            }
-        }
-    }
-
-    fn compile_expression(&self, exp: &ExpressionEdge) -> BasicValueEnum<'ctx> {
-        let exp_compiler = ExpressionCompiler::new(self);
-        exp_compiler.compile_expression(exp)
-    }
-
-    fn compile_statement_let(&self, val: &ValueAssignment) {
-        let value = self.compile_expression(val.exp.as_ref());
-        let value_id = self.store_value(value);
-        val.ir_id.set(value_id).unwrap();
-    }
-
-    fn compile_statement_return(&self, exp: &ExpressionEdge) {
-        let result = self.compile_expression(exp);
-        self.builder().build_return(Some(&result)).unwrap();
     }
 }
