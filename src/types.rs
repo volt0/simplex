@@ -2,17 +2,97 @@ use crate::ast;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
-    I64,
+    Primitive(PrimitiveType),
 }
 
 impl Type {
     pub fn from_ast(type_spec_ast: &ast::TypeSpec) -> Self {
         match type_spec_ast {
-            ast::TypeSpec::Integer(_) => Type::I64,
+            ast::TypeSpec::Integer(int_type) => {
+                Type::Primitive(PrimitiveType::Integer(IntegerType::from_ast(int_type)))
+            }
             ast::TypeSpec::Identifier(_) => todo!(),
-            ast::TypeSpec::Void => todo!(),
-            ast::TypeSpec::Boolean => todo!(),
-            ast::TypeSpec::Float(_) => todo!(),
+            ast::TypeSpec::Void => Type::Primitive(PrimitiveType::Void),
+            ast::TypeSpec::Boolean => Type::Primitive(PrimitiveType::Bool),
+            ast::TypeSpec::Float(float_type) => {
+                Type::Primitive(PrimitiveType::Float(FloatType::from_ast(float_type)))
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum PrimitiveType {
+    Void,
+    Bool,
+    Integer(IntegerType),
+    Float(FloatType),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct IntegerType {
+    pub signed: bool,
+    pub width: IntegerTypeSize,
+}
+
+impl IntegerType {
+    pub fn from_ast(int_type_ast: &ast::IntegerType) -> Self {
+        match int_type_ast {
+            ast::IntegerType::I8 => IntegerType {
+                signed: true,
+                width: IntegerTypeSize::I8,
+            },
+            ast::IntegerType::I16 => IntegerType {
+                signed: true,
+                width: IntegerTypeSize::I16,
+            },
+            ast::IntegerType::I32 => IntegerType {
+                signed: true,
+                width: IntegerTypeSize::I32,
+            },
+            ast::IntegerType::I64 => IntegerType {
+                signed: true,
+                width: IntegerTypeSize::I64,
+            },
+            ast::IntegerType::U8 => IntegerType {
+                signed: false,
+                width: IntegerTypeSize::I8,
+            },
+            ast::IntegerType::U16 => IntegerType {
+                signed: false,
+                width: IntegerTypeSize::I16,
+            },
+            ast::IntegerType::U32 => IntegerType {
+                signed: false,
+                width: IntegerTypeSize::I32,
+            },
+            ast::IntegerType::U64 => IntegerType {
+                signed: false,
+                width: IntegerTypeSize::I64,
+            },
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub enum IntegerTypeSize {
+    I8,
+    I16,
+    I32,
+    I64,
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub enum FloatType {
+    F32,
+    F64,
+}
+
+impl FloatType {
+    pub fn from_ast(float_type_ast: &ast::FloatType) -> Self {
+        match float_type_ast {
+            ast::FloatType::F32 => FloatType::F32,
+            ast::FloatType::F64 => FloatType::F32,
         }
     }
 }

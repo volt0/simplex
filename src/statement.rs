@@ -32,8 +32,8 @@ impl Statement {
     }
 
     pub fn from_ast_let(var_ast: &ast::Variable, scope: &dyn LocalScope) -> Self {
-        let type_spec_ast = var_ast.value_type.as_ref();
-        let type_hint = TypeHint::from_type_spec(type_spec_ast);
+        let value_type_ast = var_ast.value_type.as_ref();
+        let type_hint = TypeHint::from_type_spec(value_type_ast);
 
         let exp_ast = var_ast.init_expression.as_ref().unwrap();
         let exp = ExpressionEdge::from_ast(exp_ast, scope, &type_hint);
@@ -51,15 +51,15 @@ impl Statement {
 #[derive(Debug)]
 pub struct ValueAssignment {
     pub name: String,
-    pub type_spec: Type,
     pub exp: Box<ExpressionEdge>,
+    pub exp_type: Type,
     pub ir_id: OnceCell<DefaultKey>,
 }
 
 impl ValueAssignment {
     pub fn new(name: String, exp: Box<ExpressionEdge>) -> Rc<Self> {
         Rc::new(ValueAssignment {
-            type_spec: exp.exp_type(),
+            exp_type: exp.exp_type(),
             name,
             exp,
             ir_id: Default::default(),

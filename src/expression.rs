@@ -2,8 +2,50 @@ use crate::ast;
 use crate::function::FunctionArgument;
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::statement::ValueAssignment;
-use crate::types::{Type, TypeHint};
+use crate::types::{IntegerType, IntegerTypeSize, PrimitiveType, Type, TypeHint};
+use std::ops::Deref;
 use std::rc::Rc;
+
+#[derive(Debug)]
+pub struct ExpressionEdge {
+    node: Box<ExpressionNode>,
+    exp_type: ExpressionType,
+}
+
+impl Deref for ExpressionEdge {
+    type Target = ExpressionNode;
+
+    fn deref(&self) -> &Self::Target {
+        &self.node
+    }
+}
+
+#[derive(Debug)]
+enum ExpressionType {
+    Use(Type),
+}
+
+impl ExpressionEdge {
+    pub fn from_ast(
+        expression_ast: &ast::Expression,
+        scope: &dyn LocalScope,
+        type_hint: &TypeHint,
+    ) -> Box<Self> {
+        let node = ExpressionNode::from_ast(expression_ast, scope, type_hint);
+        let node_type = node.infer_type(type_hint);
+        let expression_edge = Box::new(ExpressionEdge {
+            node,
+            exp_type: ExpressionType::Use(node_type),
+        });
+        expression_edge
+    }
+
+    pub fn exp_type(&self) -> Type {
+        match &self.exp_type {
+            ExpressionType::Use(type_spec) => type_spec.clone(),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum ExpressionNode {
@@ -50,47 +92,15 @@ impl ExpressionNode {
     fn infer_type(&self, type_hint: &TypeHint) -> Type {
         match self {
             ExpressionNode::LoadArgument(arg) => arg.arg_type(),
-            ExpressionNode::LoadValue(val) => val.type_spec.clone(),
-            ExpressionNode::LoadIntegerConstant(_) => Type::I64,
-            ExpressionNode::BinaryOperation(op_exp) => op_exp.type_spec(type_hint),
+            ExpressionNode::LoadValue(val) => val.exp_type.clone(),
+            ExpressionNode::LoadIntegerConstant(_) => {
+                Type::Primitive(PrimitiveType::Integer(IntegerType {
+                    signed: true,
+                    width: IntegerTypeSize::I64,
+                }))
+            }
+            ExpressionNode::BinaryOperation(op_exp) => op_exp.infer_type(type_hint),
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct ExpressionEdge {
-    node: Box<ExpressionNode>,
-    exp_type: ExpressionType,
-}
-
-#[derive(Debug)]
-enum ExpressionType {
-    Use(Type),
-}
-
-impl ExpressionEdge {
-    pub fn from_ast(
-        expression_ast: &ast::Expression,
-        scope: &dyn LocalScope,
-        type_hint: &TypeHint,
-    ) -> Box<Self> {
-        let node = ExpressionNode::from_ast(expression_ast, scope, type_hint);
-        let node_type = node.infer_type(type_hint);
-        let expression_edge = Box::new(ExpressionEdge {
-            node,
-            exp_type: ExpressionType::Use(node_type),
-        });
-        expression_edge
-    }
-
-    pub fn exp_type(&self) -> Type {
-        match &self.exp_type {
-            ExpressionType::Use(type_spec) => type_spec.clone(),
-        }
-    }
-
-    pub fn node(&self) -> &ExpressionNode {
-        &self.node
     }
 }
 
@@ -135,7 +145,7 @@ impl BinaryOperationExpression {
         Self { op, lhs, rhs }
     }
 
-    fn type_spec(&self, type_hint: &TypeHint) -> Type {
+    fn infer_type(&self, type_hint: &TypeHint) -> Type {
         match type_hint {
             TypeHint::Explicit(type_spec) => type_spec.clone(),
             TypeHint::Inferred => {

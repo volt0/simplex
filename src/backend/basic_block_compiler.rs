@@ -50,6 +50,6 @@ impl<'ctx, 'm, 'f> BasicBlockCompiler<'ctx, 'm, 'f> {
 
     fn compile_expression(&self, exp: &ExpressionEdge) -> BasicValueEnum<'ctx> {
         let exp_compiler = ExpressionCompiler::new(self);
-        exp_compiler.compile_expression(exp)
+        exp_compiler.compile_expression_edge(exp)
     }
 }
