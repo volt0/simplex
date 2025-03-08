@@ -31,7 +31,7 @@ pub enum PrimitiveType {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct IntegerType {
-    pub signed: bool,
+    pub is_signed: bool,
     pub width: IntegerTypeSize,
 }
 
@@ -39,35 +39,35 @@ impl IntegerType {
     pub fn from_ast(int_type_ast: &ast::IntegerType) -> Self {
         match int_type_ast {
             ast::IntegerType::I8 => IntegerType {
-                signed: true,
+                is_signed: true,
                 width: IntegerTypeSize::I8,
             },
             ast::IntegerType::I16 => IntegerType {
-                signed: true,
+                is_signed: true,
                 width: IntegerTypeSize::I16,
             },
             ast::IntegerType::I32 => IntegerType {
-                signed: true,
+                is_signed: true,
                 width: IntegerTypeSize::I32,
             },
             ast::IntegerType::I64 => IntegerType {
-                signed: true,
+                is_signed: true,
                 width: IntegerTypeSize::I64,
             },
             ast::IntegerType::U8 => IntegerType {
-                signed: false,
+                is_signed: false,
                 width: IntegerTypeSize::I8,
             },
             ast::IntegerType::U16 => IntegerType {
-                signed: false,
+                is_signed: false,
                 width: IntegerTypeSize::I16,
             },
             ast::IntegerType::U32 => IntegerType {
-                signed: false,
+                is_signed: false,
                 width: IntegerTypeSize::I32,
             },
             ast::IntegerType::U64 => IntegerType {
-                signed: false,
+                is_signed: false,
                 width: IntegerTypeSize::I64,
             },
         }

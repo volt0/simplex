@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 pub struct Module {
     pub definitions: Vec<Definition>,
 }

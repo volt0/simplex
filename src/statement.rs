@@ -1,5 +1,5 @@
 use crate::ast;
-use crate::expression::ExpressionEdge;
+use crate::expression::Expression;
 use crate::scope::LocalScope;
 use crate::types::{Type, TypeHint};
 use slotmap::DefaultKey;
@@ -9,7 +9,7 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub enum Statement {
     ValueAssignment(Rc<ValueAssignment>),
-    Return(Box<ExpressionEdge>),
+    Return(Box<Expression>),
 }
 
 impl Statement {
@@ -36,14 +36,14 @@ impl Statement {
         let type_hint = TypeHint::from_type_spec(value_type_ast);
 
         let exp_ast = var_ast.init_expression.as_ref().unwrap();
-        let exp = ExpressionEdge::from_ast(exp_ast, scope, &type_hint);
+        let exp = Expression::from_ast(exp_ast, scope, &type_hint);
         Statement::ValueAssignment(ValueAssignment::new(var_ast.name.clone(), exp))
     }
 
     pub fn from_ast_return(exp_ast: &ast::Expression, scope: &dyn LocalScope) -> Self {
         let function = scope.current_function();
         let type_hint = TypeHint::Explicit(function.return_type());
-        let exp = ExpressionEdge::from_ast(exp_ast, scope, &type_hint);
+        let exp = Expression::from_ast(exp_ast, scope, &type_hint);
         Statement::Return(exp)
     }
 }
@@ -51,18 +51,20 @@ impl Statement {
 #[derive(Debug)]
 pub struct ValueAssignment {
     pub name: String,
-    pub exp: Box<ExpressionEdge>,
-    pub exp_type: Type,
+    pub exp: Box<Expression>,
     pub ir_id: OnceCell<DefaultKey>,
 }
 
 impl ValueAssignment {
-    pub fn new(name: String, exp: Box<ExpressionEdge>) -> Rc<Self> {
+    pub fn new(name: String, exp: Box<Expression>) -> Rc<Self> {
         Rc::new(ValueAssignment {
-            exp_type: exp.exp_type(),
             name,
             exp,
             ir_id: Default::default(),
         })
+    }
+
+    pub fn value_type(&self) -> Type {
+        self.exp.exp_type.clone()
     }
 }

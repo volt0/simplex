@@ -1,7 +1,7 @@
 use super::expression_compiler::ExpressionCompiler;
 use super::function_compiler::FunctionCompiler;
 use crate::basic_block::BasicBlockVisitor;
-use crate::expression::ExpressionEdge;
+use crate::expression::Expression;
 use crate::statement::{Statement, ValueAssignment};
 use inkwell::values::BasicValueEnum;
 use std::ops::Deref;
@@ -43,13 +43,13 @@ impl<'ctx, 'm, 'f> BasicBlockCompiler<'ctx, 'm, 'f> {
         val.ir_id.set(value_id).unwrap();
     }
 
-    fn compile_statement_return(&self, exp: &ExpressionEdge) {
+    fn compile_statement_return(&self, exp: &Expression) {
         let result = self.compile_expression(exp);
         self.builder().build_return(Some(&result)).unwrap();
     }
 
-    fn compile_expression(&self, exp: &ExpressionEdge) -> BasicValueEnum<'ctx> {
+    fn compile_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
         let exp_compiler = ExpressionCompiler::new(self);
-        exp_compiler.compile_expression_edge(exp)
+        exp_compiler.compile_expression(exp)
     }
 }

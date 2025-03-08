@@ -7,12 +7,12 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 #[derive(Debug)]
-pub struct ExpressionEdge {
-    node: Box<ExpressionNode>,
-    exp_type: ExpressionType,
+pub struct Expression {
+    pub node: Box<ExpressionNode>,
+    pub exp_type: Type,
 }
 
-impl Deref for ExpressionEdge {
+impl Deref for Expression {
     type Target = ExpressionNode;
 
     fn deref(&self) -> &Self::Target {
@@ -20,12 +20,7 @@ impl Deref for ExpressionEdge {
     }
 }
 
-#[derive(Debug)]
-enum ExpressionType {
-    Use(Type),
-}
-
-impl ExpressionEdge {
+impl Expression {
     pub fn from_ast(
         expression_ast: &ast::Expression,
         scope: &dyn LocalScope,
@@ -33,17 +28,11 @@ impl ExpressionEdge {
     ) -> Box<Self> {
         let node = ExpressionNode::from_ast(expression_ast, scope, type_hint);
         let node_type = node.infer_type(type_hint);
-        let expression_edge = Box::new(ExpressionEdge {
+        let expression_edge = Box::new(Expression {
             node,
-            exp_type: ExpressionType::Use(node_type),
+            exp_type: node_type,
         });
         expression_edge
-    }
-
-    pub fn exp_type(&self) -> Type {
-        match &self.exp_type {
-            ExpressionType::Use(type_spec) => type_spec.clone(),
-        }
     }
 }
 
@@ -92,10 +81,10 @@ impl ExpressionNode {
     fn infer_type(&self, type_hint: &TypeHint) -> Type {
         match self {
             ExpressionNode::LoadArgument(arg) => arg.arg_type(),
-            ExpressionNode::LoadValue(val) => val.exp_type.clone(),
+            ExpressionNode::LoadValue(val) => val.value_type(),
             ExpressionNode::LoadIntegerConstant(_) => {
                 Type::Primitive(PrimitiveType::Integer(IntegerType {
-                    signed: true,
+                    is_signed: true,
                     width: IntegerTypeSize::I64,
                 }))
             }
@@ -129,19 +118,19 @@ pub enum BinaryOperation {
 #[derive(Debug)]
 pub struct BinaryOperationExpression {
     pub op: BinaryOperation,
-    pub lhs: Box<ExpressionEdge>,
-    pub rhs: Box<ExpressionEdge>,
+    pub lhs: Box<ExpressionNode>,
+    pub rhs: Box<ExpressionNode>,
 }
 
 impl BinaryOperationExpression {
     fn from_ast(
-        binary_operation_expr: &ast::BinaryOperationExpr,
+        exp_ast: &ast::BinaryOperationExpr,
         scope: &dyn LocalScope,
         type_hint: &TypeHint,
     ) -> Self {
-        let lhs = ExpressionEdge::from_ast(&binary_operation_expr.lhs, scope, type_hint);
-        let rhs = ExpressionEdge::from_ast(&binary_operation_expr.rhs, scope, type_hint);
-        let op = binary_operation_expr.operation.clone();
+        let lhs = ExpressionNode::from_ast(&exp_ast.lhs, scope, type_hint);
+        let rhs = ExpressionNode::from_ast(&exp_ast.rhs, scope, type_hint);
+        let op = exp_ast.operation.clone();
         Self { op, lhs, rhs }
     }
 
@@ -149,8 +138,8 @@ impl BinaryOperationExpression {
         match type_hint {
             TypeHint::Explicit(type_spec) => type_spec.clone(),
             TypeHint::Inferred => {
-                let lhs_type = self.lhs.exp_type();
-                let rhs_type = self.rhs.exp_type();
+                let lhs_type = self.lhs.infer_type(type_hint);
+                let rhs_type = self.rhs.infer_type(type_hint);
                 assert_eq!(lhs_type, rhs_type);
                 lhs_type
             }
