@@ -5,7 +5,6 @@ use crate::function::{FunctionArgument, FunctionVisitor};
 use inkwell::builder::Builder;
 use inkwell::values::{BasicValueEnum, FunctionValue};
 use std::ops::Deref;
-use std::rc::Rc;
 
 pub struct FunctionCompiler<'ctx, 'm> {
     module_compiler: &'m ModuleCompiler<'ctx>,
@@ -22,7 +21,7 @@ impl<'ctx, 'm> Deref for FunctionCompiler<'ctx, 'm> {
 }
 
 impl<'ctx, 'm> FunctionVisitor for FunctionCompiler<'ctx, 'm> {
-    fn visit_basic_block(&self, basic_block: Rc<BasicBlock>) {
+    fn visit_basic_block(&self, basic_block: &BasicBlock) {
         let basic_block_ir = self.context().append_basic_block(self.ir, "");
         self.builder.position_at_end(basic_block_ir);
 

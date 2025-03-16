@@ -54,25 +54,27 @@ impl<'ctx> ModuleCompiler<'ctx> {
     }
 }
 
-pub fn compile_module(module: &Module) {
-    let context = Context::create();
-    let module_compiler = ModuleCompiler::new(&context);
-    module.traversal(&module_compiler);
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use crate::ast;
+    use inkwell::execution_engine::UnsafeFunctionPointer;
 
-    module_compiler.ir.print_to_stderr();
+    pub fn compile_module_test<F>(module_ast: ast::Module, context: &Context) -> JitFunction<F>
+    where
+        F: UnsafeFunctionPointer,
+    {
+        let module_compiler = ModuleCompiler::new(&context);
+        let module = Module::from_ast(&module_ast);
+        module.traversal(&module_compiler);
 
-    let execution_engine = module_compiler
-        .ir
-        .create_jit_execution_engine(OptimizationLevel::None)
-        .unwrap();
+        module_compiler.ir.print_to_stderr();
 
-    unsafe {
-        type SumFunc = unsafe extern "C" fn(u64, u64, u64) -> u64;
+        let execution_engine = module_compiler
+            .ir
+            .create_jit_execution_engine(OptimizationLevel::None)
+            .unwrap();
 
-        let sum: JitFunction<SumFunc> = execution_engine.get_function("sum").unwrap();
-        let x = 1u64;
-        let y = 2u64;
-        let z = 3u64;
-        dbg!(sum.call(x, y, z));
+        unsafe { execution_engine.get_function("sum").unwrap() }
     }
 }

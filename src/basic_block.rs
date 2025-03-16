@@ -12,37 +12,35 @@ pub trait BasicBlockVisitor {
 
 pub struct BasicBlock {
     inner: RefCell<BasicBlockInner>,
-    parent: Weak<dyn LocalScope>,
+    function: Weak<Function>,
 }
 
 impl BasicBlock {
     pub fn from_ast(
         basic_block_ast: &Vec<ast::Statement>,
-        parent: &Rc<dyn LocalScope>,
-    ) -> Rc<Self> {
-        let basic_block = Rc::new(BasicBlock {
+        function: Weak<Function>,
+        parent: &dyn LocalScope,
+    ) -> Self {
+        let basic_block = BasicBlock {
             inner: RefCell::new(BasicBlockInner {
                 statements: vec![],
                 locals: Default::default(),
             }),
-            parent: Rc::downgrade(parent),
-        });
+            function,
+        };
+
+        let scope = BasicBlockScope {
+            basic_block: &basic_block,
+            parent,
+        };
 
         for statement_ast in basic_block_ast {
-            let statement = Statement::from_ast(statement_ast, basic_block.as_ref());
-            basic_block.add_statement(statement);
+            let statement = Statement::from_ast(statement_ast, &scope);
+            let mut inner = basic_block.inner.borrow_mut();
+            inner.add_statement(statement);
         }
 
         basic_block
-    }
-
-    pub fn parent(&self) -> Rc<dyn LocalScope> {
-        self.parent.upgrade().unwrap()
-    }
-
-    fn add_statement(&self, statement: Statement) {
-        let mut inner = self.inner.borrow_mut();
-        inner.add_statement(statement);
     }
 
     pub fn traversal(&self, visitor: &dyn BasicBlockVisitor) {
@@ -50,21 +48,6 @@ impl BasicBlock {
         for stmt in inner.statements.iter() {
             visitor.visit_statement(stmt);
         }
-    }
-}
-
-impl LocalScope for BasicBlock {
-    fn resolve(&self, name: &String) -> Option<LocalScopeItem> {
-        let inner = self.inner.borrow();
-        if let Some(value) = inner.resolve_local(name) {
-            return Some(value);
-        }
-
-        self.parent().resolve(name)
-    }
-
-    fn current_function(&self) -> Rc<Function> {
-        self.parent().current_function()
     }
 }
 
@@ -87,5 +70,28 @@ impl BasicBlockInner {
 
     fn resolve_local(&self, name: &String) -> Option<LocalScopeItem> {
         self.locals.get(name).cloned()
+    }
+}
+
+struct BasicBlockScope<'b, 'p> {
+    basic_block: &'b BasicBlock,
+    parent: &'p dyn LocalScope,
+}
+
+impl LocalScope for BasicBlockScope<'_, '_> {
+    fn resolve(&self, name: &String) -> Option<LocalScopeItem> {
+        let inner = self.basic_block.inner.borrow();
+        if let Some(value) = inner.resolve_local(name) {
+            return Some(value);
+        }
+
+        self.parent.resolve(name)
+    }
+
+    fn current_function(&self) -> Rc<Function> {
+        self.basic_block
+            .function
+            .upgrade()
+            .expect("function dropped")
     }
 }

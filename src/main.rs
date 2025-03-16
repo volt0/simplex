@@ -8,7 +8,6 @@ mod scope;
 mod statement;
 mod types;
 
-use backend::compile_module;
 use module::Module;
 
 // function test(x: i8, y: i32, z: i32) {
@@ -42,7 +41,7 @@ fn main() {
     let parser = grammar::ModuleParser::new();
     let module_ast = parser.parse(SRC).unwrap();
     let module = Module::from_ast(&module_ast);
-    compile_module(&module);
+    _ = module;
 }
 
 mod grammar {
