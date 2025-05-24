@@ -1,6 +1,5 @@
 use crate::ast;
 use crate::basic_block::BasicBlock;
-use crate::module::Module;
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::types::Type;
 use std::cell::OnceCell;
@@ -23,6 +22,45 @@ impl FunctionArgument {
     }
 }
 
+pub struct FunctionBuilder {
+    inner: Function,
+}
+
+impl FunctionBuilder {
+    pub fn from_ast(signature: ast::FunctionSignature) -> Self {
+        let return_type = Type::from_ast(&signature.return_type.clone().unwrap());
+        let mut builder = FunctionBuilder {
+            inner: Function {
+                return_type,
+                args: vec![],
+                entry_basic_block: OnceCell::default(),
+            },
+        };
+
+        for arg_ast in signature.args {
+            let name = arg_ast.name.clone();
+            let arg_type = Type::from_ast(&arg_ast.arg_type);
+            builder.add_argument(name, arg_type);
+        }
+
+        builder
+    }
+
+    pub fn add_argument(&mut self, name: String, arg_type: Type) {
+        let args = &mut self.inner.args;
+        let arg_id = args.len() as u32;
+        args.push(Rc::new(FunctionArgument {
+            name,
+            arg_type,
+            pos_id: arg_id,
+        }));
+    }
+
+    pub fn build(self) -> Rc<Function> {
+        Rc::new(self.inner)
+    }
+}
+
 pub struct Function {
     args: Vec<Rc<FunctionArgument>>,
     return_type: Type,
@@ -30,30 +68,11 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn from_ast(signature: &ast::FunctionSignature, module: Rc<Module>) -> Rc<Self> {
-        _ = module;
-
-        let return_type = Type::from_ast(&signature.return_type.clone().unwrap());
-        let mut args = vec![];
-        for (arg_id, arg_ast) in signature.args.iter().enumerate() {
-            args.push(Rc::new(FunctionArgument {
-                name: arg_ast.name.clone(),
-                arg_type: Type::from_ast(&arg_ast.arg_type),
-                pos_id: arg_id as u32,
-            }));
-        }
-
-        Rc::new(Function {
-            args,
-            return_type,
-            entry_basic_block: Default::default(),
-        })
-    }
-
     pub fn init_implementation(self: Rc<Self>, entry_basic_block_ast: &ast::BasicBlock) {
         let scope = FunctionScope {
             function: self.clone(),
         };
+
         self.entry_basic_block
             .set(BasicBlock::from_ast(
                 &entry_basic_block_ast.statements,
@@ -73,8 +92,7 @@ impl Function {
     }
 
     pub fn traversal(&self, visitor: &dyn FunctionVisitor) {
-        let entry_basic_block = self.entry_basic_block.get().unwrap();
-        visitor.visit_basic_block(entry_basic_block);
+        visitor.visit_basic_block(self.entry_basic_block.get().unwrap());
     }
 
     fn resolve_local(&self, name: &String) -> Option<LocalScopeItem> {

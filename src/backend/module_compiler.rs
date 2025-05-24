@@ -1,7 +1,7 @@
 use super::function_compiler::FunctionCompiler;
 use super::type_compiler::TypeCompiler;
 use crate::function::Function;
-use crate::module::{Module, ModuleVisitor};
+use crate::module::ModuleVisitor;
 use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use inkwell::module::Module as ModuleIR;
@@ -58,6 +58,7 @@ impl<'ctx> ModuleCompiler<'ctx> {
 pub mod tests {
     use super::*;
     use crate::ast;
+    use crate::module::ModuleBuilder;
     use inkwell::execution_engine::UnsafeFunctionPointer;
 
     pub fn compile_module_test<F>(module_ast: ast::Module, context: &Context) -> JitFunction<F>
@@ -65,7 +66,8 @@ pub mod tests {
         F: UnsafeFunctionPointer,
     {
         let module_compiler = ModuleCompiler::new(&context);
-        let module = Module::from_ast(&module_ast);
+        let module_builder = ModuleBuilder::from_ast(module_ast);
+        let module = module_builder.build();
         module.traversal(&module_compiler);
 
         module_compiler.ir.print_to_stderr();
