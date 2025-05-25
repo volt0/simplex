@@ -60,7 +60,6 @@ impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
             PrimitiveType::Float(float_type) => {
                 let type_ir = match float_type {
                     FloatType::F32 => context.f32_type(),
-                    FloatType::F64 => context.f64_type(),
                 };
                 type_ir.as_basic_type_enum()
             }

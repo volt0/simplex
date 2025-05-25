@@ -3,10 +3,6 @@ use crate::definition::Definition;
 use crate::function::{Function, FunctionBuilder};
 use std::rc::Rc;
 
-pub trait ModuleVisitor {
-    fn visit_function(&self, function: &Function);
-}
-
 pub struct ModuleBuilder {
     inner: Module,
     pending_functions: Vec<(Rc<Function>, ast::BasicBlock)>,
@@ -28,10 +24,8 @@ impl ModuleBuilder {
                     let function = function_builder.build();
                     builder.add_function(&function);
 
-                    if let Some(entry_basic_block) = function_ast.payload {
-                        builder
-                            .pending_functions
-                            .push((function, entry_basic_block));
+                    if let Some(body) = function_ast.payload {
+                        builder.pending_functions.push((function, body));
                     }
                 }
             }
@@ -53,11 +47,15 @@ impl ModuleBuilder {
         } = self;
 
         for (function_impl_builder, payload) in pending_functions {
-            function_impl_builder.init_implementation(&payload);
+            function_impl_builder.init_implementation(payload);
         }
 
         Rc::new(module)
     }
+}
+
+pub trait ModuleVisitor {
+    fn visit_function(&self, function: &Function);
 }
 
 pub struct Module {

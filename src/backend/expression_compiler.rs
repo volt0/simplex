@@ -66,24 +66,24 @@ mod tests {
                         args: vec![
                             ast::FunctionArgument {
                                 name: "x".to_string(),
-                                arg_type: ast::TypeSpec::Integer(ast::IntegerType::I64),
+                                arg_type: ast::Type::Integer(ast::IntegerType::I64),
                             },
                             ast::FunctionArgument {
                                 name: "y".to_string(),
-                                arg_type: ast::TypeSpec::Integer(ast::IntegerType::I64),
+                                arg_type: ast::Type::Integer(ast::IntegerType::I64),
                             },
                             ast::FunctionArgument {
                                 name: "z".to_string(),
-                                arg_type: ast::TypeSpec::Integer(ast::IntegerType::I64),
+                                arg_type: ast::Type::Integer(ast::IntegerType::I64),
                             },
                         ],
-                        return_type: Some(ast::TypeSpec::Integer(ast::IntegerType::I64)),
+                        return_type: Some(ast::Type::Integer(ast::IntegerType::I64)),
                     },
                     payload: Some(ast::BasicBlock {
                         statements: vec![
                             ast::Statement::Let(ast::Variable {
                                 name: "a".to_string(),
-                                value_type: Some(ast::TypeSpec::Integer(ast::IntegerType::I64)),
+                                value_type: Some(ast::Type::Integer(ast::IntegerType::I64)),
                                 init_expression: Some(Box::new(ast::Expression::Constant(
                                     ast::Constant::Integer(10),
                                 ))),

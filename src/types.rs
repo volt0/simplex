@@ -6,15 +6,15 @@ pub enum Type {
 }
 
 impl Type {
-    pub fn from_ast(type_spec_ast: &ast::TypeSpec) -> Self {
+    pub fn from_ast(type_spec_ast: &ast::Type) -> Self {
         match type_spec_ast {
-            ast::TypeSpec::Integer(int_type) => {
+            ast::Type::Integer(int_type) => {
                 Type::Primitive(PrimitiveType::Integer(IntegerType::from_ast(int_type)))
             }
-            ast::TypeSpec::Identifier(_) => todo!(),
-            ast::TypeSpec::Void => Type::Primitive(PrimitiveType::Void),
-            ast::TypeSpec::Boolean => Type::Primitive(PrimitiveType::Bool),
-            ast::TypeSpec::Float(float_type) => {
+            ast::Type::Identifier(_) => todo!(),
+            ast::Type::Void => Type::Primitive(PrimitiveType::Void),
+            ast::Type::Boolean => Type::Primitive(PrimitiveType::Bool),
+            ast::Type::Float(float_type) => {
                 Type::Primitive(PrimitiveType::Float(FloatType::from_ast(float_type)))
             }
         }
@@ -85,7 +85,6 @@ pub enum IntegerTypeSize {
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum FloatType {
     F32,
-    F64,
 }
 
 impl FloatType {
@@ -104,8 +103,8 @@ pub enum TypeHint {
 }
 
 impl TypeHint {
-    pub fn from_type_spec(type_spec: Option<&ast::TypeSpec>) -> Self {
-        match type_spec {
+    pub fn from_ast(type_spec_ast: Option<&ast::Type>) -> Self {
+        match type_spec_ast {
             None => TypeHint::Inferred,
             Some(type_ast) => TypeHint::Explicit(Type::from_ast(type_ast)),
         }

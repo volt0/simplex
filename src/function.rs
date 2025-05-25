@@ -1,13 +1,9 @@
 use crate::ast;
-use crate::basic_block::BasicBlock;
+use crate::basic_block::{BasicBlock, BasicBlockBuilder};
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::types::Type;
 use std::cell::OnceCell;
 use std::rc::Rc;
-
-pub trait FunctionVisitor {
-    fn visit_basic_block(&self, basic_block: &BasicBlock);
-}
 
 #[derive(Debug)]
 pub struct FunctionArgument {
@@ -33,7 +29,7 @@ impl FunctionBuilder {
             inner: Function {
                 return_type,
                 args: vec![],
-                entry_basic_block: OnceCell::default(),
+                body: OnceCell::default(),
             },
         };
 
@@ -61,24 +57,27 @@ impl FunctionBuilder {
     }
 }
 
+pub trait FunctionVisitor {
+    fn visit_basic_block(&self, basic_block: &BasicBlock);
+}
+
 pub struct Function {
     args: Vec<Rc<FunctionArgument>>,
     return_type: Type,
-    entry_basic_block: OnceCell<BasicBlock>,
+    body: OnceCell<FunctionBody>,
 }
 
 impl Function {
-    pub fn init_implementation(self: Rc<Self>, entry_basic_block_ast: &ast::BasicBlock) {
+    pub fn init_implementation(self: Rc<Self>, body_ast: ast::BasicBlock) {
         let scope = FunctionScope {
             function: self.clone(),
         };
 
-        self.entry_basic_block
-            .set(BasicBlock::from_ast(
-                &entry_basic_block_ast.statements,
-                Rc::downgrade(&self),
-                &scope,
-            ))
+        let basic_block_builder = BasicBlockBuilder::from_ast(body_ast.statements, &self, &scope);
+
+        let basic_block = basic_block_builder.build();
+        self.body
+            .set(FunctionBody::RootBasicBlock(basic_block))
             .ok()
             .unwrap();
     }
@@ -92,7 +91,12 @@ impl Function {
     }
 
     pub fn traversal(&self, visitor: &dyn FunctionVisitor) {
-        visitor.visit_basic_block(self.entry_basic_block.get().unwrap());
+        let body = self.body.get().unwrap();
+        match body {
+            FunctionBody::RootBasicBlock(root_basic_block) => {
+                visitor.visit_basic_block(root_basic_block)
+            }
+        }
     }
 
     fn resolve_local(&self, name: &String) -> Option<LocalScopeItem> {
@@ -104,6 +108,10 @@ impl Function {
         }
         None
     }
+}
+
+pub enum FunctionBody {
+    RootBasicBlock(BasicBlock),
 }
 
 struct FunctionScope {

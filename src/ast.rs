@@ -15,12 +15,12 @@ pub enum DefinitionValue {
 
 pub struct FunctionArgument {
     pub name: String,
-    pub arg_type: TypeSpec,
+    pub arg_type: Type,
 }
 
 pub struct FunctionSignature {
     pub args: Vec<FunctionArgument>,
-    pub return_type: Option<TypeSpec>,
+    pub return_type: Option<Type>,
 }
 
 pub struct Function {
@@ -30,7 +30,7 @@ pub struct Function {
 
 pub struct Variable {
     pub name: String,
-    pub value_type: Option<TypeSpec>,
+    pub value_type: Option<Type>,
     pub init_expression: Option<Box<Expression>>,
 }
 
@@ -89,7 +89,7 @@ pub struct ConditionalExpression(
     pub Box<Expression>,
 );
 
-pub struct CastExpression(pub Box<Expression>, pub TypeSpec);
+pub struct CastExpression(pub Box<Expression>, pub Type);
 
 pub struct CallExpression(pub Box<Expression>, pub Vec<Box<Expression>>);
 
@@ -107,7 +107,7 @@ pub enum Constant {
 }
 
 #[derive(Clone)]
-pub enum TypeSpec {
+pub enum Type {
     Identifier(String),
     Void,
     Boolean,

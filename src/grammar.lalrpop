@@ -65,7 +65,7 @@ BasicBlock: BasicBlock = {
     "{" <statements:(<Statement>)*> "}" => BasicBlock { statements }
 }
 
-VariableSignature: (String, Option<TypeSpec>) = {
+VariableSignature: (String, Option<Type>) = {
     <name:Identifier> <type_spec:TypeAnnotation?> => (name, type_spec),
 }
 
@@ -108,7 +108,7 @@ UnaryExpression: Box<Expression> = {
 
 CastExpression: Box<Expression> = {
     UnaryExpression,
-    <val:CastExpression> "as" <type_spec:TypeSpec> => Box::new(Expression::Cast(
+    <val:CastExpression> "as" <type_spec:Type> => Box::new(Expression::Cast(
         CastExpression(val, type_spec)
     )),
 }
@@ -212,24 +212,24 @@ Expression: Box<Expression> = {
 
 // Types
 
-TypeAnnotation: TypeSpec = {
-    ":" <type_spec:TypeSpec> => type_spec
+TypeAnnotation: Type = {
+    ":" <type_spec:Type> => type_spec
 }
 
-TypeSpec: TypeSpec = {
-    "i8" => TypeSpec::Integer(IntegerType::I8),
-    "i16" => TypeSpec::Integer(IntegerType::I16),
-    "i32" => TypeSpec::Integer(IntegerType::I32),
-    "i64" => TypeSpec::Integer(IntegerType::I64),
-    "u8" => TypeSpec::Integer(IntegerType::U8),
-    "u16" => TypeSpec::Integer(IntegerType::U16),
-    "u32" => TypeSpec::Integer(IntegerType::U32),
-    "u64" => TypeSpec::Integer(IntegerType::U64),
-    "f32" => TypeSpec::Float(FloatType::F32),
-    "f64" => TypeSpec::Float(FloatType::F64),
-    "bool" => TypeSpec::Boolean,
-    "void" => TypeSpec::Void,
-    <name:Identifier> => TypeSpec::Identifier(name),
+Type: Type = {
+    "i8" => Type::Integer(IntegerType::I8),
+    "i16" => Type::Integer(IntegerType::I16),
+    "i32" => Type::Integer(IntegerType::I32),
+    "i64" => Type::Integer(IntegerType::I64),
+    "u8" => Type::Integer(IntegerType::U8),
+    "u16" => Type::Integer(IntegerType::U16),
+    "u32" => Type::Integer(IntegerType::U32),
+    "u64" => Type::Integer(IntegerType::U64),
+    "f32" => Type::Float(FloatType::F32),
+    "f64" => Type::Float(FloatType::F64),
+    "bool" => Type::Boolean,
+    "void" => Type::Void,
+    <name:Identifier> => Type::Identifier(name),
 }
 
 // Syntax base

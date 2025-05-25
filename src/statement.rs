@@ -13,12 +13,12 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn from_ast(statement_ast: &ast::Statement, scope: &dyn LocalScope) -> Self {
+    pub fn from_ast(statement_ast: ast::Statement, scope: &dyn LocalScope) -> Self {
         match statement_ast {
-            ast::Statement::Let(var_ast) => Self::from_ast_let(var_ast, scope),
+            ast::Statement::Let(var_ast) => Self::from_ast_let(&var_ast, scope),
             ast::Statement::Return(exp) => match exp {
                 None => todo!(),
-                Some(exp) => Self::from_ast_return(exp, scope),
+                Some(exp) => Self::from_ast_return(&exp, scope),
             },
             ast::Statement::BasicBlock(_) => todo!(),
             ast::Statement::Var(_) => todo!(),
@@ -33,8 +33,7 @@ impl Statement {
 
     pub fn from_ast_let(var_ast: &ast::Variable, scope: &dyn LocalScope) -> Self {
         let value_type_ast = var_ast.value_type.as_ref();
-        let type_hint = TypeHint::from_type_spec(value_type_ast);
-
+        let type_hint = TypeHint::from_ast(value_type_ast);
         let exp_ast = var_ast.init_expression.as_ref().unwrap();
         let exp = Expression::from_ast(exp_ast, scope, &type_hint);
         Statement::ValueAssignment(ValueAssignment::new(var_ast.name.clone(), exp))
