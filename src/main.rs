@@ -9,7 +9,8 @@ mod scope;
 mod statement;
 mod types;
 
-use module::ModuleBuilder;
+use crate::grammar::ModuleParser;
+use crate::module::compile_module;
 
 // function test(x: i8, y: i32, z: i32) {
 //     return;
@@ -39,9 +40,9 @@ function test(x: i64, y: i64, z: i64): i64 {
 ";
 
 fn main() {
-    let parser = grammar::ModuleParser::new();
+    let parser = ModuleParser::new();
     let module_ast = parser.parse(SRC).unwrap();
-    let module_builder = ModuleBuilder::from_ast(module_ast);
+    let module_builder = compile_module(module_ast);
     let module = module_builder.build();
     _ = module;
 }

@@ -15,9 +15,9 @@ Definition: Definition = {
 // Functions
 
 FunctionDefinition: Definition = {
-    "function" <name:Identifier> <signature:FunctionSignature> <payload:FunctionPayload> => Definition {
+    "function" <name:Identifier> <signature:FunctionSignature> <body:FunctionBody> => Definition {
         name,
-        value: DefinitionValue::Function(Function { signature, payload }),
+        value: DefinitionValue::Function(Function { signature, body }),
     }
 };
 
@@ -31,9 +31,9 @@ FunctionArgument: FunctionArgument = {
     <name:Identifier> <arg_type:TypeAnnotation> => FunctionArgument {name, arg_type}
 }
 
-FunctionPayload: Option<BasicBlock> = {
-    ";" => None,
-    <body:BasicBlock> => Some(body),
+FunctionBody: FunctionBody = {
+    ";" => FunctionBody::Forward,
+    <body:BasicBlock> => FunctionBody::BasicBlock(body),
 }
 
 // Statements

@@ -5,6 +5,7 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
+intrusive-collections = "0.9.7"
 slotmap = "1.0.7"
 thiserror = "1.0.58"
 

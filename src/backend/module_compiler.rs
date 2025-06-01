@@ -58,16 +58,17 @@ impl<'ctx> ModuleCompiler<'ctx> {
 pub mod tests {
     use super::*;
     use crate::ast;
-    use crate::module::ModuleBuilder;
+    use crate::module::compile_module;
     use inkwell::execution_engine::UnsafeFunctionPointer;
 
     pub fn compile_module_test<F>(module_ast: ast::Module, context: &Context) -> JitFunction<F>
     where
         F: UnsafeFunctionPointer,
     {
-        let module_compiler = ModuleCompiler::new(&context);
-        let module_builder = ModuleBuilder::from_ast(module_ast);
+        let module_builder = compile_module(module_ast);
         let module = module_builder.build();
+
+        let module_compiler = ModuleCompiler::new(&context);
         module.traversal(&module_compiler);
 
         module_compiler.ir.print_to_stderr();

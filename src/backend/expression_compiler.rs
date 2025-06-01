@@ -79,7 +79,7 @@ mod tests {
                         ],
                         return_type: Some(ast::Type::Integer(ast::IntegerType::I64)),
                     },
-                    payload: Some(ast::BasicBlock {
+                    body: ast::FunctionBody::BasicBlock(ast::BasicBlock {
                         statements: vec![
                             ast::Statement::Let(ast::Variable {
                                 name: "a".to_string(),

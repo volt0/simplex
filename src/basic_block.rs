@@ -19,7 +19,7 @@ impl BasicBlockBuilder {
             inner: BasicBlock {
                 statements: vec![],
                 locals: HashMap::default(),
-                parent_function: Rc::downgrade(function),
+                function: Rc::downgrade(function),
             },
         };
 
@@ -59,7 +59,7 @@ pub trait BasicBlockVisitor {
 pub struct BasicBlock {
     statements: Vec<Statement>,
     locals: HashMap<String, LocalScopeItem>,
-    parent_function: Weak<Function>,
+    function: Weak<Function>,
 }
 
 impl BasicBlock {
@@ -90,7 +90,7 @@ impl LocalScope for BasicBlockScope<'_, '_> {
 
     fn current_function(&self) -> Rc<Function> {
         self.basic_block
-            .parent_function
+            .function
             .upgrade()
             .expect("function dropped")
     }

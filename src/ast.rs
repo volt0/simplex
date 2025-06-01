@@ -23,9 +23,14 @@ pub struct FunctionSignature {
     pub return_type: Option<Type>,
 }
 
+pub enum FunctionBody {
+    Forward,
+    BasicBlock(BasicBlock),
+}
+
 pub struct Function {
     pub signature: FunctionSignature,
-    pub payload: Option<BasicBlock>,
+    pub body: FunctionBody,
 }
 
 pub struct Variable {

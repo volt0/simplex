@@ -1,56 +1,46 @@
 use crate::ast;
 use crate::definition::Definition;
-use crate::function::{Function, FunctionBuilder};
+use crate::function::{compile_function, Function};
 use std::rc::Rc;
+
+pub fn compile_module(module_ast: ast::Module) -> ModuleBuilder {
+    let mut builder = ModuleBuilder {
+        inner: Module {
+            definitions: vec![],
+        },
+    };
+
+    for definition_ast in module_ast.definitions {
+        match definition_ast.value {
+            ast::DefinitionValue::Function(function_ast) => {
+                let function_builder = compile_function(function_ast);
+                let function = function_builder.build();
+                builder.add_function(function);
+            }
+        }
+    }
+
+    builder
+}
 
 pub struct ModuleBuilder {
     inner: Module,
-    pending_functions: Vec<(Rc<Function>, ast::BasicBlock)>,
 }
 
 impl ModuleBuilder {
-    pub fn from_ast(module_ast: ast::Module) -> Self {
-        let mut builder = ModuleBuilder {
-            inner: Module {
-                definitions: vec![],
-            },
-            pending_functions: vec![],
-        };
-
-        for definition_ast in module_ast.definitions {
-            match definition_ast.value {
-                ast::DefinitionValue::Function(function_ast) => {
-                    let function_builder = FunctionBuilder::from_ast(function_ast.signature);
-                    let function = function_builder.build();
-                    builder.add_function(&function);
-
-                    if let Some(body) = function_ast.payload {
-                        builder.pending_functions.push((function, body));
-                    }
-                }
-            }
-        }
-
-        builder
-    }
-
-    pub fn add_function(&mut self, function: &Rc<Function>) {
-        self.inner
-            .definitions
-            .push(Definition::Function(function.clone()));
+    pub fn add_function(&mut self, function: Rc<Function>) {
+        self.inner.definitions.push(Definition::Function(function));
     }
 
     pub fn build(self) -> Rc<Module> {
-        let ModuleBuilder {
-            inner: module,
-            pending_functions,
-        } = self;
+        let ModuleBuilder { inner: module } = self;
 
-        for (function_impl_builder, payload) in pending_functions {
-            function_impl_builder.init_implementation(payload);
-        }
-
-        Rc::new(module)
+        let module = Rc::new(module);
+        let module_visitor = ModulePass {
+            module: module.clone(),
+        };
+        module.traversal(&module_visitor);
+        module
     }
 }
 
@@ -67,5 +57,15 @@ impl Module {
         for definition in &self.definitions {
             definition.traversal(visitor);
         }
+    }
+}
+
+struct ModulePass {
+    module: Rc<Module>,
+}
+
+impl ModuleVisitor for ModulePass {
+    fn visit_function(&self, function: &Function) {
+        todo!();
     }
 }
