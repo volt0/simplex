@@ -12,14 +12,13 @@ pub struct BasicBlockBuilder {
 impl BasicBlockBuilder {
     pub fn from_ast(
         statements_ast: impl IntoIterator<Item = ast::Statement>,
-        function: &Rc<Function>,
         parent_scope: &dyn LocalScope,
     ) -> Self {
         let mut builder = BasicBlockBuilder {
             inner: BasicBlock {
                 statements: vec![],
                 locals: HashMap::default(),
-                function: Rc::downgrade(function),
+                function: Rc::downgrade(&parent_scope.current_function()),
             },
         };
 
@@ -63,12 +62,14 @@ pub struct BasicBlock {
 }
 
 impl BasicBlock {
-    pub fn traversal(&self, visitor: &dyn BasicBlockVisitor) {
+    pub fn visit(&self, visitor: &dyn BasicBlockVisitor) {
         for stmt in self.statements.iter() {
             visitor.visit_statement(stmt);
         }
     }
+}
 
+impl BasicBlock {
     fn resolve_local(&self, name: &String) -> Option<LocalScopeItem> {
         self.locals.get(name).cloned()
     }

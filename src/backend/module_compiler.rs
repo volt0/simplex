@@ -20,11 +20,10 @@ pub struct ModuleCompiler<'ctx> {
 impl<'ctx> ModuleVisitor for ModuleCompiler<'ctx> {
     fn visit_function(&self, function: &Function) {
         let type_compiler = TypeCompiler::new(self);
-        let function_type = type_compiler.compile_function_type(function);
-
-        let function_ir = self.ir.add_function("sum", function_type, None);
+        let function_type_ir = type_compiler.compile_function_type(function);
+        let function_ir = self.ir.add_function("sum", function_type_ir, None);
         let function_compiler = FunctionCompiler::new(self, function_ir);
-        function.traversal(&function_compiler);
+        function.visit(&function_compiler);
     }
 }
 
@@ -58,18 +57,18 @@ impl<'ctx> ModuleCompiler<'ctx> {
 pub mod tests {
     use super::*;
     use crate::ast;
-    use crate::module::compile_module;
+    use crate::module::Module;
     use inkwell::execution_engine::UnsafeFunctionPointer;
 
     pub fn compile_module_test<F>(module_ast: ast::Module, context: &Context) -> JitFunction<F>
     where
         F: UnsafeFunctionPointer,
     {
-        let module_builder = compile_module(module_ast);
-        let module = module_builder.build();
+        let module = Module::from_ast(module_ast);
+        module.traversal_pass();
 
         let module_compiler = ModuleCompiler::new(&context);
-        module.traversal(&module_compiler);
+        module.visit(&module_compiler);
 
         module_compiler.ir.print_to_stderr();
 

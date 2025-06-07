@@ -7,7 +7,13 @@ pub enum Definition {
 }
 
 impl Definition {
-    pub fn traversal(&self, visitor: &dyn ModuleVisitor) {
+    pub fn traversal_pass(&self) {
+        match self {
+            Definition::Function(function) => function.traversal_pass(),
+        }
+    }
+
+    pub fn visit(&self, visitor: &dyn ModuleVisitor) {
         match self {
             Definition::Function(function) => visitor.visit_function(&function),
         }

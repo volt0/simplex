@@ -1,7 +1,7 @@
 use super::basic_block_compiler::BasicBlockCompiler;
 use super::module_compiler::ModuleCompiler;
 use crate::basic_block::BasicBlock;
-use crate::function::{FunctionArgument, FunctionBody, FunctionVisitor};
+use crate::function::{FunctionArgument, FunctionVisitor};
 use inkwell::builder::Builder;
 use inkwell::values::{BasicValueEnum, FunctionValue};
 use std::ops::Deref;
@@ -21,19 +21,12 @@ impl<'ctx, 'm> Deref for FunctionCompiler<'ctx, 'm> {
 }
 
 impl<'ctx, 'm> FunctionVisitor for FunctionCompiler<'ctx, 'm> {
-    fn visit_body(&self, body: &FunctionBody) {
-        match body {
-            FunctionBody::BasicBlock(root_basic_block) => self.visit_basic_block(root_basic_block),
-            _ => todo!(),
-        }
-    }
-
     fn visit_basic_block(&self, basic_block: &BasicBlock) {
         let basic_block_ir = self.context().append_basic_block(self.ir, "");
         self.builder.position_at_end(basic_block_ir);
 
         let basic_block_compiler = BasicBlockCompiler::new(self);
-        basic_block.traversal(&basic_block_compiler);
+        basic_block.visit(&basic_block_compiler);
     }
 }
 
@@ -54,6 +47,6 @@ impl<'ctx, 'm> FunctionCompiler<'ctx, 'm> {
     }
 
     pub fn load_argument(&self, arg: &FunctionArgument) -> BasicValueEnum<'ctx> {
-        self.ir.get_nth_param(arg.pos_id).unwrap()
+        self.ir.get_nth_param(arg.id).unwrap()
     }
 }

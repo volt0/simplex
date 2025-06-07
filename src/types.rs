@@ -1,8 +1,11 @@
 use crate::ast;
+use crate::function::FunctionSignature;
+use std::rc::Rc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
     Primitive(PrimitiveType),
+    Function(Rc<FunctionSignature>),
 }
 
 impl Type {

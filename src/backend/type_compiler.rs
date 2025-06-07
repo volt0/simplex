@@ -23,10 +23,11 @@ impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
     }
 
     pub fn compile_function_type(&self, function: &Function) -> FunctionType<'ctx> {
-        let return_type = function.return_type();
+        let function_signature = function.signature().as_ref();
+        let return_type = &function_signature.return_type;
         let return_type_ir = self.compile_type(&return_type);
 
-        let arg_type_irs: Vec<BasicMetadataTypeEnum> = function
+        let arg_type_irs: Vec<BasicMetadataTypeEnum> = function_signature
             .iter_args()
             .map(|arg| {
                 let arg_type = arg.arg_type();
@@ -40,6 +41,7 @@ impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
     pub fn compile_type(&self, type_spec: &Type) -> BasicTypeEnum<'ctx> {
         match type_spec {
             Type::Primitive(primitive_type) => self.compile_primitive_type(primitive_type),
+            Type::Function(_) => todo!(),
         }
     }
 

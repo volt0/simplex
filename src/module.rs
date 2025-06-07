@@ -1,71 +1,57 @@
 use crate::ast;
 use crate::definition::Definition;
-use crate::function::{compile_function, Function};
+use crate::function::Function;
+use std::cell::RefCell;
 use std::rc::Rc;
-
-pub fn compile_module(module_ast: ast::Module) -> ModuleBuilder {
-    let mut builder = ModuleBuilder {
-        inner: Module {
-            definitions: vec![],
-        },
-    };
-
-    for definition_ast in module_ast.definitions {
-        match definition_ast.value {
-            ast::DefinitionValue::Function(function_ast) => {
-                let function_builder = compile_function(function_ast);
-                let function = function_builder.build();
-                builder.add_function(function);
-            }
-        }
-    }
-
-    builder
-}
-
-pub struct ModuleBuilder {
-    inner: Module,
-}
-
-impl ModuleBuilder {
-    pub fn add_function(&mut self, function: Rc<Function>) {
-        self.inner.definitions.push(Definition::Function(function));
-    }
-
-    pub fn build(self) -> Rc<Module> {
-        let ModuleBuilder { inner: module } = self;
-
-        let module = Rc::new(module);
-        let module_visitor = ModulePass {
-            module: module.clone(),
-        };
-        module.traversal(&module_visitor);
-        module
-    }
-}
 
 pub trait ModuleVisitor {
     fn visit_function(&self, function: &Function);
 }
 
-pub struct Module {
+struct ModuleInner {
     definitions: Vec<Definition>,
 }
 
+pub struct Module {
+    inner: RefCell<ModuleInner>,
+}
+
 impl Module {
-    pub fn traversal(&self, visitor: &dyn ModuleVisitor) {
-        for definition in &self.definitions {
-            definition.traversal(visitor);
+    pub fn from_ast(module_ast: ast::Module) -> Rc<Self> {
+        let module = Rc::new(Module {
+            inner: RefCell::new(ModuleInner {
+                definitions: vec![],
+            }),
+        });
+
+        for definition_ast in module_ast.definitions {
+            match definition_ast.value {
+                ast::DefinitionValue::Function(function_ast) => {
+                    module.create_function(function_ast);
+                }
+            }
+        }
+
+        module
+    }
+
+    pub fn create_function(&self, function_ast: ast::Function) {
+        let function = Function::from_ast(function_ast);
+        let mut inner = self.inner.borrow_mut();
+        inner.definitions.push(Definition::Function(function));
+    }
+
+    pub fn traversal_pass(&self) {
+        let inner = self.inner.borrow();
+        for definition in &inner.definitions {
+            definition.traversal_pass();
         }
     }
-}
 
-struct ModulePass {
-    module: Rc<Module>,
-}
-
-impl ModuleVisitor for ModulePass {
-    fn visit_function(&self, function: &Function) {
-        todo!();
+    pub fn visit(&self, visitor: &dyn ModuleVisitor) {
+        let inner = self.inner.borrow();
+        for definition in &inner.definitions {
+            definition.visit(visitor);
+        }
     }
 }

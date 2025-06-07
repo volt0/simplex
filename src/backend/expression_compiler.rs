@@ -39,6 +39,7 @@ impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
                 PrimitiveType::Integer(int_type) => IntegerExpressionCodegen::new(self, int_type),
                 PrimitiveType::Float(_) => todo!(),
             },
+            Type::Function(_) => todo!(),
         };
         codegen.compile_expression(exp)
     }
