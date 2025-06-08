@@ -20,7 +20,8 @@ pub struct ModuleCompiler<'ctx> {
 impl<'ctx> ModuleVisitor for ModuleCompiler<'ctx> {
     fn visit_function(&self, function: &Function) {
         let type_compiler = TypeCompiler::new(self);
-        let function_type_ir = type_compiler.compile_function_type(function);
+        let function_type = function.function_type();
+        let function_type_ir = type_compiler.compile_function_type(&function_type);
         let function_ir = self.ir.add_function("sum", function_type_ir, None);
         let function_compiler = FunctionCompiler::new(self, function_ir);
         function.visit(&function_compiler);

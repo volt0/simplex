@@ -40,6 +40,7 @@ impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
                 PrimitiveType::Float(_) => todo!(),
             },
             Type::Function(_) => todo!(),
+            Type::Void => todo!(),
         };
         codegen.compile_expression(exp)
     }

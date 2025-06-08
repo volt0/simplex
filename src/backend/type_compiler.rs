@@ -1,7 +1,7 @@
 use super::module_compiler::ModuleCompiler;
-use crate::function::Function;
-use crate::types::{FloatType, IntegerTypeSize, PrimitiveType, Type};
-use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
+use crate::types::{FloatType, FunctionType, IntegerTypeSize, PrimitiveType, Type};
+use inkwell::types::FunctionType as FunctionTypeIr;
+use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 use std::ops::Deref;
 
 #[repr(transparent)]
@@ -22,26 +22,11 @@ impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
         TypeCompiler { parent }
     }
 
-    pub fn compile_function_type(&self, function: &Function) -> FunctionType<'ctx> {
-        let function_signature = function.signature().as_ref();
-        let return_type = &function_signature.return_type;
-        let return_type_ir = self.compile_type(&return_type);
-
-        let arg_type_irs: Vec<BasicMetadataTypeEnum> = function_signature
-            .iter_args()
-            .map(|arg| {
-                let arg_type = arg.arg_type();
-                self.compile_type(&arg_type).into()
-            })
-            .collect();
-
-        return_type_ir.fn_type(&arg_type_irs, false)
-    }
-
     pub fn compile_type(&self, type_spec: &Type) -> BasicTypeEnum<'ctx> {
         match type_spec {
             Type::Primitive(primitive_type) => self.compile_primitive_type(primitive_type),
             Type::Function(_) => todo!(),
+            Type::Void => todo!(),
         }
     }
 
@@ -64,6 +49,26 @@ impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
                     FloatType::F32 => context.f32_type(),
                 };
                 type_ir.as_basic_type_enum()
+            }
+        }
+    }
+
+    pub fn compile_function_type(&self, function_type: &FunctionType) -> FunctionTypeIr<'ctx> {
+        let arg_type_irs: Vec<BasicMetadataTypeEnum> = function_type
+            .arg_types
+            .iter()
+            .map(|arg_type| self.compile_type(&arg_type).into())
+            .collect();
+
+        let return_type = &function_type.return_type;
+        match return_type {
+            Type::Void => {
+                let void_type_ir = self.context().void_type();
+                void_type_ir.fn_type(&arg_type_irs, false)
+            }
+            return_type => {
+                let return_type_ir = self.compile_type(&return_type);
+                return_type_ir.fn_type(&arg_type_irs, false)
             }
         }
     }

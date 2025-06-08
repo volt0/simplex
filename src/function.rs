@@ -1,7 +1,7 @@
 use crate::ast;
 use crate::basic_block::{BasicBlock, BasicBlockBuilder};
 use crate::scope::{LocalScope, LocalScopeItem};
-use crate::types::Type;
+use crate::types::{FunctionType, Type};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -16,7 +16,7 @@ struct FunctionInner {
 
 pub struct Function {
     inner: RefCell<FunctionInner>,
-    signature: Rc<FunctionSignature>,
+    signature: FunctionSignature,
 }
 
 impl Function {
@@ -36,7 +36,7 @@ impl Function {
         }
 
         Rc::new(Function {
-            signature: Rc::new(signature),
+            signature,
             inner: RefCell::new(FunctionInner {
                 body_ast: Some(body_ast),
                 root_block: None,
@@ -44,12 +44,12 @@ impl Function {
         })
     }
 
-    pub fn signature(&self) -> &Rc<FunctionSignature> {
-        &self.signature
-    }
-
     pub fn return_type(&self) -> Type {
         self.signature.return_type.clone()
+    }
+
+    pub fn function_type(&self) -> Box<FunctionType> {
+        FunctionType::new(&self.signature)
     }
 
     pub fn is_complete(&self) -> bool {
@@ -120,11 +120,6 @@ pub struct FunctionSignature {
 }
 
 impl FunctionSignature {
-    pub fn iter_args(&self) -> impl Iterator<Item = &Rc<FunctionArgument>> + use<'_> {
-        let args = &self.args;
-        args.iter()
-    }
-
     pub fn create_argument(&mut self, arg_ast: ast::FunctionArgument) {
         let id = self.args.len() as u32;
         let name = arg_ast.name.clone();

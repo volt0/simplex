@@ -1,11 +1,11 @@
 use crate::ast;
 use crate::function::FunctionSignature;
-use std::rc::Rc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
+    Void,
     Primitive(PrimitiveType),
-    Function(Rc<FunctionSignature>),
+    Function(Box<FunctionType>),
 }
 
 impl Type {
@@ -96,6 +96,27 @@ impl FloatType {
             ast::FloatType::F32 => FloatType::F32,
             ast::FloatType::F64 => FloatType::F32,
         }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FunctionType {
+    pub arg_types: Vec<Type>,
+    pub return_type: Type,
+}
+
+impl FunctionType {
+    pub fn new(function_signature: &FunctionSignature) -> Box<Self> {
+        let mut function_type = Box::new(FunctionType {
+            arg_types: Vec::with_capacity(function_signature.args.len()),
+            return_type: function_signature.return_type.clone(),
+        });
+
+        for arg in &function_signature.args {
+            function_type.arg_types.push(arg.arg_type.clone())
+        }
+
+        function_type
     }
 }
 
