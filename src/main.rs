@@ -1,5 +1,4 @@
 mod ast;
-mod backend;
 mod basic_block;
 mod definition;
 mod expression;

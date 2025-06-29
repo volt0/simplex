@@ -2,6 +2,7 @@ use crate::ast;
 use crate::expression::Expression;
 use crate::scope::LocalScope;
 use crate::types::{Type, TypeHint};
+
 use slotmap::DefaultKey;
 use std::cell::OnceCell;
 use std::rc::Rc;
@@ -40,10 +41,11 @@ impl Statement {
     }
 
     pub fn from_ast_return(exp_ast: &ast::Expression, scope: &dyn LocalScope) -> Self {
-        let function = scope.current_function();
-        let type_hint = TypeHint::Explicit(function.return_type());
-        let exp = Expression::from_ast(exp_ast, scope, &type_hint);
-        Statement::Return(exp)
+        todo!()
+        // let function = scope.current_function();
+        // let type_hint = TypeHint::Integer(function.return_type());
+        // let exp = Expression::from_ast(exp_ast, scope, &type_hint);
+        // Statement::Return(exp)
     }
 }
 
@@ -64,6 +66,7 @@ impl ValueAssignment {
     }
 
     pub fn value_type(&self) -> Type {
-        self.exp.exp_type.clone()
+        todo!()
+        // self.exp.exp_type.clone()
     }
 }
