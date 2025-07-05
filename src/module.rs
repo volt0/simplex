@@ -64,7 +64,7 @@ impl Module {
 }
 
 pub struct ModuleCompiler<'ctx> {
-    context: &'ctx Context,
+    pub backend_context: &'ctx Context,
     ir: ModuleIR<'ctx>,
     values: RefCell<SlotMap<DefaultKey, BasicValueEnum<'ctx>>>,
 }
@@ -86,15 +86,10 @@ impl<'ctx> ModuleCompiler<'ctx> {
         ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
 
         ModuleCompiler {
-            context,
+            backend_context: context,
             ir,
             values: Default::default(),
         }
-    }
-
-    #[inline(always)]
-    pub fn context(&self) -> &'ctx Context {
-        self.context
     }
 
     pub fn store_value(&self, value: BasicValueEnum<'ctx>) -> DefaultKey {

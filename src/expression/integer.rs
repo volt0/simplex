@@ -1,36 +1,24 @@
 use crate::ast;
-use crate::expression::{BinaryOperation, ExpressionCompiler};
-use crate::function::FunctionArgument;
-use crate::scope::{LocalScope, LocalScopeItem};
-use crate::statement::ValueAssignment;
-use crate::types::{IntegerType, IntegerTypeSize, PrimitiveType, Type, TypeHint};
+use crate::expression::{BinaryOperation, Expression, ExpressionContext};
+use crate::scope::LocalScope;
+use crate::types::{IntegerType, TypeHint};
 
 use inkwell::values::IntValue;
-use std::ops::Deref;
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum IntegerExpression {
-    LoadArgument(Rc<FunctionArgument>),
-    LoadValue(Rc<ValueAssignment>),
+    Edge(Box<Expression>),
     LoadIntegerConstant(i32),
     BinaryOperation(IntegerBinaryOperation),
 }
 
 impl IntegerExpression {
     pub fn from_ast(
-        expression_ast: &ast::Expression,
+        exp_ast: &ast::Expression,
         scope: &dyn LocalScope,
         type_hint: &TypeHint,
     ) -> Box<Self> {
-        Box::new(match expression_ast {
-            ast::Expression::Identifier(name) => {
-                let resolved = scope.resolve(name).expect("not found");
-                match resolved {
-                    LocalScopeItem::Argument(arg) => IntegerExpression::LoadArgument(arg),
-                    LocalScopeItem::Value(val) => IntegerExpression::LoadValue(val),
-                }
-            }
+        Box::new(match exp_ast {
             ast::Expression::BinaryOperation(exp_ast) => IntegerExpression::BinaryOperation(
                 IntegerBinaryOperation::from_ast(exp_ast, scope, type_hint),
             ),
@@ -48,21 +36,44 @@ impl IntegerExpression {
             ast::Expression::Call(_) => todo!(),
             ast::Expression::ItemAccess(_) => todo!(),
             ast::Expression::MemberAccess(_) => todo!(),
+            exp_ast => IntegerExpression::Edge(Expression::from_ast(exp_ast, scope, type_hint)),
         })
     }
 
-    pub fn infer_type(&self, type_hint: &TypeHint) -> Type {
+    // pub fn infer_type(&self, type_hint: &TypeHint) -> Type {
+    //     match self {
+    //         IntegerExpression::LoadArgument(arg) => arg.arg_type(),
+    //         IntegerExpression::LoadValue(val) => val.value_type(),
+    //         IntegerExpression::LoadIntegerConstant(_) => {
+    //             Type::Primitive(PrimitiveType::Integer(IntegerType {
+    //                 is_signed: true,
+    //                 width: IntegerTypeSize::I64,
+    //             }))
+    //         }
+    //         IntegerExpression::BinaryOperation(op_exp) => op_exp.infer_type(type_hint),
+    //     }
+    // }
+}
+
+impl<'ctx> IntegerExpression {
+    pub fn compile(
+        &self,
+        exp_type: &IntegerType,
+        ctx: &ExpressionContext<'ctx, '_, '_, '_>,
+    ) -> IntValue<'ctx> {
         match self {
-            IntegerExpression::LoadArgument(arg) => arg.arg_type(),
-            IntegerExpression::LoadValue(val) => val.value_type(),
-            IntegerExpression::LoadIntegerConstant(_) => {
-                Type::Primitive(PrimitiveType::Integer(IntegerType {
-                    is_signed: true,
-                    width: IntegerTypeSize::I64,
-                }))
-            }
-            IntegerExpression::BinaryOperation(op_exp) => op_exp.infer_type(type_hint),
+            IntegerExpression::LoadIntegerConstant(val) => self.load_integer_constant(*val, ctx),
+            IntegerExpression::BinaryOperation(op_exp) => op_exp.compile(exp_type, ctx),
+            IntegerExpression::Edge(exp) => exp.compile(ctx).into_int_value(),
         }
+    }
+
+    fn load_integer_constant(
+        &self,
+        value: i32,
+        ctx: &ExpressionContext<'ctx, '_, '_, '_>,
+    ) -> IntValue<'ctx> {
+        ctx.backend_context.i64_type().const_int(value as u64, true)
     }
 }
 
@@ -85,71 +96,43 @@ impl IntegerBinaryOperation {
         Self { op, lhs, rhs }
     }
 
-    fn infer_type(&self, type_hint: &TypeHint) -> Type {
-        todo!()
-        // match type_hint {
-        //     TypeHint::Integer(type_spec) => type_spec.clone(),
-        //     TypeHint::Inferred => {
-        //         let lhs_type = self.lhs.infer_type(type_hint);
-        //         let rhs_type = self.rhs.infer_type(type_hint);
-        //         assert_eq!(lhs_type, rhs_type);
-        //         lhs_type
-        //     }
-        // }
-    }
+    // fn infer_type(&self, type_hint: &TypeHint) -> Type {
+    //     todo!()
+    //     match type_hint {
+    //         TypeHint::Integer(type_spec) => type_spec.clone(),
+    //         TypeHint::Inferred => {
+    //             let lhs_type = self.lhs.infer_type(type_hint);
+    //             let rhs_type = self.rhs.infer_type(type_hint);
+    //             assert_eq!(lhs_type, rhs_type);
+    //             lhs_type
+    //         }
+    //     }
+    // }
 }
 
-pub struct IntegerExpressionCompiler<'ctx, 'm, 'f, 'b, 'e> {
-    exp_compiler: &'e ExpressionCompiler<'ctx, 'm, 'f, 'b>,
-    exp_type: IntegerType,
-}
+impl<'ctx> IntegerBinaryOperation {
+    fn compile(
+        &self,
+        exp_type: &IntegerType,
+        ctx: &ExpressionContext<'ctx, '_, '_, '_>,
+    ) -> IntValue<'ctx> {
+        let lhs_ir = self.lhs.compile(exp_type, ctx);
+        let rhs_ir = self.rhs.compile(exp_type, ctx);
+        let builder = &ctx.builder;
 
-impl<'ctx, 'm, 'f, 'b, 'e> Deref for IntegerExpressionCompiler<'ctx, 'm, 'f, 'b, 'e> {
-    type Target = ExpressionCompiler<'ctx, 'm, 'f, 'b>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.exp_compiler
-    }
-}
-
-impl<'ctx, 'm, 'f, 'b, 'e> IntegerExpressionCompiler<'ctx, 'm, 'f, 'b, 'e> {
-    pub fn new(
-        exp_compiler: &'e ExpressionCompiler<'ctx, 'm, 'f, 'b>,
-        exp_type: IntegerType,
-    ) -> Self {
-        IntegerExpressionCompiler {
-            exp_compiler,
-            exp_type,
-        }
-    }
-
-    pub fn compile_expression_node(&self, exp: &IntegerExpression) -> IntValue<'ctx> {
-        match exp {
-            IntegerExpression::LoadArgument(arg) => self.load_argument(arg),
-            IntegerExpression::LoadValue(val) => self.load_value_assignment(val),
-            IntegerExpression::LoadIntegerConstant(val) => self.load_integer_constant(*val),
-            IntegerExpression::BinaryOperation(op_exp) => self.compile_binary_operation(op_exp),
-        }
-    }
-
-    fn compile_binary_operation(&self, binary_op: &IntegerBinaryOperation) -> IntValue<'ctx> {
-        let lhs_ir = self.compile_expression_node(binary_op.lhs.as_ref());
-        let rhs_ir = self.compile_expression_node(binary_op.rhs.as_ref());
-        let builder = self.builder();
-
-        match binary_op.op.clone() {
+        match self.op.clone() {
             BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, "").unwrap(),
             BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, "").unwrap(),
             BinaryOperation::Mul => builder.build_int_mul(lhs_ir, rhs_ir, "").unwrap(),
             BinaryOperation::Div => {
-                if self.exp_type.is_signed {
+                if exp_type.is_signed {
                     builder.build_int_signed_div(lhs_ir, rhs_ir, "").unwrap()
                 } else {
                     builder.build_int_unsigned_div(lhs_ir, rhs_ir, "").unwrap()
                 }
             }
             BinaryOperation::Mod => {
-                if self.exp_type.is_signed {
+                if exp_type.is_signed {
                     builder.build_int_signed_rem(lhs_ir, rhs_ir, "").unwrap()
                 } else {
                     builder.build_int_unsigned_rem(lhs_ir, rhs_ir, "").unwrap()
@@ -169,20 +152,5 @@ impl<'ctx, 'm, 'f, 'b, 'e> IntegerExpressionCompiler<'ctx, 'm, 'f, 'b, 'e> {
             BinaryOperation::LogicalAnd => todo!(),
             BinaryOperation::LogicalOr => todo!(),
         }
-    }
-
-    fn load_integer_constant(&self, value: i32) -> IntValue<'ctx> {
-        let ctx = self.context();
-        ctx.i64_type().const_int(value as u64, true)
-    }
-
-    fn load_value_assignment(&self, val: &ValueAssignment) -> IntValue<'ctx> {
-        let value = self.exp_compiler.load_value_assignment(val);
-        value.into_int_value()
-    }
-
-    fn load_argument(&self, arg: &FunctionArgument) -> IntValue<'ctx> {
-        let value = self.exp_compiler.load_argument(arg);
-        value.into_int_value()
     }
 }

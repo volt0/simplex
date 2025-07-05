@@ -1,5 +1,5 @@
 use crate::ast;
-use crate::expression::{Expression, ExpressionCompiler};
+use crate::expression::{Expression, ExpressionContext};
 use crate::function::Function;
 use crate::function::FunctionCompiler;
 use crate::scope::{LocalScope, LocalScopeItem};
@@ -141,11 +141,11 @@ impl<'ctx, 'm, 'f> BasicBlockCompiler<'ctx, 'm, 'f> {
 
     fn compile_statement_return(&self, exp: &Expression) {
         let result = self.compile_expression(exp);
-        self.builder().build_return(Some(&result)).unwrap();
+        self.builder.build_return(Some(&result)).unwrap();
     }
 
     fn compile_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
-        let exp_compiler = ExpressionCompiler::new(self);
-        exp_compiler.compile_expression(exp)
+        let exp_compiler = ExpressionContext::new(self);
+        exp.compile(&exp_compiler)
     }
 }

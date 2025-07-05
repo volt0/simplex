@@ -1,7 +1,7 @@
 use crate::ast;
 use crate::expression::Expression;
 use crate::scope::LocalScope;
-use crate::types::{Type, TypeHint};
+use crate::types::{PrimitiveType, Type, TypeHint};
 
 use slotmap::DefaultKey;
 use std::cell::OnceCell;
@@ -41,11 +41,19 @@ impl Statement {
     }
 
     pub fn from_ast_return(exp_ast: &ast::Expression, scope: &dyn LocalScope) -> Self {
-        todo!()
-        // let function = scope.current_function();
-        // let type_hint = TypeHint::Integer(function.return_type());
-        // let exp = Expression::from_ast(exp_ast, scope, &type_hint);
-        // Statement::Return(exp)
+        let function = scope.current_function();
+        let type_hint = match function.return_type() {
+            Type::Void => todo!(),
+            Type::Primitive(prim_type) => match prim_type {
+                PrimitiveType::Void => todo!(),
+                PrimitiveType::Bool => todo!(),
+                PrimitiveType::Integer(int_type) => TypeHint::Integer(int_type),
+                PrimitiveType::Float(_) => todo!(),
+            },
+            Type::Function(_) => todo!(),
+        };
+        let exp = Expression::from_ast(exp_ast, scope, &type_hint);
+        Statement::Return(exp)
     }
 }
 

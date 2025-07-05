@@ -152,7 +152,7 @@ impl LocalScope for FunctionScope {
 pub struct FunctionCompiler<'ctx, 'm> {
     module_compiler: &'m ModuleCompiler<'ctx>,
     ir: FunctionValue<'ctx>,
-    builder: Builder<'ctx>,
+    pub builder: Builder<'ctx>,
 }
 
 impl<'ctx, 'm> Deref for FunctionCompiler<'ctx, 'm> {
@@ -165,7 +165,7 @@ impl<'ctx, 'm> Deref for FunctionCompiler<'ctx, 'm> {
 
 impl<'ctx, 'm> FunctionVisitor for FunctionCompiler<'ctx, 'm> {
     fn visit_basic_block(&self, basic_block: &BasicBlock) {
-        let basic_block_ir = self.context().append_basic_block(self.ir, "");
+        let basic_block_ir = self.backend_context.append_basic_block(self.ir, "");
         self.builder.position_at_end(basic_block_ir);
 
         let basic_block_compiler = BasicBlockCompiler::new(self);
@@ -175,18 +175,13 @@ impl<'ctx, 'm> FunctionVisitor for FunctionCompiler<'ctx, 'm> {
 
 impl<'ctx, 'm> FunctionCompiler<'ctx, 'm> {
     pub fn new(module_compiler: &'m ModuleCompiler<'ctx>, ir: FunctionValue<'ctx>) -> Self {
-        let context = module_compiler.context();
+        let context = module_compiler.backend_context;
         let builder = context.create_builder();
         FunctionCompiler {
             module_compiler,
             ir,
             builder,
         }
-    }
-
-    #[inline(always)]
-    pub fn builder(&self) -> &Builder<'ctx> {
-        &self.builder
     }
 
     pub fn load_argument(&self, arg: &FunctionArgument) -> BasicValueEnum<'ctx> {

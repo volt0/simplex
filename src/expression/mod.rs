@@ -2,17 +2,21 @@ mod integer;
 
 use crate::ast;
 use crate::basic_block::BasicBlockCompiler;
-use crate::scope::LocalScope;
+use crate::function::FunctionArgument;
+use crate::scope::{LocalScope, LocalScopeItem};
 use crate::statement::ValueAssignment;
 use crate::types::{IntegerType, TypeHint};
 
-use inkwell::values::{BasicValue, BasicValueEnum};
-use integer::{IntegerExpression, IntegerExpressionCompiler};
+use inkwell::values::BasicValueEnum;
+use integer::IntegerExpression;
 use std::ops::Deref;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum Expression {
     Integer(Box<IntegerExpression>),
+    LoadArgument(Rc<FunctionArgument>),
+    LoadValue(Rc<ValueAssignment>),
 }
 
 impl Expression {
@@ -21,12 +25,52 @@ impl Expression {
         scope: &dyn LocalScope,
         type_hint: &TypeHint,
     ) -> Box<Self> {
-        Box::new(match type_hint {
-            TypeHint::Integer(_) => {
-                Expression::Integer(IntegerExpression::from_ast(exp_ast, scope, type_hint))
+        Box::new(match exp_ast {
+            ast::Expression::Identifier(name) => {
+                let resolved = scope.resolve(name).expect("not found");
+                match resolved {
+                    LocalScopeItem::Argument(arg) => Expression::LoadArgument(arg),
+                    LocalScopeItem::Value(val) => Expression::LoadValue(val),
+                }
             }
-            TypeHint::Inferred => todo!(),
+            exp_ast => match type_hint {
+                TypeHint::Integer(_) => {
+                    Expression::Integer(IntegerExpression::from_ast(exp_ast, scope, type_hint))
+                }
+                TypeHint::Inferred => todo!(),
+            },
         })
+
+        // Box::new()
+    }
+}
+impl<'ctx> Expression {
+    pub fn compile(&self, ctx: &ExpressionContext<'ctx, '_, '_, '_>) -> BasicValueEnum<'ctx> {
+        match self {
+            Expression::Integer(int_exp) => {
+                let int_type = IntegerType::from_ast(&ast::IntegerType::I64);
+                let result = int_exp.compile(&int_type, &ctx);
+                result.into()
+            }
+            Expression::LoadArgument(arg) => self.load_argument(arg, ctx),
+            Expression::LoadValue(val) => self.load_value_assignment(val, ctx),
+        }
+    }
+
+    fn load_value_assignment(
+        &self,
+        val: &ValueAssignment,
+        ctx: &ExpressionContext<'ctx, '_, '_, '_>,
+    ) -> BasicValueEnum<'ctx> {
+        ctx.load_value_assignment(val)
+    }
+
+    fn load_argument(
+        &self,
+        arg: &FunctionArgument,
+        ctx: &ExpressionContext<'ctx, '_, '_, '_>,
+    ) -> BasicValueEnum<'ctx> {
+        ctx.load_argument(arg)
     }
 }
 
@@ -52,16 +96,12 @@ pub enum BinaryOperation {
     LogicalOr,
 }
 
-pub trait ExpressionCodegen<'ctx> {
-    fn compile_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx>;
-}
-
 #[repr(transparent)]
-pub struct ExpressionCompiler<'ctx, 'm, 'f, 'b> {
+pub struct ExpressionContext<'ctx, 'm, 'f, 'b> {
     basic_block_compiler: &'b BasicBlockCompiler<'ctx, 'm, 'f>,
 }
 
-impl<'ctx, 'm, 'f, 'b> Deref for ExpressionCompiler<'ctx, 'm, 'f, 'b> {
+impl<'ctx, 'm, 'f, 'b> Deref for ExpressionContext<'ctx, 'm, 'f, 'b> {
     type Target = BasicBlockCompiler<'ctx, 'm, 'f>;
 
     fn deref(&self) -> &Self::Target {
@@ -69,22 +109,10 @@ impl<'ctx, 'm, 'f, 'b> Deref for ExpressionCompiler<'ctx, 'm, 'f, 'b> {
     }
 }
 
-impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
+impl<'ctx, 'm, 'f, 'b> ExpressionContext<'ctx, 'm, 'f, 'b> {
     pub fn new(basic_block_compiler: &'b BasicBlockCompiler<'ctx, 'm, 'f>) -> Self {
-        ExpressionCompiler::<'ctx, 'm, 'f, 'b> {
+        ExpressionContext::<'ctx, 'm, 'f, 'b> {
             basic_block_compiler,
-        }
-    }
-
-    pub fn compile_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
-        match exp {
-            Expression::Integer(int_exp) => {
-                let int_type = IntegerType::from_ast(&ast::IntegerType::I64);
-                let compiler = IntegerExpressionCompiler::new(self, int_type);
-                compiler
-                    .compile_expression_node(int_exp)
-                    .as_basic_value_enum()
-            }
         }
     }
 
