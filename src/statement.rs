@@ -1,10 +1,14 @@
 use crate::ast;
-use crate::expression::Expression;
+use crate::basic_block::BasicBlockVisitor;
+use crate::expression::{Expression, ExpressionCompiler};
+use crate::function::FunctionCompiler;
 use crate::scope::LocalScope;
 use crate::types::{PrimitiveType, Type, TypeHint};
 
+use inkwell::values::BasicValueEnum;
 use slotmap::DefaultKey;
 use std::cell::OnceCell;
+use std::ops::Deref;
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -72,9 +76,56 @@ impl ValueAssignment {
             ir_id: Default::default(),
         })
     }
+}
 
-    pub fn value_type(&self) -> Type {
-        todo!()
-        // self.exp.exp_type.clone()
+#[repr(transparent)]
+pub struct StatementCompiler<'ctx, 'm, 'f> {
+    parent: &'f FunctionCompiler<'ctx, 'm>,
+}
+
+impl<'ctx, 'm, 'f> Deref for StatementCompiler<'ctx, 'm, 'f> {
+    type Target = FunctionCompiler<'ctx, 'm>;
+
+    fn deref(&self) -> &Self::Target {
+        self.parent
+    }
+}
+
+impl<'ctx, 'm, 'f> BasicBlockVisitor for StatementCompiler<'ctx, 'm, 'f> {
+    fn visit_statement(&self, stmt: &Statement) {
+        self.compile_statement(stmt);
+    }
+}
+
+impl<'ctx, 'm, 'f> StatementCompiler<'ctx, 'm, 'f> {
+    pub fn new(parent: &'f FunctionCompiler<'ctx, 'm>) -> Self {
+        Self { parent }
+    }
+
+    pub fn compile_statement(&self, stmt: &Statement) {
+        match stmt {
+            Statement::ValueAssignment(var) => {
+                self.add_statement_let(var);
+            }
+            Statement::Return(exp) => {
+                self.add_statement_return(exp);
+            }
+        }
+    }
+
+    pub fn compile_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
+        let exp_compiler = ExpressionCompiler::new(self);
+        exp_compiler.compile_expression(exp)
+    }
+
+    fn add_statement_let(&self, val: &ValueAssignment) {
+        let value = self.compile_expression(val.exp.as_ref());
+        let value_id = self.store_value(value);
+        val.ir_id.set(value_id).unwrap();
+    }
+
+    fn add_statement_return(&self, exp: &Expression) {
+        let result = self.compile_expression(exp);
+        self.builder.build_return(Some(&result)).unwrap();
     }
 }

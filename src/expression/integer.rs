@@ -1,7 +1,9 @@
 use crate::ast;
-use crate::expression::{BinaryOperation, Expression, ExpressionContext};
+use crate::expression::{BinaryOperation, Expression, ExpressionCompiler};
 use crate::scope::LocalScope;
 use crate::types::{IntegerType, TypeHint};
+
+use std::ops::Deref;
 
 use inkwell::values::IntValue;
 
@@ -16,7 +18,7 @@ impl IntegerExpression {
     pub fn from_ast(
         exp_ast: &ast::Expression,
         scope: &dyn LocalScope,
-        type_hint: &TypeHint,
+        type_hint: Option<&IntegerType>,
     ) -> Box<Self> {
         Box::new(match exp_ast {
             ast::Expression::BinaryOperation(exp_ast) => IntegerExpression::BinaryOperation(
@@ -36,7 +38,14 @@ impl IntegerExpression {
             ast::Expression::Call(_) => todo!(),
             ast::Expression::ItemAccess(_) => todo!(),
             ast::Expression::MemberAccess(_) => todo!(),
-            exp_ast => IntegerExpression::Edge(Expression::from_ast(exp_ast, scope, type_hint)),
+            exp_ast => {
+                let type_hint = match type_hint {
+                    None => TypeHint::Inferred,
+                    Some(int_type) => TypeHint::Integer(int_type.clone()),
+                };
+
+                IntegerExpression::Edge(Expression::from_ast(exp_ast, scope, &type_hint))
+            }
         })
     }
 
@@ -55,28 +64,6 @@ impl IntegerExpression {
     // }
 }
 
-impl<'ctx> IntegerExpression {
-    pub fn compile(
-        &self,
-        exp_type: &IntegerType,
-        ctx: &ExpressionContext<'ctx, '_, '_, '_>,
-    ) -> IntValue<'ctx> {
-        match self {
-            IntegerExpression::LoadIntegerConstant(val) => self.load_integer_constant(*val, ctx),
-            IntegerExpression::BinaryOperation(op_exp) => op_exp.compile(exp_type, ctx),
-            IntegerExpression::Edge(exp) => exp.compile(ctx).into_int_value(),
-        }
-    }
-
-    fn load_integer_constant(
-        &self,
-        value: i32,
-        ctx: &ExpressionContext<'ctx, '_, '_, '_>,
-    ) -> IntValue<'ctx> {
-        ctx.backend_context.i64_type().const_int(value as u64, true)
-    }
-}
-
 #[derive(Debug)]
 pub struct IntegerBinaryOperation {
     pub op: BinaryOperation,
@@ -88,7 +75,7 @@ impl IntegerBinaryOperation {
     fn from_ast(
         exp_ast: &ast::BinaryOperationExpr,
         scope: &dyn LocalScope,
-        type_hint: &TypeHint,
+        type_hint: Option<&IntegerType>,
     ) -> Self {
         let lhs = IntegerExpression::from_ast(&exp_ast.lhs, scope, type_hint);
         let rhs = IntegerExpression::from_ast(&exp_ast.rhs, scope, type_hint);
@@ -97,7 +84,6 @@ impl IntegerBinaryOperation {
     }
 
     // fn infer_type(&self, type_hint: &TypeHint) -> Type {
-    //     todo!()
     //     match type_hint {
     //         TypeHint::Integer(type_spec) => type_spec.clone(),
     //         TypeHint::Inferred => {
@@ -110,29 +96,58 @@ impl IntegerBinaryOperation {
     // }
 }
 
-impl<'ctx> IntegerBinaryOperation {
-    fn compile(
-        &self,
-        exp_type: &IntegerType,
-        ctx: &ExpressionContext<'ctx, '_, '_, '_>,
-    ) -> IntValue<'ctx> {
-        let lhs_ir = self.lhs.compile(exp_type, ctx);
-        let rhs_ir = self.rhs.compile(exp_type, ctx);
-        let builder = &ctx.builder;
+pub struct IntegerExpressionCompiler<'ctx, 'm, 'f, 'b, 'e> {
+    exp_compiler: &'e ExpressionCompiler<'ctx, 'm, 'f, 'b>,
+    exp_type: IntegerType,
+}
 
-        match self.op.clone() {
+impl<'ctx, 'm, 'f, 'b, 'e> Deref for IntegerExpressionCompiler<'ctx, 'm, 'f, 'b, 'e> {
+    type Target = ExpressionCompiler<'ctx, 'm, 'f, 'b>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.exp_compiler
+    }
+}
+
+impl<'ctx, 'm, 'f, 'b, 'e> IntegerExpressionCompiler<'ctx, 'm, 'f, 'b, 'e> {
+    pub fn new(
+        exp_compiler: &'e ExpressionCompiler<'ctx, 'm, 'f, 'b>,
+        exp_type: IntegerType,
+    ) -> Self {
+        IntegerExpressionCompiler {
+            exp_compiler,
+            exp_type,
+        }
+    }
+
+    pub fn compile_integer_expression(&self, exp: &IntegerExpression) -> IntValue<'ctx> {
+        match exp {
+            IntegerExpression::LoadIntegerConstant(val) => self.load_integer_constant(*val),
+            IntegerExpression::BinaryOperation(op_exp) => {
+                self.compile_integer_binary_operation(op_exp)
+            }
+            IntegerExpression::Edge(exp) => self.compile_expression(exp).into_int_value(),
+        }
+    }
+
+    fn compile_integer_binary_operation(&self, op_exp: &IntegerBinaryOperation) -> IntValue<'ctx> {
+        let lhs_ir = self.compile_integer_expression(&op_exp.lhs);
+        let rhs_ir = self.compile_integer_expression(&op_exp.rhs);
+        let builder = &self.builder;
+
+        match op_exp.op.clone() {
             BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, "").unwrap(),
             BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, "").unwrap(),
             BinaryOperation::Mul => builder.build_int_mul(lhs_ir, rhs_ir, "").unwrap(),
             BinaryOperation::Div => {
-                if exp_type.is_signed {
+                if self.exp_type.is_signed {
                     builder.build_int_signed_div(lhs_ir, rhs_ir, "").unwrap()
                 } else {
                     builder.build_int_unsigned_div(lhs_ir, rhs_ir, "").unwrap()
                 }
             }
             BinaryOperation::Mod => {
-                if exp_type.is_signed {
+                if self.exp_type.is_signed {
                     builder.build_int_signed_rem(lhs_ir, rhs_ir, "").unwrap()
                 } else {
                     builder.build_int_unsigned_rem(lhs_ir, rhs_ir, "").unwrap()
@@ -152,5 +167,9 @@ impl<'ctx> IntegerBinaryOperation {
             BinaryOperation::LogicalAnd => todo!(),
             BinaryOperation::LogicalOr => todo!(),
         }
+    }
+
+    fn load_integer_constant(&self, value: i32) -> IntValue<'ctx> {
+        self.context.i64_type().const_int(value as u64, true)
     }
 }

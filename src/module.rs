@@ -64,8 +64,8 @@ impl Module {
 }
 
 pub struct ModuleCompiler<'ctx> {
-    pub backend_context: &'ctx Context,
-    ir: ModuleIR<'ctx>,
+    pub context: &'ctx Context,
+    pub module_ir: ModuleIR<'ctx>,
     values: RefCell<SlotMap<DefaultKey, BasicValueEnum<'ctx>>>,
 }
 
@@ -74,7 +74,7 @@ impl<'ctx> ModuleVisitor for ModuleCompiler<'ctx> {
         let type_compiler = TypeCompiler::new(self);
         let function_type = function.function_type();
         let function_type_ir = type_compiler.compile_function_type(&function_type);
-        let function_ir = self.ir.add_function("sum", function_type_ir, None);
+        let function_ir = self.module_ir.add_function("sum", function_type_ir, None);
         let function_compiler = FunctionCompiler::new(self, function_ir);
         function.visit(&function_compiler);
     }
@@ -86,8 +86,8 @@ impl<'ctx> ModuleCompiler<'ctx> {
         ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
 
         ModuleCompiler {
-            backend_context: context,
-            ir,
+            context: context,
+            module_ir: ir,
             values: Default::default(),
         }
     }
@@ -119,10 +119,10 @@ pub mod tests {
         let module_compiler = ModuleCompiler::new(&context);
         module.visit(&module_compiler);
 
-        module_compiler.ir.print_to_stderr();
+        module_compiler.module_ir.print_to_stderr();
 
         let execution_engine = module_compiler
-            .ir
+            .module_ir
             .create_jit_execution_engine(OptimizationLevel::None)
             .unwrap();
 

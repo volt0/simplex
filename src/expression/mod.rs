@@ -1,10 +1,10 @@
 mod integer;
 
 use crate::ast;
-use crate::basic_block::BasicBlockCompiler;
+use crate::expression::integer::IntegerExpressionCompiler;
 use crate::function::FunctionArgument;
 use crate::scope::{LocalScope, LocalScopeItem};
-use crate::statement::ValueAssignment;
+use crate::statement::{StatementCompiler, ValueAssignment};
 use crate::types::{IntegerType, TypeHint};
 
 use inkwell::values::BasicValueEnum;
@@ -34,43 +34,12 @@ impl Expression {
                 }
             }
             exp_ast => match type_hint {
-                TypeHint::Integer(_) => {
-                    Expression::Integer(IntegerExpression::from_ast(exp_ast, scope, type_hint))
+                TypeHint::Integer(int_type) => {
+                    Expression::Integer(IntegerExpression::from_ast(exp_ast, scope, Some(int_type)))
                 }
                 TypeHint::Inferred => todo!(),
             },
         })
-
-        // Box::new()
-    }
-}
-impl<'ctx> Expression {
-    pub fn compile(&self, ctx: &ExpressionContext<'ctx, '_, '_, '_>) -> BasicValueEnum<'ctx> {
-        match self {
-            Expression::Integer(int_exp) => {
-                let int_type = IntegerType::from_ast(&ast::IntegerType::I64);
-                let result = int_exp.compile(&int_type, &ctx);
-                result.into()
-            }
-            Expression::LoadArgument(arg) => self.load_argument(arg, ctx),
-            Expression::LoadValue(val) => self.load_value_assignment(val, ctx),
-        }
-    }
-
-    fn load_value_assignment(
-        &self,
-        val: &ValueAssignment,
-        ctx: &ExpressionContext<'ctx, '_, '_, '_>,
-    ) -> BasicValueEnum<'ctx> {
-        ctx.load_value_assignment(val)
-    }
-
-    fn load_argument(
-        &self,
-        arg: &FunctionArgument,
-        ctx: &ExpressionContext<'ctx, '_, '_, '_>,
-    ) -> BasicValueEnum<'ctx> {
-        ctx.load_argument(arg)
     }
 }
 
@@ -96,23 +65,34 @@ pub enum BinaryOperation {
     LogicalOr,
 }
 
-#[repr(transparent)]
-pub struct ExpressionContext<'ctx, 'm, 'f, 'b> {
-    basic_block_compiler: &'b BasicBlockCompiler<'ctx, 'm, 'f>,
+// #[repr(transparent)]
+pub struct ExpressionCompiler<'ctx, 'm, 'f, 'b> {
+    statement_compiler: &'b StatementCompiler<'ctx, 'm, 'f>,
 }
 
-impl<'ctx, 'm, 'f, 'b> Deref for ExpressionContext<'ctx, 'm, 'f, 'b> {
-    type Target = BasicBlockCompiler<'ctx, 'm, 'f>;
+impl<'ctx, 'm, 'f, 'b> Deref for ExpressionCompiler<'ctx, 'm, 'f, 'b> {
+    type Target = StatementCompiler<'ctx, 'm, 'f>;
 
     fn deref(&self) -> &Self::Target {
-        self.basic_block_compiler
+        self.statement_compiler
     }
 }
 
-impl<'ctx, 'm, 'f, 'b> ExpressionContext<'ctx, 'm, 'f, 'b> {
-    pub fn new(basic_block_compiler: &'b BasicBlockCompiler<'ctx, 'm, 'f>) -> Self {
-        ExpressionContext::<'ctx, 'm, 'f, 'b> {
-            basic_block_compiler,
+impl<'ctx, 'm, 'f, 'b> ExpressionCompiler<'ctx, 'm, 'f, 'b> {
+    pub fn new(statement_compiler: &'b StatementCompiler<'ctx, 'm, 'f>) -> Self {
+        ExpressionCompiler::<'ctx, 'm, 'f, 'b> { statement_compiler }
+    }
+
+    pub fn compile_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
+        match exp {
+            Expression::Integer(int_exp) => {
+                let int_type = IntegerType::from_ast(&ast::IntegerType::I64);
+                let compiler = IntegerExpressionCompiler::new(self, int_type);
+                let result = compiler.compile_integer_expression(int_exp);
+                result.into()
+            }
+            Expression::LoadArgument(arg) => self.load_argument(arg),
+            Expression::LoadValue(val) => self.load_value_assignment(val),
         }
     }
 

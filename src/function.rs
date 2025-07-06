@@ -1,9 +1,10 @@
 use crate::ast;
-use crate::basic_block::{BasicBlock, BasicBlockBuilder, BasicBlockCompiler};
+use crate::basic_block::{BasicBlock, BasicBlockBuilder};
 use crate::module::ModuleCompiler;
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::types::{FunctionType, Type};
 
+use crate::statement::StatementCompiler;
 use inkwell::builder::Builder;
 use inkwell::values::{BasicValueEnum, FunctionValue};
 use std::cell::RefCell;
@@ -112,12 +113,6 @@ pub struct FunctionArgument {
     pub arg_type: Type,
 }
 
-impl FunctionArgument {
-    pub fn arg_type(&self) -> Type {
-        self.arg_type.clone()
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionSignature {
     pub args: Vec<Rc<FunctionArgument>>,
@@ -150,9 +145,9 @@ impl LocalScope for FunctionScope {
 }
 
 pub struct FunctionCompiler<'ctx, 'm> {
-    module_compiler: &'m ModuleCompiler<'ctx>,
-    ir: FunctionValue<'ctx>,
+    pub function_ir: FunctionValue<'ctx>,
     pub builder: Builder<'ctx>,
+    module_compiler: &'m ModuleCompiler<'ctx>,
 }
 
 impl<'ctx, 'm> Deref for FunctionCompiler<'ctx, 'm> {
@@ -165,26 +160,26 @@ impl<'ctx, 'm> Deref for FunctionCompiler<'ctx, 'm> {
 
 impl<'ctx, 'm> FunctionVisitor for FunctionCompiler<'ctx, 'm> {
     fn visit_basic_block(&self, basic_block: &BasicBlock) {
-        let basic_block_ir = self.backend_context.append_basic_block(self.ir, "");
+        let basic_block_ir = self.context.append_basic_block(self.function_ir, "");
         self.builder.position_at_end(basic_block_ir);
 
-        let basic_block_compiler = BasicBlockCompiler::new(self);
-        basic_block.visit(&basic_block_compiler);
+        let compiler = StatementCompiler::new(self);
+        basic_block.visit(&compiler);
     }
 }
 
 impl<'ctx, 'm> FunctionCompiler<'ctx, 'm> {
     pub fn new(module_compiler: &'m ModuleCompiler<'ctx>, ir: FunctionValue<'ctx>) -> Self {
-        let context = module_compiler.backend_context;
+        let context = module_compiler.context;
         let builder = context.create_builder();
         FunctionCompiler {
             module_compiler,
-            ir,
+            function_ir: ir,
             builder,
         }
     }
 
     pub fn load_argument(&self, arg: &FunctionArgument) -> BasicValueEnum<'ctx> {
-        self.ir.get_nth_param(arg.id).unwrap()
+        self.function_ir.get_nth_param(arg.id).unwrap()
     }
 }

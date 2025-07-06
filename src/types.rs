@@ -176,7 +176,7 @@ impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
     }
 
     pub fn compile_primitive_type(&self, primitive_type: &PrimitiveType) -> BasicTypeEnum<'ctx> {
-        let context = self.backend_context;
+        let context = self.context;
         match primitive_type {
             PrimitiveType::Void => todo!(),
             PrimitiveType::Bool => context.bool_type().as_basic_type_enum(),
@@ -208,7 +208,7 @@ impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
         let return_type = &function_type.return_type;
         match return_type {
             Type::Void => {
-                let void_type_ir = self.backend_context.void_type();
+                let void_type_ir = self.context.void_type();
                 void_type_ir.fn_type(&arg_type_irs, false)
             }
             return_type => {
