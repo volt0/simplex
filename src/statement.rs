@@ -3,7 +3,6 @@ use crate::basic_block::BasicBlockVisitor;
 use crate::expression::{Expression, ExpressionCompiler};
 use crate::function::FunctionCompiler;
 use crate::scope::LocalScope;
-use crate::types::{PrimitiveType, Type, TypeHint};
 
 use inkwell::values::BasicValueEnum;
 use slotmap::DefaultKey;
@@ -38,26 +37,30 @@ impl Statement {
 
     pub fn from_ast_let(var_ast: &ast::Variable, scope: &dyn LocalScope) -> Self {
         let value_type_ast = var_ast.value_type.as_ref();
-        let type_hint = TypeHint::from_ast(value_type_ast);
-        let exp_ast = var_ast.init_expression.as_ref().unwrap();
-        let exp = Expression::from_ast(exp_ast, scope, &type_hint);
-        Statement::ValueAssignment(ValueAssignment::new(var_ast.name.clone(), exp))
+        todo!()
+        // let type_hint = value_type_ast.map(|type_ast| TypeSpec::from_ast(type_ast));
+        // let exp_ast = var_ast.init_expression.as_ref().unwrap();
+        // let exp = Expression::from_ast(exp_ast, scope, type_hint);
+        // Statement::ValueAssignment(ValueAssignment::new(var_ast.name.clone(), exp))
     }
 
     pub fn from_ast_return(exp_ast: &ast::Expression, scope: &dyn LocalScope) -> Self {
         let function = scope.current_function();
-        let type_hint = match function.return_type() {
-            Type::Void => todo!(),
-            Type::Primitive(prim_type) => match prim_type {
-                PrimitiveType::Void => todo!(),
-                PrimitiveType::Bool => todo!(),
-                PrimitiveType::Integer(int_type) => TypeHint::Integer(int_type),
-                PrimitiveType::Float(_) => todo!(),
-            },
-            Type::Function(_) => todo!(),
-        };
-        let exp = Expression::from_ast(exp_ast, scope, &type_hint);
-        Statement::Return(exp)
+        todo!()
+        // let type_hint = match function.return_type() {
+        //     TypeSpec::Void => todo!(),
+        //     TypeSpec::Primitive(prim_type) => match prim_type {
+        //         PrimitiveType::Void => todo!(),
+        //         PrimitiveType::Bool => todo!(),
+        //         PrimitiveType::Integer(int_type) => {
+        //             TypeSpec::Primitive(PrimitiveType::Integer(int_type))
+        //         }
+        //         PrimitiveType::Float(_) => todo!(),
+        //     },
+        //     TypeSpec::Function(_) => todo!(),
+        // };
+        // let exp = Expression::from_ast(exp_ast, scope, Some(type_hint));
+        // Statement::Return(exp)
     }
 }
 

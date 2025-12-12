@@ -7,24 +7,28 @@ use inkwell::types::{
 };
 use std::ops::Deref;
 
+pub trait Type {
+    fn binary_operation(&self);
+}
+
 #[derive(Clone, Debug, PartialEq)]
-pub enum Type {
+pub enum TypeSpec {
     Void,
     Primitive(PrimitiveType),
     Function(Box<FunctionType>),
 }
 
-impl Type {
+impl TypeSpec {
     pub fn from_ast(type_spec_ast: &ast::Type) -> Self {
         match type_spec_ast {
             ast::Type::Integer(int_type) => {
-                Type::Primitive(PrimitiveType::Integer(IntegerType::from_ast(int_type)))
+                TypeSpec::Primitive(PrimitiveType::Integer(IntegerType::from_ast(int_type)))
             }
             ast::Type::Identifier(_) => todo!(),
-            ast::Type::Void => Type::Primitive(PrimitiveType::Void),
-            ast::Type::Boolean => Type::Primitive(PrimitiveType::Bool),
+            ast::Type::Void => TypeSpec::Primitive(PrimitiveType::Void),
+            ast::Type::Boolean => TypeSpec::Primitive(PrimitiveType::Bool),
             ast::Type::Float(float_type) => {
-                Type::Primitive(PrimitiveType::Float(FloatType::from_ast(float_type)))
+                TypeSpec::Primitive(PrimitiveType::Float(FloatType::from_ast(float_type)))
             }
         }
     }
@@ -107,8 +111,8 @@ impl FloatType {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionType {
-    pub arg_types: Vec<Type>,
-    pub return_type: Type,
+    pub arg_types: Vec<TypeSpec>,
+    pub return_type: TypeSpec,
 }
 
 impl FunctionType {
@@ -123,29 +127,6 @@ impl FunctionType {
         }
 
         function_type
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum TypeHint {
-    Integer(IntegerType),
-    Inferred,
-}
-
-impl TypeHint {
-    pub fn from_ast(type_spec_ast: Option<&ast::Type>) -> Self {
-        match type_spec_ast {
-            None => TypeHint::Inferred,
-            Some(type_ast) => match type_ast {
-                ast::Type::Identifier(_) => todo!(),
-                ast::Type::Void => todo!(),
-                ast::Type::Boolean => todo!(),
-                ast::Type::Integer(int_type_ast) => {
-                    TypeHint::Integer(IntegerType::from_ast(int_type_ast))
-                }
-                ast::Type::Float(_) => todo!(),
-            },
-        }
     }
 }
 
@@ -167,11 +148,11 @@ impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
         TypeCompiler { parent }
     }
 
-    pub fn compile_type(&self, type_spec: &Type) -> BasicTypeEnum<'ctx> {
+    pub fn compile_type(&self, type_spec: &TypeSpec) -> BasicTypeEnum<'ctx> {
         match type_spec {
-            Type::Primitive(primitive_type) => self.compile_primitive_type(primitive_type),
-            Type::Function(_) => todo!(),
-            Type::Void => todo!(),
+            TypeSpec::Primitive(primitive_type) => self.compile_primitive_type(primitive_type),
+            TypeSpec::Function(_) => todo!(),
+            TypeSpec::Void => todo!(),
         }
     }
 
@@ -207,7 +188,7 @@ impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
 
         let return_type = &function_type.return_type;
         match return_type {
-            Type::Void => {
+            TypeSpec::Void => {
                 let void_type_ir = self.context.void_type();
                 void_type_ir.fn_type(&arg_type_irs, false)
             }

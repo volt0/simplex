@@ -1,7 +1,7 @@
 use crate::ast;
-use crate::expression::{BinaryOperation, Expression, ExpressionCompiler};
+use crate::expression::{BinaryOperation, ExpressionCompiler};
 use crate::scope::LocalScope;
-use crate::types::{IntegerType, TypeHint};
+use crate::types::IntegerType;
 
 use std::ops::Deref;
 
@@ -9,7 +9,6 @@ use inkwell::values::IntValue;
 
 #[derive(Debug)]
 pub enum IntegerExpression {
-    Edge(Box<Expression>),
     LoadIntegerConstant(i32),
     BinaryOperation(IntegerBinaryOperation),
 }
@@ -20,48 +19,8 @@ impl IntegerExpression {
         scope: &dyn LocalScope,
         type_hint: Option<&IntegerType>,
     ) -> Box<Self> {
-        Box::new(match exp_ast {
-            ast::Expression::BinaryOperation(exp_ast) => IntegerExpression::BinaryOperation(
-                IntegerBinaryOperation::from_ast(exp_ast, scope, type_hint),
-            ),
-            ast::Expression::Constant(constant) => match constant {
-                ast::Constant::Void => todo!(),
-                ast::Constant::True => todo!(),
-                ast::Constant::False => todo!(),
-                ast::Constant::Integer(value) => IntegerExpression::LoadIntegerConstant(*value),
-                ast::Constant::Float(_) => todo!(),
-                ast::Constant::String(_) => todo!(),
-            },
-            ast::Expression::Conditional(_) => todo!(),
-            ast::Expression::UnaryOperation(_) => todo!(),
-            ast::Expression::Cast(_) => todo!(),
-            ast::Expression::Call(_) => todo!(),
-            ast::Expression::ItemAccess(_) => todo!(),
-            ast::Expression::MemberAccess(_) => todo!(),
-            exp_ast => {
-                let type_hint = match type_hint {
-                    None => TypeHint::Inferred,
-                    Some(int_type) => TypeHint::Integer(int_type.clone()),
-                };
-
-                IntegerExpression::Edge(Expression::from_ast(exp_ast, scope, &type_hint))
-            }
-        })
+        todo!()
     }
-
-    // pub fn infer_type(&self, type_hint: &TypeHint) -> Type {
-    //     match self {
-    //         IntegerExpression::LoadArgument(arg) => arg.arg_type(),
-    //         IntegerExpression::LoadValue(val) => val.value_type(),
-    //         IntegerExpression::LoadIntegerConstant(_) => {
-    //             Type::Primitive(PrimitiveType::Integer(IntegerType {
-    //                 is_signed: true,
-    //                 width: IntegerTypeSize::I64,
-    //             }))
-    //         }
-    //         IntegerExpression::BinaryOperation(op_exp) => op_exp.infer_type(type_hint),
-    //     }
-    // }
 }
 
 #[derive(Debug)]
@@ -77,23 +36,8 @@ impl IntegerBinaryOperation {
         scope: &dyn LocalScope,
         type_hint: Option<&IntegerType>,
     ) -> Self {
-        let lhs = IntegerExpression::from_ast(&exp_ast.lhs, scope, type_hint);
-        let rhs = IntegerExpression::from_ast(&exp_ast.rhs, scope, type_hint);
-        let op = exp_ast.operation.clone();
-        Self { op, lhs, rhs }
+        todo!()
     }
-
-    // fn infer_type(&self, type_hint: &TypeHint) -> Type {
-    //     match type_hint {
-    //         TypeHint::Integer(type_spec) => type_spec.clone(),
-    //         TypeHint::Inferred => {
-    //             let lhs_type = self.lhs.infer_type(type_hint);
-    //             let rhs_type = self.rhs.infer_type(type_hint);
-    //             assert_eq!(lhs_type, rhs_type);
-    //             lhs_type
-    //         }
-    //     }
-    // }
 }
 
 pub struct IntegerExpressionCompiler<'ctx, 'm, 'f, 'b, 'e> {
@@ -126,7 +70,6 @@ impl<'ctx, 'm, 'f, 'b, 'e> IntegerExpressionCompiler<'ctx, 'm, 'f, 'b, 'e> {
             IntegerExpression::BinaryOperation(op_exp) => {
                 self.compile_integer_binary_operation(op_exp)
             }
-            IntegerExpression::Edge(exp) => self.compile_expression(exp).into_int_value(),
         }
     }
 

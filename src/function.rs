@@ -2,7 +2,7 @@ use crate::ast;
 use crate::basic_block::{BasicBlock, BasicBlockBuilder};
 use crate::module::ModuleCompiler;
 use crate::scope::{LocalScope, LocalScopeItem};
-use crate::types::{FunctionType, Type};
+use crate::types::{FunctionType, TypeSpec};
 
 use crate::statement::StatementCompiler;
 use inkwell::builder::Builder;
@@ -33,7 +33,7 @@ impl Function {
         } = function_ast;
 
         let mut signature = FunctionSignature {
-            return_type: Type::from_ast(&signature_ast.return_type.clone().unwrap()),
+            return_type: TypeSpec::from_ast(&signature_ast.return_type.clone().unwrap()),
             args: vec![],
         };
 
@@ -48,10 +48,6 @@ impl Function {
                 root_block: None,
             }),
         })
-    }
-
-    pub fn return_type(&self) -> Type {
-        self.signature.return_type.clone()
     }
 
     pub fn function_type(&self) -> Box<FunctionType> {
@@ -110,13 +106,13 @@ impl Function {
 pub struct FunctionArgument {
     pub id: u32,
     pub name: String,
-    pub arg_type: Type,
+    pub arg_type: TypeSpec,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionSignature {
     pub args: Vec<Rc<FunctionArgument>>,
-    pub return_type: Type,
+    pub return_type: TypeSpec,
 }
 
 impl FunctionSignature {
@@ -124,7 +120,7 @@ impl FunctionSignature {
         let id = self.args.len() as u32;
         let name = arg_ast.name.clone();
 
-        let arg_type = Type::from_ast(&arg_ast.arg_type);
+        let arg_type = TypeSpec::from_ast(&arg_ast.arg_type);
         let arg = Rc::new(FunctionArgument { id, name, arg_type });
         self.args.push(arg);
     }
