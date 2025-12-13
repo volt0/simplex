@@ -1,7 +1,7 @@
 use crate::ast;
 use crate::definition::Definition;
-use crate::function::{Function, FunctionCompiler};
-use crate::types::TypeCompiler;
+use crate::function::{Function, FunctionTranslator};
+use crate::types::TypeTranslator;
 
 use inkwell::context::Context;
 use inkwell::module::Module as ModuleIR;
@@ -63,30 +63,30 @@ impl Module {
     }
 }
 
-pub struct ModuleCompiler<'ctx> {
+pub struct ModuleTranslator<'ctx> {
     pub context: &'ctx Context,
     pub module_ir: ModuleIR<'ctx>,
     values: RefCell<SlotMap<DefaultKey, BasicValueEnum<'ctx>>>,
 }
 
-impl<'ctx> ModuleVisitor for ModuleCompiler<'ctx> {
+impl<'ctx> ModuleVisitor for ModuleTranslator<'ctx> {
     fn visit_function(&self, function: &Function) {
-        let type_compiler = TypeCompiler::new(self);
+        let type_translator = TypeTranslator::new(self);
         let function_type = function.function_type();
-        let function_type_ir = type_compiler.compile_function_type(&function_type);
+        let function_type_ir = type_translator.translate_function_type(&function_type);
         let function_ir = self.module_ir.add_function("sum", function_type_ir, None);
-        let function_compiler = FunctionCompiler::new(self, function_ir);
-        function.visit(&function_compiler);
+        let function_translator = FunctionTranslator::new(self, function_ir);
+        function.visit(&function_translator);
     }
 }
 
-impl<'ctx> ModuleCompiler<'ctx> {
-    pub fn new(context: &'ctx Context) -> ModuleCompiler<'ctx> {
+impl<'ctx> ModuleTranslator<'ctx> {
+    pub fn new(context: &'ctx Context) -> ModuleTranslator<'ctx> {
         let ir = context.create_module("test_module");
         ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
 
-        ModuleCompiler {
-            context: context,
+        ModuleTranslator {
+            context,
             module_ir: ir,
             values: Default::default(),
         }
@@ -105,7 +105,7 @@ impl<'ctx> ModuleCompiler<'ctx> {
 pub mod tests {
     use super::*;
     use crate::ast;
-    use crate::module::{Module, ModuleCompiler};
+    use crate::module::{Module, ModuleTranslator};
     use inkwell::execution_engine::{JitFunction, UnsafeFunctionPointer};
     use inkwell::OptimizationLevel;
 
@@ -116,12 +116,12 @@ pub mod tests {
         let module = Module::from_ast(module_ast);
         module.traversal_pass();
 
-        let module_compiler = ModuleCompiler::new(&context);
-        module.visit(&module_compiler);
+        let module_translator = ModuleTranslator::new(&context);
+        module.visit(&module_translator);
 
-        module_compiler.module_ir.print_to_stderr();
+        module_translator.module_ir.print_to_stderr();
 
-        let execution_engine = module_compiler
+        let execution_engine = module_translator
             .module_ir
             .create_jit_execution_engine(OptimizationLevel::None)
             .unwrap();

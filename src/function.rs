@@ -1,10 +1,10 @@
 use crate::ast;
 use crate::basic_block::{BasicBlock, BasicBlockBuilder};
-use crate::module::ModuleCompiler;
+use crate::module::ModuleTranslator;
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::types::{FunctionType, TypeSpec};
 
-use crate::statement::StatementCompiler;
+use crate::statement::StatementTranslator;
 use inkwell::builder::Builder;
 use inkwell::values::{BasicValueEnum, FunctionValue};
 use std::cell::RefCell;
@@ -140,38 +140,38 @@ impl LocalScope for FunctionScope {
     }
 }
 
-pub struct FunctionCompiler<'ctx, 'm> {
+pub struct FunctionTranslator<'ctx, 'm> {
     pub function_ir: FunctionValue<'ctx>,
     pub builder: Builder<'ctx>,
-    module_compiler: &'m ModuleCompiler<'ctx>,
+    parent: &'m ModuleTranslator<'ctx>,
 }
 
-impl<'ctx, 'm> Deref for FunctionCompiler<'ctx, 'm> {
-    type Target = ModuleCompiler<'ctx>;
+impl<'ctx, 'm> Deref for FunctionTranslator<'ctx, 'm> {
+    type Target = ModuleTranslator<'ctx>;
 
     fn deref(&self) -> &Self::Target {
-        self.module_compiler
+        self.parent
     }
 }
 
-impl<'ctx, 'm> FunctionVisitor for FunctionCompiler<'ctx, 'm> {
+impl<'ctx, 'm> FunctionVisitor for FunctionTranslator<'ctx, 'm> {
     fn visit_basic_block(&self, basic_block: &BasicBlock) {
         let basic_block_ir = self.context.append_basic_block(self.function_ir, "");
         self.builder.position_at_end(basic_block_ir);
 
-        let compiler = StatementCompiler::new(self);
-        basic_block.visit(&compiler);
+        let translator = StatementTranslator::new(self);
+        basic_block.visit(&translator);
     }
 }
 
-impl<'ctx, 'm> FunctionCompiler<'ctx, 'm> {
-    pub fn new(module_compiler: &'m ModuleCompiler<'ctx>, ir: FunctionValue<'ctx>) -> Self {
-        let context = module_compiler.context;
+impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
+    pub fn new(parent: &'m ModuleTranslator<'ctx>, ir: FunctionValue<'ctx>) -> Self {
+        let context = parent.context;
         let builder = context.create_builder();
-        FunctionCompiler {
-            module_compiler,
-            function_ir: ir,
+        FunctionTranslator {
+            parent,
             builder,
+            function_ir: ir,
         }
     }
 

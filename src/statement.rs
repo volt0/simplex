@@ -1,7 +1,7 @@
 use crate::ast;
 use crate::basic_block::BasicBlockVisitor;
 use crate::expression::{Expression, ExpressionTranslator};
-use crate::function::FunctionCompiler;
+use crate::function::FunctionTranslator;
 use crate::integer::Integer;
 use crate::scope::LocalScope;
 use crate::types::Type;
@@ -36,8 +36,8 @@ impl Statement {
     }
 
     pub fn from_ast_let(var_ast: &ast::Variable, scope: &dyn LocalScope) -> Self {
-        let value_type_ast = var_ast.value_type.as_ref();
         todo!()
+        // let value_type_ast = var_ast.value_type.as_ref();
         // let type_hint = value_type_ast.map(|type_ast| TypeSpec::from_ast(type_ast));
         // let exp_ast = var_ast.init_expression.as_ref().unwrap();
         // let exp = Expression::from_ast(exp_ast, scope, type_hint);
@@ -81,30 +81,30 @@ impl ValueAssignment {
 }
 
 #[repr(transparent)]
-pub struct StatementCompiler<'ctx, 'm, 'f> {
-    parent: &'f FunctionCompiler<'ctx, 'm>,
+pub struct StatementTranslator<'ctx, 'm, 'f> {
+    parent: &'f FunctionTranslator<'ctx, 'm>,
 }
 
-impl<'ctx, 'm, 'f> Deref for StatementCompiler<'ctx, 'm, 'f> {
-    type Target = FunctionCompiler<'ctx, 'm>;
+impl<'ctx, 'm, 'f> Deref for StatementTranslator<'ctx, 'm, 'f> {
+    type Target = FunctionTranslator<'ctx, 'm>;
 
     fn deref(&self) -> &Self::Target {
         self.parent
     }
 }
 
-impl<'ctx, 'm, 'f> BasicBlockVisitor for StatementCompiler<'ctx, 'm, 'f> {
+impl<'ctx, 'm, 'f> BasicBlockVisitor for StatementTranslator<'ctx, 'm, 'f> {
     fn visit_statement(&self, stmt: &Statement) {
-        self.compile_statement(stmt);
+        self.translate_statement(stmt);
     }
 }
 
-impl<'ctx, 'm, 'f> StatementCompiler<'ctx, 'm, 'f> {
-    pub fn new(parent: &'f FunctionCompiler<'ctx, 'm>) -> Self {
+impl<'ctx, 'm, 'f> StatementTranslator<'ctx, 'm, 'f> {
+    pub fn new(parent: &'f FunctionTranslator<'ctx, 'm>) -> Self {
         Self { parent }
     }
 
-    pub fn compile_statement(&self, stmt: &Statement) {
+    pub fn translate_statement(&self, stmt: &Statement) {
         match stmt {
             Statement::ValueAssignment(var) => {
                 self.add_statement_let(var);
@@ -115,19 +115,18 @@ impl<'ctx, 'm, 'f> StatementCompiler<'ctx, 'm, 'f> {
         }
     }
 
-    pub fn compile_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
-        let exp_compiler = ExpressionTranslator::new(self);
-        exp_compiler.translate_expression(exp)
+    pub fn translate_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
+        ExpressionTranslator::new(self).translate_expression(exp)
     }
 
     fn add_statement_let(&self, val: &ValueAssignment) {
-        let value = self.compile_expression(val.exp.as_ref());
+        let value = self.translate_expression(val.exp.as_ref());
         let value_id = self.store_value(value);
         val.ir_id.set(value_id).unwrap();
     }
 
     fn add_statement_return(&self, exp: &Expression) {
-        let result = self.compile_expression(exp);
+        let result = self.translate_expression(exp);
         self.builder.build_return(Some(&result)).unwrap();
     }
 }

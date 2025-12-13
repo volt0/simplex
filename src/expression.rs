@@ -1,7 +1,6 @@
 use crate::ast;
-use crate::integer::Integer;
 use crate::scope::LocalScope;
-use crate::statement::StatementCompiler;
+use crate::statement::StatementTranslator;
 use crate::types::{Type, TypeHint};
 use inkwell::values::{BasicValue, BasicValueEnum};
 use std::ops::Deref;
@@ -43,16 +42,11 @@ impl Expression {
             ast::Expression::Call(_) => todo!(),
             ast::Expression::ItemAccess(_) => todo!(),
             ast::Expression::MemberAccess(_) => todo!(),
-            _ => unreachable!(),
         }
     }
 
     fn from_ast_constant(const_ast: &ast::Constant) -> Instruction {
         Instruction::LoadConstant(Constant::from_ast(const_ast))
-    }
-
-    fn from_ast_binary_operation(exp_ast: &ast::BinaryOperationExpr) -> Self {
-        todo!()
     }
 }
 
@@ -74,12 +68,6 @@ impl Constant {
             ast::Constant::Integer(val) => Constant::Integer(*val),
             ast::Constant::Float(_) => todo!(),
             ast::Constant::String(_) => todo!(),
-        }
-    }
-
-    fn type_of(&self) -> Box<dyn Type> {
-        match self {
-            Constant::Integer(_) => Box::new(Integer { is_signed: false }),
         }
     }
 }
@@ -117,19 +105,19 @@ pub trait TypedExpressionTranslator {
 }
 
 pub struct ExpressionTranslator<'ctx, 'm, 'f, 'b> {
-    statement_compiler: &'b StatementCompiler<'ctx, 'm, 'f>,
+    parent: &'b StatementTranslator<'ctx, 'm, 'f>,
 }
 
 impl<'ctx, 'm, 'f, 'b> Deref for ExpressionTranslator<'ctx, 'm, 'f, 'b> {
-    type Target = StatementCompiler<'ctx, 'm, 'f>;
+    type Target = StatementTranslator<'ctx, 'm, 'f>;
     fn deref(&self) -> &Self::Target {
-        self.statement_compiler
+        self.parent
     }
 }
 
 impl<'ctx, 'm, 'f, 'b> ExpressionTranslator<'ctx, 'm, 'f, 'b> {
-    pub fn new(statement_compiler: &'b StatementCompiler<'ctx, 'm, 'f>) -> Self {
-        ExpressionTranslator::<'ctx, 'm, 'f, 'b> { statement_compiler }
+    pub fn new(parent: &'b StatementTranslator<'ctx, 'm, 'f>) -> Self {
+        ExpressionTranslator::<'ctx, 'm, 'f, 'b> { parent }
     }
 
     pub fn translate_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {

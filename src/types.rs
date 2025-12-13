@@ -1,7 +1,7 @@
 use crate::ast;
 use crate::expression::TypedExpressionTranslator;
 use crate::function::FunctionSignature;
-use crate::module::ModuleCompiler;
+use crate::module::ModuleTranslator;
 use inkwell::types::{
     BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType as FunctionTypeIr,
 };
@@ -134,32 +134,32 @@ impl FunctionType {
 }
 
 #[repr(transparent)]
-pub struct TypeCompiler<'ctx, 'm> {
-    parent: &'m ModuleCompiler<'ctx>,
+pub struct TypeTranslator<'ctx, 'm> {
+    parent: &'m ModuleTranslator<'ctx>,
 }
 
-impl<'ctx, 'm> Deref for TypeCompiler<'ctx, 'm> {
-    type Target = ModuleCompiler<'ctx>;
+impl<'ctx, 'm> Deref for TypeTranslator<'ctx, 'm> {
+    type Target = ModuleTranslator<'ctx>;
 
     fn deref(&self) -> &Self::Target {
         self.parent
     }
 }
 
-impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
-    pub fn new(parent: &'m ModuleCompiler<'ctx>) -> Self {
-        TypeCompiler { parent }
+impl<'ctx, 'm> TypeTranslator<'ctx, 'm> {
+    pub fn new(parent: &'m ModuleTranslator<'ctx>) -> Self {
+        TypeTranslator { parent }
     }
 
-    pub fn compile_type(&self, type_spec: &TypeSpec) -> BasicTypeEnum<'ctx> {
+    pub fn translate_type(&self, type_spec: &TypeSpec) -> BasicTypeEnum<'ctx> {
         match type_spec {
-            TypeSpec::Primitive(primitive_type) => self.compile_primitive_type(primitive_type),
+            TypeSpec::Primitive(primitive_type) => self.translate_primitive_type(primitive_type),
             TypeSpec::Function(_) => todo!(),
             TypeSpec::Void => todo!(),
         }
     }
 
-    pub fn compile_primitive_type(&self, primitive_type: &PrimitiveType) -> BasicTypeEnum<'ctx> {
+    pub fn translate_primitive_type(&self, primitive_type: &PrimitiveType) -> BasicTypeEnum<'ctx> {
         let context = self.context;
         match primitive_type {
             PrimitiveType::Void => todo!(),
@@ -182,11 +182,11 @@ impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
         }
     }
 
-    pub fn compile_function_type(&self, function_type: &FunctionType) -> FunctionTypeIr<'ctx> {
+    pub fn translate_function_type(&self, function_type: &FunctionType) -> FunctionTypeIr<'ctx> {
         let arg_type_irs: Vec<BasicMetadataTypeEnum> = function_type
             .arg_types
             .iter()
-            .map(|arg_type| self.compile_type(&arg_type).into())
+            .map(|arg_type| self.translate_type(&arg_type).into())
             .collect();
 
         let return_type = &function_type.return_type;
@@ -196,7 +196,7 @@ impl<'ctx, 'm> TypeCompiler<'ctx, 'm> {
                 void_type_ir.fn_type(&arg_type_irs, false)
             }
             return_type => {
-                let return_type_ir = self.compile_type(&return_type);
+                let return_type_ir = self.translate_type(&return_type);
                 return_type_ir.fn_type(&arg_type_irs, false)
             }
         }
