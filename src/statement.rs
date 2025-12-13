@@ -1,16 +1,16 @@
 use crate::ast;
 use crate::basic_block::BasicBlockVisitor;
-use crate::expression::{Expression, ExpressionCompiler};
+use crate::expression::{Expression, ExpressionTranslator};
 use crate::function::FunctionCompiler;
+use crate::integer::Integer;
 use crate::scope::LocalScope;
-
+use crate::types::Type;
 use inkwell::values::BasicValueEnum;
 use slotmap::DefaultKey;
 use std::cell::OnceCell;
 use std::ops::Deref;
 use std::rc::Rc;
 
-#[derive(Debug)]
 pub enum Statement {
     ValueAssignment(Rc<ValueAssignment>),
     Return(Box<Expression>),
@@ -45,8 +45,7 @@ impl Statement {
     }
 
     pub fn from_ast_return(exp_ast: &ast::Expression, scope: &dyn LocalScope) -> Self {
-        let function = scope.current_function();
-        todo!()
+        // let function = scope.current_function();
         // let type_hint = match function.return_type() {
         //     TypeSpec::Void => todo!(),
         //     TypeSpec::Primitive(prim_type) => match prim_type {
@@ -59,12 +58,12 @@ impl Statement {
         //     },
         //     TypeSpec::Function(_) => todo!(),
         // };
-        // let exp = Expression::from_ast(exp_ast, scope, Some(type_hint));
-        // Statement::Return(exp)
+        let type_hint = Rc::new(Integer { is_signed: false }) as Rc<dyn Type>;
+
+        Statement::Return(Expression::from_ast(exp_ast, &type_hint, scope))
     }
 }
 
-#[derive(Debug)]
 pub struct ValueAssignment {
     pub name: String,
     pub exp: Box<Expression>,
@@ -117,8 +116,8 @@ impl<'ctx, 'm, 'f> StatementCompiler<'ctx, 'm, 'f> {
     }
 
     pub fn compile_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
-        let exp_compiler = ExpressionCompiler::new(self);
-        exp_compiler.compile_expression(exp)
+        let exp_compiler = ExpressionTranslator::new(self);
+        exp_compiler.translate_expression(exp)
     }
 
     fn add_statement_let(&self, val: &ValueAssignment) {

@@ -109,7 +109,7 @@ pub mod tests {
     use inkwell::execution_engine::{JitFunction, UnsafeFunctionPointer};
     use inkwell::OptimizationLevel;
 
-    pub fn compile_module_test<F>(module_ast: ast::Module, context: &Context) -> JitFunction<F>
+    pub fn compile_module_test<F>(module_ast: ast::Module, context: &Context) -> JitFunction<'_, F>
     where
         F: UnsafeFunctionPointer,
     {

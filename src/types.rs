@@ -1,15 +1,18 @@
 use crate::ast;
+use crate::expression::TypedExpressionTranslator;
 use crate::function::FunctionSignature;
 use crate::module::ModuleCompiler;
-
 use inkwell::types::{
     BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType as FunctionTypeIr,
 };
 use std::ops::Deref;
+use std::rc::Rc;
 
 pub trait Type {
-    fn binary_operation(&self);
+    fn create_expression_translator(&self) -> Box<dyn TypedExpressionTranslator>;
 }
+
+pub type TypeHint = Rc<dyn Type>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeSpec {
