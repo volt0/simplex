@@ -1,6 +1,7 @@
-use crate::function::{Function, FunctionArgument};
-use crate::statement::ValueAssignment;
 use std::rc::Rc;
+
+use crate::definitions::function::{Function, FunctionArgument};
+use crate::statement::ValueAssignment;
 
 pub trait LocalScope {
     fn resolve(&self, name: &String) -> Option<LocalScopeItem>;

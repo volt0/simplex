@@ -1,10 +1,10 @@
-use crate::ast;
-use crate::function::Function;
-use crate::scope::{LocalScope, LocalScopeItem};
-use crate::statement::Statement;
-
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
+
+use crate::ast;
+use crate::definitions::function::Function;
+use crate::scope::{LocalScope, LocalScopeItem};
+use crate::statement::Statement;
 
 pub struct BasicBlockBuilder<'p> {
     inner: BasicBlock,

@@ -76,16 +76,11 @@ pub struct BinaryOperationExpr {
     pub rhs: Box<Expression>,
 }
 
-pub enum UnaryOperation {
-    Plus,
-    Minus,
-    BitNot,
-    LogicalNot,
-}
+pub type UnaryOperation = crate::expression::UnaryOperation;
 
 pub struct UnaryOperationExpression {
     pub operation: UnaryOperation,
-    pub val: Box<Expression>,
+    pub arg: Box<Expression>,
 }
 
 pub struct ConditionalExpression(

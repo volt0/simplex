@@ -1,42 +1,37 @@
-use crate::ast;
-use crate::function::FunctionSignature;
-use crate::integer::{IntegerType, IntegerTypeSize};
-use crate::module::ModuleTranslator;
+use std::ops::Deref;
+
 use inkwell::types::FunctionType as FunctionTypeIR;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
-use std::ops::Deref;
+
+use crate::ast;
+use crate::definitions::function::FunctionSignature;
+use crate::module::ModuleTranslator;
+
+use integer::{IntegerType, IntegerTypeSize};
+
+pub mod integer;
 
 pub type TypeHint = TypeSpec;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeSpec {
     Void,
-    Primitive(PrimitiveType),
+    Bool,
+    Integer(IntegerType),
+    Float(FloatType),
     Function(Box<FunctionType>),
 }
 
 impl TypeSpec {
     pub fn from_ast(type_spec_ast: &ast::Type) -> Self {
         match type_spec_ast {
-            ast::Type::Integer(int_type) => {
-                TypeSpec::Primitive(PrimitiveType::Integer(IntegerType::from_ast(int_type)))
-            }
+            ast::Type::Integer(int_type) => TypeSpec::Integer(IntegerType::from_ast(int_type)),
             ast::Type::Identifier(_) => todo!(),
-            ast::Type::Void => TypeSpec::Primitive(PrimitiveType::Void),
-            ast::Type::Boolean => TypeSpec::Primitive(PrimitiveType::Bool),
-            ast::Type::Float(float_type) => {
-                TypeSpec::Primitive(PrimitiveType::Float(FloatType::from_ast(float_type)))
-            }
+            ast::Type::Void => TypeSpec::Void,
+            ast::Type::Boolean => TypeSpec::Bool,
+            ast::Type::Float(float_type) => TypeSpec::Float(FloatType::from_ast(float_type)),
         }
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum PrimitiveType {
-    Void,
-    Bool,
-    Integer(IntegerType),
-    Float(FloatType),
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
@@ -93,19 +88,11 @@ impl<'ctx, 'm> TypeTranslator<'ctx, 'm> {
     }
 
     pub fn translate_type(&self, type_spec: &TypeSpec) -> BasicTypeEnum<'ctx> {
-        match type_spec {
-            TypeSpec::Primitive(primitive_type) => self.translate_primitive_type(primitive_type),
-            TypeSpec::Function(_) => todo!(),
-            TypeSpec::Void => todo!(),
-        }
-    }
-
-    pub fn translate_primitive_type(&self, primitive_type: &PrimitiveType) -> BasicTypeEnum<'ctx> {
         let context = self.context;
-        match primitive_type {
-            PrimitiveType::Void => todo!(),
-            PrimitiveType::Bool => context.bool_type().as_basic_type_enum(),
-            PrimitiveType::Integer(integer_type) => {
+        match type_spec {
+            TypeSpec::Void => todo!(),
+            TypeSpec::Bool => context.bool_type().as_basic_type_enum(),
+            TypeSpec::Integer(integer_type) => {
                 let type_ir = match integer_type.width {
                     IntegerTypeSize::I8 => context.i8_type(),
                     IntegerTypeSize::I16 => context.i16_type(),
@@ -114,12 +101,14 @@ impl<'ctx, 'm> TypeTranslator<'ctx, 'm> {
                 };
                 type_ir.as_basic_type_enum()
             }
-            PrimitiveType::Float(float_type) => {
+            TypeSpec::Float(float_type) => {
                 let type_ir = match float_type {
                     FloatType::F32 => context.f32_type(),
                 };
                 type_ir.as_basic_type_enum()
             }
+
+            TypeSpec::Function(_) => todo!(),
         }
     }
 
@@ -130,8 +119,7 @@ impl<'ctx, 'm> TypeTranslator<'ctx, 'm> {
             .map(|arg_type| self.translate_type(&arg_type).into())
             .collect();
 
-        let return_type = &function_type.return_type;
-        match return_type {
+        match &function_type.return_type {
             TypeSpec::Void => {
                 let void_type_ir = self.context.void_type();
                 void_type_ir.fn_type(&arg_type_irs, false)

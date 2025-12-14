@@ -1,13 +1,16 @@
-use crate::ast;
-use crate::basic_block::BasicBlockVisitor;
-use crate::expression::{Expression, ExpressionTranslator};
-use crate::function::FunctionTranslator;
-use crate::scope::LocalScope;
-use inkwell::values::BasicValueEnum;
-use slotmap::DefaultKey;
 use std::cell::OnceCell;
 use std::ops::Deref;
 use std::rc::Rc;
+
+use inkwell::values::BasicValueEnum;
+use slotmap::DefaultKey;
+
+use crate::ast;
+use crate::basic_block::BasicBlockVisitor;
+use crate::definitions::function::FunctionTranslator;
+use crate::expression::{Expression, ExpressionTranslator};
+use crate::scope::LocalScope;
+use crate::types::TypeSpec;
 
 pub enum Statement {
     ValueAssignment(Rc<ValueAssignment>),
@@ -34,18 +37,17 @@ impl Statement {
     }
 
     pub fn from_ast_let(var_ast: &ast::Variable, scope: &dyn LocalScope) -> Self {
-        todo!()
-        // let value_type_ast = var_ast.value_type.as_ref();
-        // let type_hint = value_type_ast.map(|type_ast| TypeSpec::from_ast(type_ast));
-        // let exp_ast = var_ast.init_expression.as_ref().unwrap();
-        // let exp = Expression::from_ast(exp_ast, scope, type_hint);
-        // Statement::ValueAssignment(ValueAssignment::new(var_ast.name.clone(), exp))
+        let value_type_ast = var_ast.value_type.as_ref();
+        let type_hint = value_type_ast.map(|type_ast| TypeSpec::from_ast(type_ast));
+        let exp_ast = var_ast.init_expression.as_ref().unwrap();
+        let exp = Expression::from_ast(exp_ast, type_hint.as_ref(), scope);
+        Statement::ValueAssignment(ValueAssignment::new(var_ast.name.clone(), exp))
     }
 
     pub fn from_ast_return(exp_ast: &ast::Expression, scope: &dyn LocalScope) -> Self {
         let function = scope.current_function();
-        let type_hint = function.return_type();
-        Statement::Return(Expression::from_ast(exp_ast, &type_hint, scope))
+        let type_hint = Some(function.return_type());
+        Statement::Return(Expression::from_ast(exp_ast, type_hint.as_ref(), scope))
     }
 }
 

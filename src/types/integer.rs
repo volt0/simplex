@@ -1,12 +1,22 @@
-use crate::ast;
-use crate::expression::{BinaryOperation, ExpressionTranslator, Instruction};
-use inkwell::values::{BasicValue, BasicValueEnum};
 use std::ops::Deref;
+
+use inkwell::values::{BasicValue, BasicValueEnum};
+
+use crate::ast;
+use crate::expression::{BinaryOperation, ExpressionTranslator, Instruction, UnaryOperation};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct IntegerType {
     pub is_signed: bool,
     pub width: IntegerTypeSize,
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub enum IntegerTypeSize {
+    I8,
+    I16,
+    I32,
+    I64,
 }
 
 impl IntegerType {
@@ -48,14 +58,6 @@ impl IntegerType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub enum IntegerTypeSize {
-    I8,
-    I16,
-    I32,
-    I64,
-}
-
 pub struct IntegerExpressionTranslator<'ctx, 'm, 'f, 'b, 'e> {
     parent: &'e ExpressionTranslator<'ctx, 'm, 'f, 'b>,
     integer_type: IntegerType,
@@ -83,8 +85,29 @@ impl<'ctx, 'm, 'f, 'b, 'e> IntegerExpressionTranslator<'ctx, 'm, 'f, 'b, 'e> {
     pub fn translate_instruction(&self, instruction: &Instruction) -> BasicValueEnum<'ctx> {
         match instruction {
             Instruction::LoadConstant(const_value) => self.translate_constant(const_value),
-            Instruction::Binary(op, lhs, rhs) => self.translate_binary_operation(op, lhs, rhs),
+            Instruction::UnaryOperation(op, arg) => self.translate_unary_operation(op, arg),
+            Instruction::BinaryOperation(op, lhs, rhs) => {
+                self.translate_binary_operation(op, lhs, rhs)
+            }
         }
+    }
+
+    fn translate_unary_operation(
+        &self,
+        op: &UnaryOperation,
+        arg: &Instruction,
+    ) -> BasicValueEnum<'ctx> {
+        let arg_ir = self.translate_instruction(arg).into_int_value();
+
+        let builder = &self.parent.builder;
+        let result = match op {
+            UnaryOperation::Plus => arg_ir,
+            UnaryOperation::Minus => builder.build_int_neg(arg_ir, "").unwrap(),
+            UnaryOperation::BitNot => builder.build_not(arg_ir, "").unwrap(),
+            UnaryOperation::LogicalNot => todo!(),
+        };
+
+        result.as_basic_value_enum()
     }
 
     fn translate_binary_operation(
@@ -149,14 +172,6 @@ impl<'ctx, 'm, 'f, 'b, 'e> IntegerExpressionTranslator<'ctx, 'm, 'f, 'b, 'e> {
     //             builder
     //                 .build_int_truncate(value, exp_type.compile(ctx), "")
     //                 .unwrap()
-    //         }
-    //         IntegerExpressionNode::UnaryOperation(op, arg) => {
-    //             let arg_ir = self.translate_integer_node(arg, exp_type);
-    //             match op {
-    //                 UnaryOperation::Plus => arg_ir,
-    //                 UnaryOperation::Minus => builder.build_int_neg(arg_ir, "").unwrap(),
-    //                 UnaryOperation::BitwiseNot => builder.build_not(arg_ir, "").unwrap(),
-    //             }
     //         }
     //         IntegerExpressionNode::Cast(exp) => {
     //             let value = self.translate_integer_expression(exp.as_ref());

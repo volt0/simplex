@@ -1,34 +1,29 @@
-use crate::ast;
-use crate::definition::Definition;
-use crate::function::{Function, FunctionTranslator};
-use crate::types::TypeTranslator;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use inkwell::context::Context;
 use inkwell::module::Module as ModuleIR;
 use inkwell::targets::TargetTriple;
 use inkwell::values::BasicValueEnum;
 use slotmap::{DefaultKey, SlotMap};
-use std::cell::RefCell;
-use std::rc::Rc;
+
+use crate::ast;
+use crate::definitions::function::{Function, FunctionTranslator};
+use crate::definitions::Definition;
+use crate::types::TypeTranslator;
 
 pub trait ModuleVisitor {
     fn visit_function(&self, function: &Function);
 }
 
-struct ModuleInner {
-    definitions: Vec<Definition>,
-}
-
 pub struct Module {
-    inner: RefCell<ModuleInner>,
+    definitions: RefCell<Vec<Definition>>,
 }
 
 impl Module {
     pub fn from_ast(module_ast: ast::Module) -> Rc<Self> {
         let module = Rc::new(Module {
-            inner: RefCell::new(ModuleInner {
-                definitions: vec![],
-            }),
+            definitions: RefCell::new(vec![]),
         });
 
         for definition_ast in module_ast.definitions {
@@ -44,22 +39,23 @@ impl Module {
 
     pub fn create_function(&self, function_ast: ast::Function) {
         let function = Function::from_ast(function_ast);
-        let mut inner = self.inner.borrow_mut();
-        inner.definitions.push(Definition::Function(function));
+        self.add_definition(Definition::Function(function))
     }
 
     pub fn traversal_pass(&self) {
-        let inner = self.inner.borrow();
-        for definition in &inner.definitions {
+        for definition in self.definitions.borrow().iter() {
             definition.traversal_pass();
         }
     }
 
     pub fn visit(&self, visitor: &dyn ModuleVisitor) {
-        let inner = self.inner.borrow();
-        for definition in &inner.definitions {
+        for definition in self.definitions.borrow().iter() {
             definition.visit(visitor);
         }
+    }
+
+    fn add_definition(&self, definition: Definition) {
+        self.definitions.borrow_mut().push(definition);
     }
 }
 
@@ -104,10 +100,12 @@ impl<'ctx> ModuleTranslator<'ctx> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::ast;
-    use crate::module::{Module, ModuleTranslator};
+
     use inkwell::execution_engine::{JitFunction, UnsafeFunctionPointer};
     use inkwell::OptimizationLevel;
+
+    use crate::ast;
+    use crate::module::{Module, ModuleTranslator};
 
     pub fn compile_module_test<F>(module_ast: ast::Module, context: &Context) -> JitFunction<'_, F>
     where

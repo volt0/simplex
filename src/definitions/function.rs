@@ -1,26 +1,24 @@
+use std::cell::RefCell;
+use std::ops::Deref;
+use std::rc::Rc;
+
+use inkwell::builder::Builder;
+use inkwell::values::{BasicValueEnum, FunctionValue};
+
 use crate::ast;
 use crate::basic_block::{BasicBlock, BasicBlockBuilder};
 use crate::module::ModuleTranslator;
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::statement::StatementTranslator;
 use crate::types::{FunctionType, TypeSpec};
-use inkwell::builder::Builder;
-use inkwell::values::{BasicValueEnum, FunctionValue};
-use std::cell::RefCell;
-use std::ops::Deref;
-use std::rc::Rc;
 
 pub trait FunctionVisitor {
     fn visit_basic_block(&self, basic_block: &BasicBlock);
 }
 
-struct FunctionInner {
-    body_ast: Option<ast::FunctionBody>,
-    root_block: Option<BasicBlock>,
-}
-
 pub struct Function {
-    inner: RefCell<FunctionInner>,
+    body_ast: RefCell<Option<ast::FunctionBody>>,
+    root_block: RefCell<Option<BasicBlock>>,
     signature: FunctionSignature,
 }
 
@@ -41,11 +39,9 @@ impl Function {
         }
 
         Rc::new(Function {
+            body_ast: RefCell::new(Some(body_ast)),
+            root_block: RefCell::new(None),
             signature,
-            inner: RefCell::new(FunctionInner {
-                body_ast: Some(body_ast),
-                root_block: None,
-            }),
         })
     }
 
@@ -58,14 +54,12 @@ impl Function {
     }
 
     pub fn is_complete(&self) -> bool {
-        let inner = self.inner.borrow();
-        inner.root_block.is_some()
+        self.root_block.borrow().is_some()
     }
 
     pub fn traversal_pass(self: &Rc<Self>) {
         if !self.is_complete() {
-            let mut inner = self.inner.borrow_mut();
-            let body_ast = inner.body_ast.take().unwrap();
+            let body_ast = self.body_ast.take().unwrap();
             match body_ast {
                 ast::FunctionBody::Forward => todo!(),
                 ast::FunctionBody::BasicBlock(ast::BasicBlock {
@@ -76,15 +70,14 @@ impl Function {
                     };
                     let basic_block_builder = BasicBlockBuilder::from_ast(statements_ast, &scope);
                     let basic_block = basic_block_builder.build();
-                    inner.root_block.replace(basic_block);
+                    self.root_block.replace(Some(basic_block));
                 }
             }
         }
     }
 
     pub fn visit(&self, visitor: &dyn FunctionVisitor) {
-        let inner = self.inner.borrow();
-        match &inner.root_block {
+        match self.root_block.borrow().as_ref() {
             Some(root_basic_block) => visitor.visit_basic_block(root_basic_block),
             None => {
                 todo!()

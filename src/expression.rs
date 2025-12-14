@@ -1,10 +1,12 @@
+use std::ops::Deref;
+
+use inkwell::values::{BasicValue, BasicValueEnum};
+
 use crate::ast;
-use crate::integer::IntegerExpressionTranslator;
 use crate::scope::LocalScope;
 use crate::statement::StatementTranslator;
-use crate::types::{PrimitiveType, TypeHint, TypeSpec};
-use inkwell::values::{BasicValue, BasicValueEnum};
-use std::ops::Deref;
+use crate::types::integer::IntegerExpressionTranslator;
+use crate::types::{TypeHint, TypeSpec};
 
 pub struct Expression {
     exp_type: TypeSpec,
@@ -14,45 +16,52 @@ pub struct Expression {
 impl Expression {
     pub fn from_ast(
         exp_ast: &ast::Expression,
-        type_hint: &TypeHint,
+        type_hint: Option<&TypeHint>,
         scope: &dyn LocalScope,
     ) -> Box<Self> {
+        let type_hint = type_hint.unwrap();
         Box::new(Expression {
             exp_type: type_hint.clone(),
-            instruction: Self::from_ast_instruction(exp_ast, type_hint, scope),
+            instruction: Instruction::from_ast(exp_ast, Some(type_hint), scope),
         })
     }
+}
 
-    fn from_ast_instruction(
+pub enum Instruction {
+    LoadConstant(Constant),
+    BinaryOperation(BinaryOperation, Box<Instruction>, Box<Instruction>),
+    UnaryOperation(UnaryOperation, Box<Instruction>),
+    // TypeAssertedSubtree(Box<Expression>),
+    // Truncate(Box<IntegerExpression>),
+}
+
+impl Instruction {
+    fn from_ast(
         exp_ast: &ast::Expression,
-        type_hint: &TypeHint,
+        type_hint: Option<&TypeHint>,
         scope: &dyn LocalScope,
     ) -> Instruction {
         match exp_ast {
-            ast::Expression::Constant(const_ast) => Self::from_ast_constant(const_ast),
+            ast::Expression::Constant(const_ast) => {
+                Instruction::LoadConstant(Constant::from_ast(const_ast))
+            }
             ast::Expression::Identifier(_) => todo!(),
             ast::Expression::Conditional(_) => todo!(),
             ast::Expression::BinaryOperation(exp_ast) => {
-                let lhs = Self::from_ast_instruction(exp_ast.lhs.as_ref(), type_hint, scope);
-                let rhs = Self::from_ast_instruction(exp_ast.rhs.as_ref(), type_hint, scope);
-                Instruction::Binary(exp_ast.operation.clone(), Box::new(lhs), Box::new(rhs))
+                let lhs = Box::new(Self::from_ast(exp_ast.lhs.as_ref(), type_hint, scope));
+                let rhs = Box::new(Self::from_ast(exp_ast.rhs.as_ref(), type_hint, scope));
+                Instruction::BinaryOperation(exp_ast.operation.clone(), lhs, rhs)
             }
-            ast::Expression::UnaryOperation(_) => todo!(),
+            ast::Expression::UnaryOperation(exp_ast) => {
+                let arg = Box::new(Self::from_ast(exp_ast.arg.as_ref(), type_hint, scope));
+                Instruction::UnaryOperation(exp_ast.operation.clone(), arg)
+            }
             ast::Expression::Cast(_) => todo!(),
             ast::Expression::Call(_) => todo!(),
             ast::Expression::ItemAccess(_) => todo!(),
             ast::Expression::MemberAccess(_) => todo!(),
         }
     }
-
-    fn from_ast_constant(const_ast: &ast::Constant) -> Instruction {
-        Instruction::LoadConstant(Constant::from_ast(const_ast))
-    }
-}
-
-pub enum Instruction {
-    LoadConstant(Constant),
-    Binary(BinaryOperation, Box<Instruction>, Box<Instruction>),
 }
 
 pub enum Constant {
@@ -70,6 +79,14 @@ impl Constant {
             ast::Constant::String(_) => todo!(),
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub enum UnaryOperation {
+    Plus,
+    Minus,
+    BitNot,
+    LogicalNot,
 }
 
 #[derive(Clone, Debug)]
@@ -115,15 +132,12 @@ impl<'ctx, 'm, 'f, 'b> ExpressionTranslator<'ctx, 'm, 'f, 'b> {
         let exp_type = exp.exp_type.clone();
         match exp_type {
             TypeSpec::Void => todo!(),
-            TypeSpec::Primitive(exp_type) => match exp_type {
-                PrimitiveType::Void => todo!(),
-                PrimitiveType::Bool => todo!(),
-                PrimitiveType::Integer(integer_type) => {
-                    let translator = IntegerExpressionTranslator::new(self, integer_type);
-                    translator.translate_instruction(&exp.instruction)
-                }
-                PrimitiveType::Float(_) => todo!(),
-            },
+            TypeSpec::Bool => todo!(),
+            TypeSpec::Integer(integer_type) => {
+                let translator = IntegerExpressionTranslator::new(self, integer_type);
+                translator.translate_instruction(&exp.instruction)
+            }
+            TypeSpec::Float(_) => todo!(),
             TypeSpec::Function(_) => todo!(),
         }
     }
@@ -141,10 +155,11 @@ impl<'ctx, 'm, 'f, 'b> ExpressionTranslator<'ctx, 'm, 'f, 'b> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast;
-    use crate::module::tests::compile_module_test;
     use inkwell::context::Context;
     use inkwell::execution_engine::JitFunction;
+
+    use crate::ast;
+    use crate::module::tests::compile_module_test;
 
     #[test]
     fn test_compile_expression() {

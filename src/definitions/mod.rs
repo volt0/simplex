@@ -1,6 +1,10 @@
-use crate::function::Function;
-use crate::module::ModuleVisitor;
 use std::rc::Rc;
+
+use crate::module::ModuleVisitor;
+
+use function::Function;
+
+pub mod function;
 
 pub enum Definition {
     Function(Rc<Function>),
