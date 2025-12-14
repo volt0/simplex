@@ -1,43 +1,102 @@
-use crate::expression::{
-    BinaryOperation, ExpressionTranslator, Instruction, TypedExpressionTranslator,
-};
-use crate::types::Type;
+use crate::ast;
+use crate::expression::{BinaryOperation, ExpressionTranslator, Instruction};
 use inkwell::values::{BasicValue, BasicValueEnum};
+use std::ops::Deref;
 
-#[derive(Clone)]
-pub struct Integer {
+#[derive(Clone, Debug, PartialEq)]
+pub struct IntegerType {
     pub is_signed: bool,
+    pub width: IntegerTypeSize,
 }
 
-impl Type for Integer {
-    fn create_expression_translator(&self) -> Box<dyn TypedExpressionTranslator> {
-        Box::new(IntegerExpressionTranslator {
-            integer_type: self.clone(),
-        })
+impl IntegerType {
+    pub fn from_ast(int_type_ast: &ast::IntegerType) -> Self {
+        match int_type_ast {
+            ast::IntegerType::I8 => IntegerType {
+                is_signed: true,
+                width: IntegerTypeSize::I8,
+            },
+            ast::IntegerType::I16 => IntegerType {
+                is_signed: true,
+                width: IntegerTypeSize::I16,
+            },
+            ast::IntegerType::I32 => IntegerType {
+                is_signed: true,
+                width: IntegerTypeSize::I32,
+            },
+            ast::IntegerType::I64 => IntegerType {
+                is_signed: true,
+                width: IntegerTypeSize::I64,
+            },
+            ast::IntegerType::U8 => IntegerType {
+                is_signed: false,
+                width: IntegerTypeSize::I8,
+            },
+            ast::IntegerType::U16 => IntegerType {
+                is_signed: false,
+                width: IntegerTypeSize::I16,
+            },
+            ast::IntegerType::U32 => IntegerType {
+                is_signed: false,
+                width: IntegerTypeSize::I32,
+            },
+            ast::IntegerType::U64 => IntegerType {
+                is_signed: false,
+                width: IntegerTypeSize::I64,
+            },
+        }
     }
 }
 
-struct IntegerExpressionTranslator {
-    integer_type: Integer,
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub enum IntegerTypeSize {
+    I8,
+    I16,
+    I32,
+    I64,
 }
 
-impl TypedExpressionTranslator for IntegerExpressionTranslator {
-    fn translate_binary_operation<'ctx, 'm, 'f, 'b>(
+pub struct IntegerExpressionTranslator<'ctx, 'm, 'f, 'b, 'e> {
+    parent: &'e ExpressionTranslator<'ctx, 'm, 'f, 'b>,
+    integer_type: IntegerType,
+}
+
+impl<'ctx, 'm, 'f, 'b, 'e> Deref for IntegerExpressionTranslator<'ctx, 'm, 'f, 'b, 'e> {
+    type Target = ExpressionTranslator<'ctx, 'm, 'f, 'b>;
+
+    fn deref(&self) -> &Self::Target {
+        self.parent
+    }
+}
+
+impl<'ctx, 'm, 'f, 'b, 'e> IntegerExpressionTranslator<'ctx, 'm, 'f, 'b, 'e> {
+    pub fn new(
+        parent: &'b ExpressionTranslator<'ctx, 'm, 'f, 'b>,
+        integer_type: IntegerType,
+    ) -> Self {
+        IntegerExpressionTranslator::<'ctx, 'm, 'f, 'b, 'e> {
+            parent,
+            integer_type,
+        }
+    }
+
+    pub fn translate_instruction(&self, instruction: &Instruction) -> BasicValueEnum<'ctx> {
+        match instruction {
+            Instruction::LoadConstant(const_value) => self.translate_constant(const_value),
+            Instruction::Binary(op, lhs, rhs) => self.translate_binary_operation(op, lhs, rhs),
+        }
+    }
+
+    fn translate_binary_operation(
         &self,
         op: &BinaryOperation,
         lhs: &Instruction,
         rhs: &Instruction,
-        exp_translator: &ExpressionTranslator<'ctx, 'm, 'f, 'b>,
     ) -> BasicValueEnum<'ctx> {
-        let lhs_ir = exp_translator
-            .translate_instruction(lhs, self)
-            .into_int_value();
+        let lhs_ir = self.translate_instruction(lhs).into_int_value();
+        let rhs_ir = self.translate_instruction(rhs).into_int_value();
 
-        let rhs_ir = exp_translator
-            .translate_instruction(rhs, self)
-            .into_int_value();
-
-        let builder = &exp_translator.builder;
+        let builder = &self.parent.builder;
         let result = match op {
             BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, "").unwrap(),
             BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, "").unwrap(),

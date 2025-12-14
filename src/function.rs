@@ -2,9 +2,8 @@ use crate::ast;
 use crate::basic_block::{BasicBlock, BasicBlockBuilder};
 use crate::module::ModuleTranslator;
 use crate::scope::{LocalScope, LocalScopeItem};
-use crate::types::{FunctionType, TypeSpec};
-
 use crate::statement::StatementTranslator;
+use crate::types::{FunctionType, TypeSpec};
 use inkwell::builder::Builder;
 use inkwell::values::{BasicValueEnum, FunctionValue};
 use std::cell::RefCell;
@@ -48,6 +47,10 @@ impl Function {
                 root_block: None,
             }),
         })
+    }
+
+    pub fn return_type(&self) -> TypeSpec {
+        self.signature.return_type.clone()
     }
 
     pub fn function_type(&self) -> Box<FunctionType> {

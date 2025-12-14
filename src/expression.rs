@@ -1,13 +1,13 @@
 use crate::ast;
+use crate::integer::IntegerExpressionTranslator;
 use crate::scope::LocalScope;
 use crate::statement::StatementTranslator;
-use crate::types::{Type, TypeHint};
+use crate::types::{PrimitiveType, TypeHint, TypeSpec};
 use inkwell::values::{BasicValue, BasicValueEnum};
 use std::ops::Deref;
-use std::rc::Rc;
 
 pub struct Expression {
-    exp_type: Rc<dyn Type>,
+    exp_type: TypeSpec,
     instruction: Instruction,
 }
 
@@ -94,22 +94,13 @@ pub enum BinaryOperation {
     LogicalOr,
 }
 
-pub trait TypedExpressionTranslator {
-    fn translate_binary_operation<'ctx, 'm, 'f, 'b>(
-        &self,
-        op: &BinaryOperation,
-        lhs: &Instruction,
-        rhs: &Instruction,
-        parent: &ExpressionTranslator<'ctx, 'm, 'f, 'b>,
-    ) -> BasicValueEnum<'ctx>;
-}
-
 pub struct ExpressionTranslator<'ctx, 'm, 'f, 'b> {
     parent: &'b StatementTranslator<'ctx, 'm, 'f>,
 }
 
 impl<'ctx, 'm, 'f, 'b> Deref for ExpressionTranslator<'ctx, 'm, 'f, 'b> {
     type Target = StatementTranslator<'ctx, 'm, 'f>;
+
     fn deref(&self) -> &Self::Target {
         self.parent
     }
@@ -121,25 +112,23 @@ impl<'ctx, 'm, 'f, 'b> ExpressionTranslator<'ctx, 'm, 'f, 'b> {
     }
 
     pub fn translate_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
-        let exp_type = exp.exp_type.as_ref();
-        let exp_translator = exp_type.create_expression_translator();
-        self.translate_instruction(&exp.instruction, exp_translator.as_ref())
-    }
-
-    pub fn translate_instruction(
-        &self,
-        instruction: &Instruction,
-        exp_translator: &dyn TypedExpressionTranslator,
-    ) -> BasicValueEnum<'ctx> {
-        match instruction {
-            Instruction::LoadConstant(const_value) => self.translate_constant(const_value),
-            Instruction::Binary(op, lhs, rhs) => {
-                exp_translator.translate_binary_operation(op, lhs, rhs, self)
-            }
+        let exp_type = exp.exp_type.clone();
+        match exp_type {
+            TypeSpec::Void => todo!(),
+            TypeSpec::Primitive(exp_type) => match exp_type {
+                PrimitiveType::Void => todo!(),
+                PrimitiveType::Bool => todo!(),
+                PrimitiveType::Integer(integer_type) => {
+                    let translator = IntegerExpressionTranslator::new(self, integer_type);
+                    translator.translate_instruction(&exp.instruction)
+                }
+                PrimitiveType::Float(_) => todo!(),
+            },
+            TypeSpec::Function(_) => todo!(),
         }
     }
 
-    fn translate_constant(&self, const_value: &Constant) -> BasicValueEnum<'ctx> {
+    pub fn translate_constant(&self, const_value: &Constant) -> BasicValueEnum<'ctx> {
         match const_value {
             Constant::Integer(value) => self
                 .context

@@ -2,9 +2,7 @@ use crate::ast;
 use crate::basic_block::BasicBlockVisitor;
 use crate::expression::{Expression, ExpressionTranslator};
 use crate::function::FunctionTranslator;
-use crate::integer::Integer;
 use crate::scope::LocalScope;
-use crate::types::Type;
 use inkwell::values::BasicValueEnum;
 use slotmap::DefaultKey;
 use std::cell::OnceCell;
@@ -45,21 +43,8 @@ impl Statement {
     }
 
     pub fn from_ast_return(exp_ast: &ast::Expression, scope: &dyn LocalScope) -> Self {
-        // let function = scope.current_function();
-        // let type_hint = match function.return_type() {
-        //     TypeSpec::Void => todo!(),
-        //     TypeSpec::Primitive(prim_type) => match prim_type {
-        //         PrimitiveType::Void => todo!(),
-        //         PrimitiveType::Bool => todo!(),
-        //         PrimitiveType::Integer(int_type) => {
-        //             TypeSpec::Primitive(PrimitiveType::Integer(int_type))
-        //         }
-        //         PrimitiveType::Float(_) => todo!(),
-        //     },
-        //     TypeSpec::Function(_) => todo!(),
-        // };
-        let type_hint = Rc::new(Integer { is_signed: false }) as Rc<dyn Type>;
-
+        let function = scope.current_function();
+        let type_hint = function.return_type();
         Statement::Return(Expression::from_ast(exp_ast, &type_hint, scope))
     }
 }
