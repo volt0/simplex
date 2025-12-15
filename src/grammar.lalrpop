@@ -15,7 +15,7 @@ Definition: Definition = {
 // Functions
 
 FunctionDefinition: Definition = {
-    "function" <name:Identifier> <signature:FunctionSignature> <body:FunctionBody> => Definition {
+    "proc" <name:Identifier> <signature:FunctionSignature> <body:FunctionBody> => Definition {
         name,
         value: DefinitionValue::Function(Function { signature, body }),
     }

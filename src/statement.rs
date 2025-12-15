@@ -40,14 +40,14 @@ impl Statement {
         let value_type_ast = var_ast.value_type.as_ref();
         let type_hint = value_type_ast.map(|type_ast| TypeSpec::from_ast(type_ast));
         let exp_ast = var_ast.init_expression.as_ref().unwrap();
-        let exp = Expression::from_ast(exp_ast, type_hint.as_ref(), scope);
+        let exp = Expression::from_ast(exp_ast, &type_hint, scope);
         Statement::ValueAssignment(ValueAssignment::new(var_ast.name.clone(), exp))
     }
 
     pub fn from_ast_return(exp_ast: &ast::Expression, scope: &dyn LocalScope) -> Self {
         let function = scope.current_function();
         let type_hint = Some(function.return_type());
-        Statement::Return(Expression::from_ast(exp_ast, type_hint.as_ref(), scope))
+        Statement::Return(Expression::from_ast(exp_ast, &type_hint, scope))
     }
 }
 
@@ -64,6 +64,10 @@ impl ValueAssignment {
             exp,
             ir_id: Default::default(),
         })
+    }
+
+    pub fn id(&self) -> DefaultKey {
+        self.ir_id.get().unwrap().clone()
     }
 }
 

@@ -85,6 +85,8 @@ impl<'ctx, 'm, 'f, 'b, 'e> IntegerExpressionTranslator<'ctx, 'm, 'f, 'b, 'e> {
     pub fn translate_instruction(&self, instruction: &Instruction) -> BasicValueEnum<'ctx> {
         match instruction {
             Instruction::LoadConstant(const_value) => self.translate_constant(const_value),
+            Instruction::LoadArgument(arg) => self.load_argument(arg),
+            Instruction::LoadValue(val) => self.load_value(val.id()).unwrap(),
             Instruction::UnaryOperation(op, arg) => self.translate_unary_operation(op, arg),
             Instruction::BinaryOperation(op, lhs, rhs) => {
                 self.translate_binary_operation(op, lhs, rhs)

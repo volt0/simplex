@@ -4,14 +4,17 @@ use inkwell::types::FunctionType as FunctionTypeIR;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 
 use crate::ast;
-use crate::definitions::function::FunctionSignature;
 use crate::module::ModuleTranslator;
 
+use float::FloatType;
+use function::FunctionType;
 use integer::{IntegerType, IntegerTypeSize};
 
+pub mod float;
+pub mod function;
 pub mod integer;
 
-pub type TypeHint = TypeSpec;
+pub type TypeHint = Option<TypeSpec>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeSpec {
@@ -19,7 +22,6 @@ pub enum TypeSpec {
     Bool,
     Integer(IntegerType),
     Float(FloatType),
-    Function(Box<FunctionType>),
 }
 
 impl TypeSpec {
@@ -31,41 +33,6 @@ impl TypeSpec {
             ast::Type::Boolean => TypeSpec::Bool,
             ast::Type::Float(float_type) => TypeSpec::Float(FloatType::from_ast(float_type)),
         }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub enum FloatType {
-    F32,
-}
-
-impl FloatType {
-    pub fn from_ast(float_type_ast: &ast::FloatType) -> Self {
-        match float_type_ast {
-            ast::FloatType::F32 => FloatType::F32,
-            ast::FloatType::F64 => FloatType::F32,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct FunctionType {
-    pub arg_types: Vec<TypeSpec>,
-    pub return_type: TypeSpec,
-}
-
-impl FunctionType {
-    pub fn new(function_signature: &FunctionSignature) -> Box<Self> {
-        let mut function_type = Box::new(FunctionType {
-            arg_types: Vec::with_capacity(function_signature.args.len()),
-            return_type: function_signature.return_type.clone(),
-        });
-
-        for arg in &function_signature.args {
-            function_type.arg_types.push(arg.arg_type.clone())
-        }
-
-        function_type
     }
 }
 
@@ -107,8 +74,6 @@ impl<'ctx, 'm> TypeTranslator<'ctx, 'm> {
                 };
                 type_ir.as_basic_type_enum()
             }
-
-            TypeSpec::Function(_) => todo!(),
         }
     }
 

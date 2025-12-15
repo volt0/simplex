@@ -1,10 +1,12 @@
 use std::ops::Deref;
+use std::rc::Rc;
 
 use inkwell::values::{BasicValue, BasicValueEnum};
 
 use crate::ast;
-use crate::scope::LocalScope;
-use crate::statement::StatementTranslator;
+use crate::definitions::function::FunctionArgument;
+use crate::scope::{LocalScope, LocalScopeItem};
+use crate::statement::{StatementTranslator, ValueAssignment};
 use crate::types::integer::IntegerExpressionTranslator;
 use crate::types::{TypeHint, TypeSpec};
 
@@ -16,19 +18,23 @@ pub struct Expression {
 impl Expression {
     pub fn from_ast(
         exp_ast: &ast::Expression,
-        type_hint: Option<&TypeHint>,
+        type_hint: &TypeHint,
         scope: &dyn LocalScope,
     ) -> Box<Self> {
-        let type_hint = type_hint.unwrap();
-        Box::new(Expression {
-            exp_type: type_hint.clone(),
-            instruction: Instruction::from_ast(exp_ast, Some(type_hint), scope),
-        })
+        match type_hint {
+            None => todo!(),
+            Some(exp_type) => Box::new(Expression {
+                exp_type: exp_type.clone(),
+                instruction: Instruction::from_ast(exp_ast, type_hint, scope),
+            }),
+        }
     }
 }
 
 pub enum Instruction {
     LoadConstant(Constant),
+    LoadArgument(Rc<FunctionArgument>),
+    LoadValue(Rc<ValueAssignment>),
     BinaryOperation(BinaryOperation, Box<Instruction>, Box<Instruction>),
     UnaryOperation(UnaryOperation, Box<Instruction>),
     // TypeAssertedSubtree(Box<Expression>),
@@ -38,14 +44,17 @@ pub enum Instruction {
 impl Instruction {
     fn from_ast(
         exp_ast: &ast::Expression,
-        type_hint: Option<&TypeHint>,
+        type_hint: &TypeHint,
         scope: &dyn LocalScope,
     ) -> Instruction {
         match exp_ast {
             ast::Expression::Constant(const_ast) => {
                 Instruction::LoadConstant(Constant::from_ast(const_ast))
             }
-            ast::Expression::Identifier(_) => todo!(),
+            ast::Expression::Identifier(name) => match scope.resolve(name).unwrap() {
+                LocalScopeItem::Argument(arg) => Instruction::LoadArgument(arg),
+                LocalScopeItem::Value(val) => Instruction::LoadValue(val),
+            },
             ast::Expression::Conditional(_) => todo!(),
             ast::Expression::BinaryOperation(exp_ast) => {
                 let lhs = Box::new(Self::from_ast(exp_ast.lhs.as_ref(), type_hint, scope));
@@ -138,7 +147,6 @@ impl<'ctx, 'm, 'f, 'b> ExpressionTranslator<'ctx, 'm, 'f, 'b> {
                 translator.translate_instruction(&exp.instruction)
             }
             TypeSpec::Float(_) => todo!(),
-            TypeSpec::Function(_) => todo!(),
         }
     }
 

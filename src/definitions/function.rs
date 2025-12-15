@@ -10,7 +10,8 @@ use crate::basic_block::{BasicBlock, BasicBlockBuilder};
 use crate::module::ModuleTranslator;
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::statement::StatementTranslator;
-use crate::types::{FunctionType, TypeSpec};
+use crate::types::function::FunctionType;
+use crate::types::TypeSpec;
 
 pub trait FunctionVisitor {
     fn visit_basic_block(&self, basic_block: &BasicBlock);
