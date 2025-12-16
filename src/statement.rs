@@ -7,8 +7,8 @@ use slotmap::DefaultKey;
 
 use crate::ast;
 use crate::basic_block::BasicBlockVisitor;
-use crate::definitions::function::FunctionTranslator;
 use crate::expression::{Expression, ExpressionTranslator};
+use crate::function::FunctionTranslator;
 use crate::scope::LocalScope;
 use crate::types::TypeSpec;
 
@@ -36,7 +36,7 @@ impl Statement {
         }
     }
 
-    pub fn from_ast_let(var_ast: &ast::Variable, scope: &dyn LocalScope) -> Self {
+    fn from_ast_let(var_ast: &ast::Variable, scope: &dyn LocalScope) -> Self {
         let value_type_ast = var_ast.value_type.as_ref();
         let type_hint = value_type_ast.map(|type_ast| TypeSpec::from_ast(type_ast));
         let exp_ast = var_ast.init_expression.as_ref().unwrap();
@@ -44,7 +44,7 @@ impl Statement {
         Statement::ValueAssignment(ValueAssignment::new(var_ast.name.clone(), exp))
     }
 
-    pub fn from_ast_return(exp_ast: &ast::Expression, scope: &dyn LocalScope) -> Self {
+    fn from_ast_return(exp_ast: &ast::Expression, scope: &dyn LocalScope) -> Self {
         let function = scope.current_function();
         let type_hint = Some(function.return_type());
         Statement::Return(Expression::from_ast(exp_ast, &type_hint, scope))
@@ -95,7 +95,7 @@ impl<'ctx, 'm, 'f> StatementTranslator<'ctx, 'm, 'f> {
         Self { parent }
     }
 
-    pub fn translate_statement(&self, stmt: &Statement) {
+    fn translate_statement(&self, stmt: &Statement) {
         match stmt {
             Statement::ValueAssignment(var) => {
                 self.add_statement_let(var);
@@ -106,7 +106,7 @@ impl<'ctx, 'm, 'f> StatementTranslator<'ctx, 'm, 'f> {
         }
     }
 
-    pub fn translate_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
+    fn translate_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
         ExpressionTranslator::new(self).translate_expression(exp)
     }
 

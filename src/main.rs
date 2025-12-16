@@ -1,14 +1,14 @@
-use inkwell::context::Context;
-use inkwell::OptimizationLevel;
-
 use crate::grammar::ModuleParser;
-use crate::module::{Module, ModuleTranslator};
+use crate::module::{ModuleBuilder, ModuleTranslator};
+use inkwell::context::Context;
 
 mod ast;
 mod basic_block;
 mod definitions;
 mod expression;
+mod function;
 mod module;
+mod namespace;
 mod scope;
 mod statement;
 mod types;
@@ -21,7 +21,7 @@ mod types;
 //     return 99;
 // }
 
-// proc sum(x: i8, y: i32, z: i32): i32 {
+// proc test(x: i8, y: i32, z: i32): i32 {
 //     return z;
 // }
 
@@ -39,25 +39,22 @@ proc test(x: i64, y: i64, z: i64): i64 {
 fn main() {
     let parser = ModuleParser::new();
     let module_ast = parser.parse(SRC).unwrap();
-    let module = Module::from_ast(module_ast);
-    module.traversal_pass();
+
+    let module_builder = ModuleBuilder::from_ast(module_ast);
+    let module = module_builder.build();
 
     let context = Context::create();
     let module_translator = ModuleTranslator::new(&context);
     module.visit(&module_translator);
 
-    module_translator.module_ir.print_to_stderr();
-
-    let execution_engine = module_translator
-        .module_ir
-        .create_jit_execution_engine(OptimizationLevel::None)
-        .unwrap();
+    module_translator.dbg_print();
 
     unsafe {
         type TestFunction = unsafe extern "C" fn(u64, u64, u64) -> u64;
 
+        let execution_engine = module_translator.create_execution_engine();
         let test_function = execution_engine
-            .get_function::<TestFunction>("sum")
+            .get_function::<TestFunction>("test")
             .unwrap();
 
         let x = 1u64;

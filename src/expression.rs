@@ -4,7 +4,7 @@ use std::rc::Rc;
 use inkwell::values::{BasicValue, BasicValueEnum};
 
 use crate::ast;
-use crate::definitions::function::FunctionArgument;
+use crate::function::FunctionArgument;
 use crate::scope::{LocalScope, LocalScopeItem};
 use crate::statement::{StatementTranslator, ValueAssignment};
 use crate::types::integer::IntegerExpressionTranslator;

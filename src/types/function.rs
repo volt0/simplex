@@ -1,4 +1,4 @@
-use crate::definitions::function::FunctionSignature;
+use crate::function::FunctionSignature;
 use crate::types::TypeSpec;
 
 #[derive(Clone, Debug, PartialEq)]

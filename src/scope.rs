@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::definitions::function::{Function, FunctionArgument};
+use crate::function::{Function, FunctionArgument};
 use crate::statement::ValueAssignment;
 
 pub trait LocalScope {

@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::OnceCell;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -18,30 +18,19 @@ pub trait FunctionVisitor {
 }
 
 pub struct Function {
-    body_ast: RefCell<Option<ast::FunctionBody>>,
-    root_block: RefCell<Option<BasicBlock>>,
+    name: Option<String>,
     signature: FunctionSignature,
+    root_block: OnceCell<BasicBlock>,
 }
 
 impl Function {
-    pub fn from_ast(function_ast: ast::Function) -> Rc<Self> {
-        let ast::Function {
-            signature: signature_ast,
-            body: body_ast,
-        } = function_ast;
-
-        let mut signature = FunctionSignature {
-            return_type: TypeSpec::from_ast(&signature_ast.return_type.clone().unwrap()),
-            args: vec![],
-        };
-
-        for arg_ast in signature_ast.args {
-            signature.create_argument(arg_ast);
-        }
+    pub fn from_ast(function_ast: &ast::Function, name: Option<String>) -> Rc<Self> {
+        let signature_ast = &function_ast.signature;
+        let signature = FunctionSignature::from_ast(signature_ast);
 
         Rc::new(Function {
-            body_ast: RefCell::new(Some(body_ast)),
-            root_block: RefCell::new(None),
+            root_block: OnceCell::new(),
+            name,
             signature,
         })
     }
@@ -54,40 +43,19 @@ impl Function {
         FunctionType::new(&self.signature)
     }
 
-    pub fn is_complete(&self) -> bool {
-        self.root_block.borrow().is_some()
-    }
-
-    pub fn traversal_pass(self: &Rc<Self>) {
-        if !self.is_complete() {
-            let body_ast = self.body_ast.take().unwrap();
-            match body_ast {
-                ast::FunctionBody::Forward => todo!(),
-                ast::FunctionBody::BasicBlock(ast::BasicBlock {
-                    statements: statements_ast,
-                }) => {
-                    let scope = FunctionScope {
-                        function: self.clone(),
-                    };
-                    let basic_block_builder = BasicBlockBuilder::from_ast(statements_ast, &scope);
-                    let basic_block = basic_block_builder.build();
-                    self.root_block.replace(Some(basic_block));
-                }
-            }
-        }
+    pub fn mangled_name(&self) -> &str {
+        self.name.as_deref().unwrap_or("<unknown>")
     }
 
     pub fn visit(&self, visitor: &dyn FunctionVisitor) {
-        match self.root_block.borrow().as_ref() {
+        match self.root_block.get() {
             Some(root_basic_block) => visitor.visit_basic_block(root_basic_block),
             None => {
                 todo!()
             }
         }
     }
-}
 
-impl Function {
     fn resolve_local(&self, name: &String) -> Option<LocalScopeItem> {
         for arg in &self.signature.args {
             let arg_ref = arg.as_ref();
@@ -96,6 +64,40 @@ impl Function {
             }
         }
         None
+    }
+}
+
+pub struct FunctionBuilder {
+    function: Rc<Function>,
+    function_ast: ast::Function,
+}
+
+impl FunctionBuilder {
+    pub fn new(function: &Rc<Function>, function_ast: ast::Function) -> Self {
+        FunctionBuilder {
+            function: function.clone(),
+            function_ast,
+        }
+    }
+
+    pub fn build(self) -> Rc<Function> {
+        let body_ast = self.function_ast.body;
+        let function = self.function;
+        match body_ast {
+            ast::FunctionBody::Forward => todo!(),
+            ast::FunctionBody::BasicBlock(ast::BasicBlock {
+                statements: statements_ast,
+            }) => {
+                let scope = FunctionScope {
+                    function: function.clone(),
+                };
+                let basic_block_builder = BasicBlockBuilder::from_ast(statements_ast, &scope);
+                let basic_block = basic_block_builder.build();
+                _ = function.root_block.set(basic_block);
+            }
+        }
+
+        function
     }
 }
 
@@ -113,7 +115,20 @@ pub struct FunctionSignature {
 }
 
 impl FunctionSignature {
-    pub fn create_argument(&mut self, arg_ast: ast::FunctionArgument) {
+    pub fn from_ast(signature_ast: &ast::FunctionSignature) -> Self {
+        let mut signature = FunctionSignature {
+            return_type: TypeSpec::from_ast(&signature_ast.return_type.clone().unwrap()),
+            args: vec![],
+        };
+
+        for arg_ast in &signature_ast.args {
+            signature.create_argument(arg_ast);
+        }
+
+        signature
+    }
+
+    pub fn create_argument(&mut self, arg_ast: &ast::FunctionArgument) {
         let id = self.args.len() as u32;
         let name = arg_ast.name.clone();
 
