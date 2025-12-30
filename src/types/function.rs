@@ -1,5 +1,5 @@
-use crate::function::FunctionSignature;
-use crate::types::TypeSpec;
+use super::TypeSpec;
+use crate::function_signature::FunctionSignature;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionType {

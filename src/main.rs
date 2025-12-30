@@ -1,12 +1,19 @@
-use crate::grammar::ModuleParser;
-use crate::module::{ModuleBuilder, ModuleTranslator};
 use inkwell::context::Context;
 
+use crate::backend::ModuleTranslator;
+use crate::grammar::ModuleParser;
+use crate::module::Module;
+
 mod ast;
+mod backend;
 mod basic_block;
+mod constant;
 mod definitions;
 mod expression;
 mod function;
+mod function_argument;
+mod function_signature;
+mod instruction;
 mod module;
 mod namespace;
 mod scope;
@@ -39,9 +46,7 @@ proc test(x: i64, y: i64, z: i64): i64 {
 fn main() {
     let parser = ModuleParser::new();
     let module_ast = parser.parse(SRC).unwrap();
-
-    let module_builder = ModuleBuilder::from_ast(module_ast);
-    let module = module_builder.build();
+    let module = Module::new(module_ast);
 
     let context = Context::create();
     let module_translator = ModuleTranslator::new(&context);

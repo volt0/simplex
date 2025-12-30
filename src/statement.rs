@@ -1,14 +1,10 @@
 use std::cell::OnceCell;
-use std::ops::Deref;
 use std::rc::Rc;
 
-use inkwell::values::BasicValueEnum;
 use slotmap::DefaultKey;
 
 use crate::ast;
-use crate::basic_block::BasicBlockVisitor;
-use crate::expression::{Expression, ExpressionTranslator};
-use crate::function::FunctionTranslator;
+use crate::expression::Expression;
 use crate::scope::LocalScope;
 use crate::types::TypeSpec;
 
@@ -46,7 +42,7 @@ impl Statement {
 
     fn from_ast_return(exp_ast: &ast::Expression, scope: &dyn LocalScope) -> Self {
         let function = scope.current_function();
-        let type_hint = Some(function.return_type());
+        let type_hint = Some(function.get_return_type());
         Statement::Return(Expression::from_ast(exp_ast, &type_hint, scope))
     }
 }
@@ -68,56 +64,5 @@ impl ValueAssignment {
 
     pub fn id(&self) -> DefaultKey {
         self.ir_id.get().unwrap().clone()
-    }
-}
-
-#[repr(transparent)]
-pub struct StatementTranslator<'ctx, 'm, 'f> {
-    parent: &'f FunctionTranslator<'ctx, 'm>,
-}
-
-impl<'ctx, 'm, 'f> Deref for StatementTranslator<'ctx, 'm, 'f> {
-    type Target = FunctionTranslator<'ctx, 'm>;
-
-    fn deref(&self) -> &Self::Target {
-        self.parent
-    }
-}
-
-impl<'ctx, 'm, 'f> BasicBlockVisitor for StatementTranslator<'ctx, 'm, 'f> {
-    fn visit_statement(&self, stmt: &Statement) {
-        self.translate_statement(stmt);
-    }
-}
-
-impl<'ctx, 'm, 'f> StatementTranslator<'ctx, 'm, 'f> {
-    pub fn new(parent: &'f FunctionTranslator<'ctx, 'm>) -> Self {
-        Self { parent }
-    }
-
-    fn translate_statement(&self, stmt: &Statement) {
-        match stmt {
-            Statement::ValueAssignment(var) => {
-                self.add_statement_let(var);
-            }
-            Statement::Return(exp) => {
-                self.add_statement_return(exp);
-            }
-        }
-    }
-
-    fn translate_expression(&self, exp: &Expression) -> BasicValueEnum<'ctx> {
-        ExpressionTranslator::new(self).translate_expression(exp)
-    }
-
-    fn add_statement_let(&self, val: &ValueAssignment) {
-        let value = self.translate_expression(val.exp.as_ref());
-        let value_id = self.store_value(value);
-        val.ir_id.set(value_id).unwrap();
-    }
-
-    fn add_statement_return(&self, exp: &Expression) {
-        let result = self.translate_expression(exp);
-        self.builder.build_return(Some(&result)).unwrap();
     }
 }

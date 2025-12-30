@@ -68,7 +68,7 @@ pub enum Expression {
     MemberAccess(MemberAccessExpression),
 }
 
-pub type BinaryOperation = crate::expression::BinaryOperation;
+pub type BinaryOperation = crate::instruction::BinaryOperation;
 
 pub struct BinaryOperationExpr {
     pub operation: BinaryOperation,
@@ -76,7 +76,7 @@ pub struct BinaryOperationExpr {
     pub rhs: Box<Expression>,
 }
 
-pub type UnaryOperation = crate::expression::UnaryOperation;
+pub type UnaryOperation = crate::instruction::UnaryOperation;
 
 pub struct UnaryOperationExpression {
     pub operation: UnaryOperation,
