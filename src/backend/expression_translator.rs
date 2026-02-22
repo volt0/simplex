@@ -3,7 +3,6 @@ use std::ops::Deref;
 use inkwell::values::{BasicValue, BasicValueEnum};
 
 use super::statement_translator::StatementTranslator;
-use super::types_impl::IntegerExpressionTranslator;
 use crate::constant::Constant;
 use crate::expression::Expression;
 use crate::types::TypeSpec;
@@ -31,8 +30,9 @@ impl<'ctx, 'm, 'f, 'b> ExpressionTranslator<'ctx, 'm, 'f, 'b> {
             TypeSpec::Void => todo!(),
             TypeSpec::Bool => todo!(),
             TypeSpec::Integer(integer_type) => {
-                let translator = IntegerExpressionTranslator::new(self, integer_type);
-                translator.translate_instruction(&exp.get_instruction())
+                todo!()
+                // let translator = IntegerExpressionTranslator::new(self, integer_type);
+                // translator.translate_instruction(&exp.get_instruction())
             }
             TypeSpec::Float(_) => todo!(),
         }

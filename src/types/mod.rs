@@ -2,11 +2,10 @@ use crate::ast;
 
 mod float;
 mod function;
-mod integer;
 
 pub use self::float::FloatType;
 pub use self::function::FunctionType;
-pub use self::integer::{IntegerType, IntegerTypeSize};
+pub use crate::integer_type::{IntegerType, IntegerTypeSize};
 
 pub type TypeHint = Option<TypeSpec>;
 

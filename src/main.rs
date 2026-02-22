@@ -14,6 +14,8 @@ mod function;
 mod function_argument;
 mod function_signature;
 mod instruction;
+mod integer_expression;
+mod integer_type;
 mod module;
 mod namespace;
 mod scope;
