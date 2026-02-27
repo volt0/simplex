@@ -1,76 +1,102 @@
+// mod ast;
+// mod backend;
+// mod basic_block;
+// mod definitions;
+// mod function;
+// mod function_argument;
+// mod function_signature;
+// mod instruction;
+// mod module;
+// mod namespace;
+// mod scope;
+// mod statement;
+// mod types;
+
 use inkwell::context::Context;
+use inkwell::execution_engine::JitFunction;
+use inkwell::module::Module;
+use inkwell::targets::TargetTriple;
+use inkwell::OptimizationLevel;
+use std::collections::HashMap;
 
-use crate::backend::ModuleTranslator;
-use crate::grammar::ModuleParser;
-use crate::module::Module;
+use crate::expression::Expression;
+use crate::integer_value::IntegerValue;
+use crate::statement_translator::StatementTranslator;
+use crate::value::Value;
 
-mod ast;
-mod backend;
-mod basic_block;
 mod constant;
-mod definitions;
 mod expression;
-mod function;
-mod function_argument;
-mod function_signature;
-mod instruction;
-mod integer_expression;
+mod expression_translator;
 mod integer_type;
-mod module;
-mod namespace;
-mod scope;
-mod statement;
-mod types;
-
-// proc test(x: i8, y: i32, z: i32) {
-//     return;
-// }
-
-// proc test(x: i8, y: i32, z: i32): i32 {
-//     return 99;
-// }
-
-// proc test(x: i8, y: i32, z: i32): i32 {
-//     return z;
-// }
-
-// proc test(x: i64, y: i64, z: i64): i64 {
-//     return x + y + z;
-// }
-
-const SRC: &'static str = "\
-proc test(x: i64, y: i64, z: i64): i64 {
-    let a: i64 = 10;
-    return x + y + z + a;
-}
-";
+mod integer_value;
+mod statement_translator;
+mod value;
 
 fn main() {
-    let parser = ModuleParser::new();
-    let module_ast = parser.parse(SRC).unwrap();
-    let module = Module::new(module_ast);
-
     let context = Context::create();
-    let module_translator = ModuleTranslator::new(&context);
-    module.visit(&module_translator);
+    let module_ir = context.create_module("test_module");
+    module_ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
 
-    module_translator.dbg_print();
+    compile_function(&context, &module_ir);
+
+    module_ir.print_to_stderr();
+    run_test(&module_ir);
+}
+
+pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) {
+    let i64_type = context.i64_type();
+    let fn_type = i64_type.fn_type(&[i64_type.into(), i64_type.into(), i64_type.into()], false);
+
+    let function_ir = module_ir.add_function("test", fn_type, None);
+    let basic_block = context.append_basic_block(function_ir.clone(), "entry");
+
+    let builder = context.create_builder();
+    builder.position_at_end(basic_block);
+
+    let statement_translator = StatementTranslator {
+        context,
+        builder,
+        values: HashMap::from([
+            (
+                "x".to_string(),
+                Value::IntegerValue(IntegerValue {
+                    ir: function_ir.get_nth_param(0).unwrap().into_int_value(),
+                }),
+            ),
+            (
+                "y".to_string(),
+                Value::IntegerValue(IntegerValue {
+                    ir: function_ir.get_nth_param(1).unwrap().into_int_value(),
+                }),
+            ),
+            (
+                "z".to_string(),
+                Value::IntegerValue(IntegerValue {
+                    ir: function_ir.get_nth_param(2).unwrap().into_int_value(),
+                }),
+            ),
+        ]),
+    };
+
+    // let expression = Expression::LoadConstant(Constant::Integer(99));
+
+    let expression = Expression::LoadValue("x".to_string());
+    statement_translator.translate_return_statement(Some(&expression));
+}
+
+fn run_test(module_ir: &Module) {
+    type TestFunc = unsafe extern "C" fn(u64, u64, u64) -> u64;
+
+    let execution_engine = module_ir
+        .create_jit_execution_engine(OptimizationLevel::None)
+        .unwrap();
 
     unsafe {
-        type TestFunction = unsafe extern "C" fn(u64, u64, u64) -> u64;
-
-        let execution_engine = module_translator.create_execution_engine();
-        let test_function = execution_engine
-            .get_function::<TestFunction>("test")
-            .unwrap();
-
+        let test_function: JitFunction<'_, TestFunc> =
+            execution_engine.get_function("test").unwrap();
         let x = 1u64;
         let y = 2u64;
         let z = 3u64;
         dbg!(test_function.call(x, y, z));
     }
-}
-
-mod grammar {
-    include!(concat!(env!("OUT_DIR"), "/grammar.rs"));
 }
