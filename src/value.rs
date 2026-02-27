@@ -1,7 +1,7 @@
 use inkwell::builder::Builder;
 use inkwell::values::BasicValueEnum;
 
-use crate::expression::UnaryOperation;
+use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::integer_value::IntegerValue;
 
 #[derive(Clone)]
@@ -29,6 +29,17 @@ impl<'ctx> Value<'ctx> {
     ) -> Value<'ctx> {
         match self {
             Value::IntegerValue(value) => value.unary_operation(operation, builder).into(),
+        }
+    }
+
+    pub fn binary_operation(
+        &self,
+        operation: BinaryOperation,
+        arg: Value<'ctx>,
+        builder: &Builder<'ctx>,
+    ) -> Value<'ctx> {
+        match self {
+            Value::IntegerValue(value) => value.binary_operation(operation, arg, builder).into(),
         }
     }
 }

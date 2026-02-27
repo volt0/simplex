@@ -19,7 +19,7 @@ use inkwell::targets::TargetTriple;
 use inkwell::OptimizationLevel;
 use std::collections::HashMap;
 
-use crate::expression::{Expression, UnaryOperation, UnaryOperationExpression};
+use crate::expression::{BinaryOperation, BinaryOperationExpression, Expression};
 use crate::integer_value::IntegerValue;
 use crate::statement_translator::StatementTranslator;
 use crate::value::Value;
@@ -59,31 +59,36 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
         values: HashMap::from([
             (
                 "x".to_string(),
-                Value::IntegerValue(IntegerValue(
-                    function_ir.get_nth_param(0).unwrap().into_int_value(),
-                )),
+                Value::IntegerValue(IntegerValue {
+                    ir: function_ir.get_nth_param(0).unwrap().into_int_value(),
+                }),
             ),
             (
                 "y".to_string(),
-                Value::IntegerValue(IntegerValue(
-                    function_ir.get_nth_param(1).unwrap().into_int_value(),
-                )),
+                Value::IntegerValue(IntegerValue {
+                    ir: function_ir.get_nth_param(1).unwrap().into_int_value(),
+                }),
             ),
             (
                 "z".to_string(),
-                Value::IntegerValue(IntegerValue(
-                    function_ir.get_nth_param(2).unwrap().into_int_value(),
-                )),
+                Value::IntegerValue(IntegerValue {
+                    ir: function_ir.get_nth_param(2).unwrap().into_int_value(),
+                }),
             ),
         ]),
     };
 
     // let expression = Expression::LoadConstant(Constant::Integer(99));
     // let expression = Expression::LoadValue("x".to_string());
+    // let expression = Expression::UnaryOperation(UnaryOperationExpression {
+    //     operation: UnaryOperation::Minus,
+    //     arg: Box::new(Expression::LoadValue("x".to_string())),
+    // });
 
-    let expression = Expression::UnaryOperation(UnaryOperationExpression {
-        operation: UnaryOperation::Minus,
-        arg: Box::new(Expression::LoadValue("x".to_string())),
+    let expression = Expression::BinaryOperation(BinaryOperationExpression {
+        operation: BinaryOperation::Add,
+        lhs: Box::new(Expression::LoadValue("x".to_string())),
+        rhs: Box::new(Expression::LoadValue("y".to_string())),
     });
     statement_translator.translate_return_statement(Some(&expression));
 }

@@ -6,6 +6,7 @@ pub enum Expression {
     Conditional(ConditionalExpression),
     UnaryOperation(UnaryOperationExpression),
     BinaryOperation(BinaryOperationExpression),
+    LogicalOperation(LogicalOperationExpression),
     Cast(CastExpression),
     Call(CallExpression),
     ItemAccess(ItemAccessExpression),
@@ -17,7 +18,6 @@ pub enum UnaryOperation {
     Plus,
     Minus,
     BitNot,
-    LogicalNot,
 }
 
 pub struct UnaryOperationExpression {
@@ -43,14 +43,18 @@ pub enum BinaryOperation {
     Ge,
     Lt,
     Le,
-    LogicalAnd,
-    LogicalOr,
 }
 
 pub struct BinaryOperationExpression {
     pub operation: BinaryOperation,
     pub lhs: Box<Expression>,
     pub rhs: Box<Expression>,
+}
+
+pub enum LogicalOperationExpression {
+    Not(Box<Expression>),
+    And(Box<Expression>, Box<Expression>),
+    Or(Box<Expression>, Box<Expression>),
 }
 
 pub struct CastExpression {

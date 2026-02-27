@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use crate::constant::Constant;
-use crate::expression::{Expression, UnaryOperationExpression};
+use crate::expression::{BinaryOperationExpression, Expression, UnaryOperationExpression};
 use crate::integer_value::IntegerValue;
 use crate::statement_translator::StatementTranslator;
 use crate::value::Value;
@@ -27,7 +27,8 @@ impl<'ctx> ExpressionTranslator<'ctx> {
             Expression::LoadValue(name) => self.load_value(name),
             Expression::Conditional(_) => todo!(),
             Expression::UnaryOperation(expression) => self.translate_unary_operation(expression),
-            Expression::BinaryOperation(_) => todo!(),
+            Expression::BinaryOperation(expression) => self.translate_binary_operation(expression),
+            Expression::LogicalOperation(_) => todo!(),
             Expression::Cast(_) => todo!(),
             Expression::Call(_) => todo!(),
             Expression::ItemAccess(_) => todo!(),
@@ -40,9 +41,9 @@ impl<'ctx> ExpressionTranslator<'ctx> {
             Constant::Void => todo!(),
             Constant::True => todo!(),
             Constant::False => todo!(),
-            Constant::Integer(value) => Value::IntegerValue(IntegerValue(
-                self.context.i32_type().const_int(*value as u64, false),
-            )),
+            Constant::Integer(value) => Value::IntegerValue(IntegerValue {
+                ir: self.context.i32_type().const_int(*value as u64, false),
+            }),
             Constant::Float(_) => todo!(),
             Constant::String(_) => todo!(),
         }
@@ -58,5 +59,11 @@ impl<'ctx> ExpressionTranslator<'ctx> {
     fn translate_unary_operation(&self, expression: &UnaryOperationExpression) -> Value<'ctx> {
         let arg = self.translate_expression(&expression.arg);
         arg.unary_operation(expression.operation.clone(), &self.builder)
+    }
+
+    fn translate_binary_operation(&self, expression: &BinaryOperationExpression) -> Value<'ctx> {
+        let left = self.translate_expression(&expression.lhs);
+        let right = self.translate_expression(&expression.rhs);
+        left.binary_operation(expression.operation.clone(), right, &self.builder)
     }
 }
