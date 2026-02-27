@@ -1,3 +1,4 @@
+use inkwell::builder::Builder;
 use inkwell::values::BasicValueEnum;
 
 use crate::expression::UnaryOperation;
@@ -21,9 +22,13 @@ impl<'ctx> Value<'ctx> {
         }
     }
 
-    pub fn unary_operation(self, operation: UnaryOperation) -> Value<'ctx> {
+    pub fn unary_operation(
+        self,
+        operation: UnaryOperation,
+        builder: &Builder<'ctx>,
+    ) -> Value<'ctx> {
         match self {
-            Value::IntegerValue(value) => value.unary_operation(operation).into(),
+            Value::IntegerValue(value) => value.unary_operation(operation, builder).into(),
         }
     }
 }

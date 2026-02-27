@@ -40,9 +40,9 @@ impl<'ctx> ExpressionTranslator<'ctx> {
             Constant::Void => todo!(),
             Constant::True => todo!(),
             Constant::False => todo!(),
-            Constant::Integer(value) => Value::IntegerValue(IntegerValue {
-                ir: self.context.i32_type().const_int(*value as u64, false),
-            }),
+            Constant::Integer(value) => Value::IntegerValue(IntegerValue(
+                self.context.i32_type().const_int(*value as u64, false),
+            )),
             Constant::Float(_) => todo!(),
             Constant::String(_) => todo!(),
         }
@@ -57,6 +57,6 @@ impl<'ctx> ExpressionTranslator<'ctx> {
 
     fn translate_unary_operation(&self, expression: &UnaryOperationExpression) -> Value<'ctx> {
         let arg = self.translate_expression(&expression.arg);
-        arg.unary_operation(expression.operation.clone())
+        arg.unary_operation(expression.operation.clone(), &self.builder)
     }
 }
