@@ -39,9 +39,9 @@ impl<'ctx> ExpressionTranslator<'ctx> {
             }
 
             Expression::BinaryOperation(expression) => {
-                let left = self.translate_expression(&expression.lhs, type_hint);
-                let right = self.translate_expression(&expression.rhs, type_hint);
-                left.binary_operation(expression.operation.clone(), right, &self.builder)
+                let lhs = self.translate_expression(&expression.lhs, type_hint);
+                let rhs = self.translate_expression(&expression.rhs, &Some(lhs.get_type()));
+                lhs.binary_operation(expression.operation.clone(), rhs, &self.builder)
             }
 
             Expression::LogicalOperation(_) => todo!(),

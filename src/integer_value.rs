@@ -1,6 +1,7 @@
 use inkwell::builder::Builder;
 use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
 
+use crate::boolean_value::BooleanValue;
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::integer_type::IntegerType;
 use crate::type_spec::TypeSpec;
@@ -45,50 +46,85 @@ impl<'ctx> IntegerValue<'ctx> {
         operation: BinaryOperation,
         arg: Value<'ctx>,
         builder: &Builder<'ctx>,
-    ) -> IntegerValue<'ctx> {
-        IntegerValue {
-            ir: match operation {
-                BinaryOperation::Add => builder
+    ) -> Value<'ctx> {
+        match operation {
+            BinaryOperation::Add => Value::IntegerValue(IntegerValue {
+                ir: builder
                     .build_int_add(self.ir, arg.to_ir().into_int_value(), "")
                     .unwrap(),
+                value_type: self.value_type,
+            }),
 
-                BinaryOperation::Sub => builder
+            BinaryOperation::Sub => Value::IntegerValue(IntegerValue {
+                ir: builder
                     .build_int_sub(self.ir, arg.to_ir().into_int_value(), "")
                     .unwrap(),
+                value_type: self.value_type,
+            }),
 
-                BinaryOperation::Mul => builder
+            BinaryOperation::Mul => Value::IntegerValue(IntegerValue {
+                ir: builder
                     .build_int_mul(self.ir, arg.to_ir().into_int_value(), "")
                     .unwrap(),
+                value_type: self.value_type,
+            }),
 
-                BinaryOperation::Div => builder
+            BinaryOperation::Div => Value::IntegerValue(IntegerValue {
+                ir: builder
                     .build_int_unsigned_div(self.ir, arg.to_ir().into_int_value(), "")
                     .unwrap(),
+                value_type: self.value_type,
+            }),
 
-                BinaryOperation::Mod => builder
+            BinaryOperation::Mod => Value::IntegerValue(IntegerValue {
+                ir: builder
                     .build_int_unsigned_rem(self.ir, arg.to_ir().into_int_value(), "")
                     .unwrap(),
+                value_type: self.value_type,
+            }),
 
-                BinaryOperation::BitAnd => builder
+            BinaryOperation::BitAnd => Value::IntegerValue(IntegerValue {
+                ir: builder
                     .build_and(self.ir, arg.to_ir().into_int_value(), "")
                     .unwrap(),
+                value_type: self.value_type,
+            }),
 
-                BinaryOperation::BitXor => builder
+            BinaryOperation::BitXor => Value::IntegerValue(IntegerValue {
+                ir: builder
                     .build_xor(self.ir, arg.to_ir().into_int_value(), "")
                     .unwrap(),
+                value_type: self.value_type,
+            }),
 
-                BinaryOperation::BitOr => builder
+            BinaryOperation::BitOr => Value::IntegerValue(IntegerValue {
+                ir: builder
                     .build_or(self.ir, arg.to_ir().into_int_value(), "")
                     .unwrap(),
+                value_type: self.value_type,
+            }),
 
-                BinaryOperation::ShiftLeft => builder
+            BinaryOperation::ShiftLeft => Value::IntegerValue(IntegerValue {
+                ir: builder
                     .build_left_shift(self.ir, arg.to_ir().into_int_value(), "")
                     .unwrap(),
+                value_type: self.value_type,
+            }),
 
-                BinaryOperation::ShiftRight => builder
-                    .build_right_shift(self.ir, arg.to_ir().into_int_value(), true, "")
+            BinaryOperation::ShiftRight => Value::IntegerValue(IntegerValue {
+                ir: builder
+                    .build_right_shift(
+                        self.ir,
+                        arg.to_ir().into_int_value(),
+                        self.value_type.is_signed,
+                        "",
+                    )
                     .unwrap(),
+                value_type: self.value_type,
+            }),
 
-                BinaryOperation::Eq => builder
+            BinaryOperation::Eq => Value::BooleanValue(BooleanValue {
+                ir: builder
                     .build_int_compare(
                         inkwell::IntPredicate::EQ,
                         self.ir,
@@ -96,8 +132,10 @@ impl<'ctx> IntegerValue<'ctx> {
                         "",
                     )
                     .unwrap(),
+            }),
 
-                BinaryOperation::Ne => builder
+            BinaryOperation::Ne => Value::BooleanValue(BooleanValue {
+                ir: builder
                     .build_int_compare(
                         inkwell::IntPredicate::NE,
                         self.ir,
@@ -105,8 +143,10 @@ impl<'ctx> IntegerValue<'ctx> {
                         "",
                     )
                     .unwrap(),
+            }),
 
-                BinaryOperation::Gt => builder
+            BinaryOperation::Gt => Value::BooleanValue(BooleanValue {
+                ir: builder
                     .build_int_compare(
                         inkwell::IntPredicate::UGT,
                         self.ir,
@@ -114,8 +154,10 @@ impl<'ctx> IntegerValue<'ctx> {
                         "",
                     )
                     .unwrap(),
+            }),
 
-                BinaryOperation::Ge => builder
+            BinaryOperation::Ge => Value::BooleanValue(BooleanValue {
+                ir: builder
                     .build_int_compare(
                         inkwell::IntPredicate::UGE,
                         self.ir,
@@ -123,8 +165,10 @@ impl<'ctx> IntegerValue<'ctx> {
                         "",
                     )
                     .unwrap(),
+            }),
 
-                BinaryOperation::Lt => builder
+            BinaryOperation::Lt => Value::BooleanValue(BooleanValue {
+                ir: builder
                     .build_int_compare(
                         inkwell::IntPredicate::ULT,
                         self.ir,
@@ -132,8 +176,10 @@ impl<'ctx> IntegerValue<'ctx> {
                         "",
                     )
                     .unwrap(),
+            }),
 
-                BinaryOperation::Le => builder
+            BinaryOperation::Le => Value::BooleanValue(BooleanValue {
+                ir: builder
                     .build_int_compare(
                         inkwell::IntPredicate::ULE,
                         self.ir,
@@ -141,8 +187,7 @@ impl<'ctx> IntegerValue<'ctx> {
                         "",
                     )
                     .unwrap(),
-            },
-            value_type: self.value_type,
+            }),
         }
     }
 

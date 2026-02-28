@@ -5,7 +5,7 @@ pub type TypeHint = Option<TypeSpec>;
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeSpec {
     Void,
-    Bool,
+    Boolean,
     Integer(IntegerType),
     Float,
 }

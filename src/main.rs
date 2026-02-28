@@ -25,6 +25,7 @@ use crate::integer_value::IntegerValue;
 use crate::statement_translator::StatementTranslator;
 use crate::value::Value;
 
+mod boolean_value;
 mod constant;
 mod expression;
 mod expression_translator;
