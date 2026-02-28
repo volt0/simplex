@@ -1,18 +1,25 @@
 use inkwell::builder::Builder;
-use inkwell::values::{BasicValue, BasicValueEnum};
+use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
 
 use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::integer_type::IntegerType;
+use crate::type_spec::TypeSpec;
 use crate::value::Value;
 
-pub type IntegerValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
-
 #[derive(Clone)]
-#[repr(transparent)]
 pub struct IntegerValue<'ctx> {
-    pub ir: IntegerValueIR<'ctx>,
+    pub ir: IntValue<'ctx>,
+    pub value_type: IntegerType,
 }
 
 impl<'ctx> IntegerValue<'ctx> {
+    pub fn type_check(self, type_hint: &TypeSpec) -> IntegerValue<'ctx> {
+        match type_hint {
+            TypeSpec::Integer(integer_type) if integer_type == &self.value_type => self,
+            _ => panic!("Type mismatch"),
+        }
+    }
+
     pub fn unary_operation(
         self,
         operation: UnaryOperation,
@@ -23,16 +30,18 @@ impl<'ctx> IntegerValue<'ctx> {
 
             UnaryOperation::Minus => IntegerValue {
                 ir: builder.build_int_neg(self.ir, "").unwrap(),
+                value_type: self.value_type,
             },
 
             UnaryOperation::BitNot => IntegerValue {
                 ir: builder.build_not(self.ir, "").unwrap(),
+                value_type: self.value_type,
             },
         }
     }
 
     pub fn binary_operation(
-        &self,
+        self,
         operation: BinaryOperation,
         arg: Value<'ctx>,
         builder: &Builder<'ctx>,
@@ -133,6 +142,7 @@ impl<'ctx> IntegerValue<'ctx> {
                     )
                     .unwrap(),
             },
+            value_type: self.value_type,
         }
     }
 

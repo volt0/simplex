@@ -2,9 +2,11 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use crate::constant::Constant;
-use crate::expression::{BinaryOperationExpression, Expression, UnaryOperationExpression};
+use crate::expression::Expression;
+use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::integer_value::IntegerValue;
 use crate::statement_translator::StatementTranslator;
+use crate::type_spec::TypeHint;
 use crate::value::Value;
 
 pub struct ExpressionTranslator<'ctx> {
@@ -21,18 +23,38 @@ impl<'ctx> Deref for ExpressionTranslator<'ctx> {
 }
 
 impl<'ctx> ExpressionTranslator<'ctx> {
-    pub fn translate_expression(&self, expression: &Expression) -> Value<'ctx> {
-        match expression {
+    pub fn translate_expression(
+        &self,
+        expression: &Expression,
+        type_hint: &TypeHint,
+    ) -> Value<'ctx> {
+        let result = match expression {
             Expression::LoadConstant(value) => self.translate_constant(value),
             Expression::LoadValue(name) => self.load_value(name),
             Expression::Conditional(_) => todo!(),
-            Expression::UnaryOperation(expression) => self.translate_unary_operation(expression),
-            Expression::BinaryOperation(expression) => self.translate_binary_operation(expression),
+
+            Expression::UnaryOperation(expression) => {
+                let arg = self.translate_expression(&expression.arg, type_hint);
+                arg.unary_operation(expression.operation.clone(), &self.builder)
+            }
+
+            Expression::BinaryOperation(expression) => {
+                let left = self.translate_expression(&expression.lhs, type_hint);
+                let right = self.translate_expression(&expression.rhs, type_hint);
+                left.binary_operation(expression.operation.clone(), right, &self.builder)
+            }
+
             Expression::LogicalOperation(_) => todo!(),
             Expression::Cast(_) => todo!(),
             Expression::Call(_) => todo!(),
             Expression::ItemAccess(_) => todo!(),
             Expression::MemberAccess(_) => todo!(),
+        };
+
+        if let Some(type_hint) = type_hint {
+            result.type_check(type_hint)
+        } else {
+            result
         }
     }
 
@@ -43,6 +65,10 @@ impl<'ctx> ExpressionTranslator<'ctx> {
             Constant::False => todo!(),
             Constant::Integer(value) => Value::IntegerValue(IntegerValue {
                 ir: self.context.i32_type().const_int(*value as u64, false),
+                value_type: IntegerType {
+                    is_signed: false,
+                    width: IntegerTypeSize::I32,
+                },
             }),
             Constant::Float(_) => todo!(),
             Constant::String(_) => todo!(),
@@ -54,16 +80,5 @@ impl<'ctx> ExpressionTranslator<'ctx> {
             .get(name)
             .cloned()
             .unwrap_or_else(|| self.parent.load_value(name))
-    }
-
-    fn translate_unary_operation(&self, expression: &UnaryOperationExpression) -> Value<'ctx> {
-        let arg = self.translate_expression(&expression.arg);
-        arg.unary_operation(expression.operation.clone(), &self.builder)
-    }
-
-    fn translate_binary_operation(&self, expression: &BinaryOperationExpression) -> Value<'ctx> {
-        let left = self.translate_expression(&expression.lhs);
-        let right = self.translate_expression(&expression.rhs);
-        left.binary_operation(expression.operation.clone(), right, &self.builder)
     }
 }

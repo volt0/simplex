@@ -3,6 +3,7 @@ use inkwell::values::BasicValueEnum;
 
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::integer_value::IntegerValue;
+use crate::type_spec::TypeSpec;
 
 #[derive(Clone)]
 pub enum Value<'ctx> {
@@ -16,9 +17,9 @@ impl<'ctx> From<IntegerValue<'ctx>> for Value<'ctx> {
 }
 
 impl<'ctx> Value<'ctx> {
-    pub fn to_ir(&self) -> BasicValueEnum<'ctx> {
+    pub fn type_check(self, type_hint: &TypeSpec) -> Value<'ctx> {
         match self {
-            Value::IntegerValue(value) => value.to_ir(),
+            Value::IntegerValue(value) => value.type_check(type_hint).into(),
         }
     }
 
@@ -33,13 +34,19 @@ impl<'ctx> Value<'ctx> {
     }
 
     pub fn binary_operation(
-        &self,
+        self,
         operation: BinaryOperation,
         arg: Value<'ctx>,
         builder: &Builder<'ctx>,
     ) -> Value<'ctx> {
         match self {
             Value::IntegerValue(value) => value.binary_operation(operation, arg, builder).into(),
+        }
+    }
+
+    pub fn to_ir(&self) -> BasicValueEnum<'ctx> {
+        match self {
+            Value::IntegerValue(value) => value.to_ir(),
         }
     }
 }

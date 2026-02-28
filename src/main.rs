@@ -20,6 +20,7 @@ use inkwell::OptimizationLevel;
 use std::collections::HashMap;
 
 use crate::expression::{BinaryOperation, BinaryOperationExpression, Expression};
+use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::integer_value::IntegerValue;
 use crate::statement_translator::StatementTranslator;
 use crate::value::Value;
@@ -30,6 +31,7 @@ mod expression_translator;
 mod integer_type;
 mod integer_value;
 mod statement_translator;
+mod type_spec;
 mod value;
 
 fn main() {
@@ -44,8 +46,14 @@ fn main() {
 }
 
 pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) {
-    let i64_type = context.i64_type();
-    let fn_type = i64_type.fn_type(&[i64_type.into(), i64_type.into(), i64_type.into()], false);
+    let fn_type = context.i32_type().fn_type(
+        &[
+            context.i32_type().into(),
+            context.i32_type().into(),
+            context.i32_type().into(),
+        ],
+        false,
+    );
 
     let function_ir = module_ir.add_function("test", fn_type, None);
     let basic_block = context.append_basic_block(function_ir.clone(), "entry");
@@ -61,18 +69,30 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
                 "x".to_string(),
                 Value::IntegerValue(IntegerValue {
                     ir: function_ir.get_nth_param(0).unwrap().into_int_value(),
+                    value_type: IntegerType {
+                        is_signed: false,
+                        width: IntegerTypeSize::I32,
+                    },
                 }),
             ),
             (
                 "y".to_string(),
                 Value::IntegerValue(IntegerValue {
                     ir: function_ir.get_nth_param(1).unwrap().into_int_value(),
+                    value_type: IntegerType {
+                        is_signed: false,
+                        width: IntegerTypeSize::I32,
+                    },
                 }),
             ),
             (
                 "z".to_string(),
                 Value::IntegerValue(IntegerValue {
                     ir: function_ir.get_nth_param(2).unwrap().into_int_value(),
+                    value_type: IntegerType {
+                        is_signed: false,
+                        width: IntegerTypeSize::I32,
+                    },
                 }),
             ),
         ]),
@@ -94,7 +114,7 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
 }
 
 fn run_test(module_ir: &Module) {
-    type TestFunc = unsafe extern "C" fn(u64, u64, u64) -> u64;
+    type TestFunc = unsafe extern "C" fn(i32, i32, i32) -> i32;
 
     let execution_engine = module_ir
         .create_jit_execution_engine(OptimizationLevel::None)
@@ -103,9 +123,9 @@ fn run_test(module_ir: &Module) {
     unsafe {
         let test_function: JitFunction<'_, TestFunc> =
             execution_engine.get_function("test").unwrap();
-        let x = 1u64;
-        let y = 2u64;
-        let z = 3u64;
+        let x = 1i32;
+        let y = 2i32;
+        let z = 3i32;
         dbg!(test_function.call(x, y, z));
     }
 }

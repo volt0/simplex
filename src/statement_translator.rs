@@ -5,6 +5,8 @@ use inkwell::context::Context;
 
 use crate::expression::Expression;
 use crate::expression_translator;
+use crate::integer_type::{IntegerType, IntegerTypeSize};
+use crate::type_spec::TypeSpec;
 use crate::value::Value;
 
 pub struct StatementTranslator<'ctx> {
@@ -21,7 +23,15 @@ impl<'ctx> StatementTranslator<'ctx> {
                 values: HashMap::default(),
             };
 
-            let value = expression_translator.translate_expression(value).to_ir();
+            let type_hint = Some(TypeSpec::Integer(IntegerType {
+                is_signed: false,
+                width: IntegerTypeSize::I32,
+            }));
+
+            let value = expression_translator
+                .translate_expression(value, &type_hint)
+                .to_ir();
+
             self.builder.build_return(Some(&value)).unwrap();
         } else {
             self.builder.build_return(None).unwrap();
