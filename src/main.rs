@@ -12,24 +12,25 @@
 // mod statement;
 // mod types;
 
+use std::collections::HashMap;
+
 use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use inkwell::module::Module;
 use inkwell::targets::TargetTriple;
 use inkwell::OptimizationLevel;
-use std::collections::HashMap;
 
 use crate::expression::{BinaryOperation, BinaryOperationExpression, Expression};
-use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::integer_value::IntegerValue;
 use crate::statement_translator::StatementTranslator;
+use crate::type_spec::{IntegerType, IntegerTypeSize};
 use crate::value::Value;
 
 mod boolean_value;
 mod constant;
 mod expression;
 mod expression_translator;
-mod integer_type;
+mod float_value;
 mod integer_value;
 mod statement_translator;
 mod type_spec;

@@ -3,10 +3,9 @@ use std::ops::Deref;
 
 use crate::constant::Constant;
 use crate::expression::Expression;
-use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::integer_value::IntegerValue;
 use crate::statement_translator::StatementTranslator;
-use crate::type_spec::TypeHint;
+use crate::type_spec::{IntegerType, IntegerTypeSize, TypeHint};
 use crate::value::Value;
 
 pub struct ExpressionTranslator<'ctx> {

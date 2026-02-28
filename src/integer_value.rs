@@ -1,9 +1,9 @@
-use inkwell::builder::Builder;
+use inkwell::builder::{Builder, BuilderError};
 use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
 
 use crate::boolean_value::BooleanValue;
 use crate::expression::{BinaryOperation, UnaryOperation};
-use crate::integer_type::IntegerType;
+use crate::type_spec::IntegerType;
 use crate::type_spec::TypeSpec;
 use crate::value::Value;
 
@@ -14,9 +14,9 @@ pub struct IntegerValue<'ctx> {
 }
 
 impl<'ctx> IntegerValue<'ctx> {
-    pub fn type_check(self, type_hint: &TypeSpec) -> IntegerValue<'ctx> {
+    pub fn type_check(self, type_hint: &TypeSpec) -> Value<'ctx> {
         match type_hint {
-            TypeSpec::Integer(integer_type) if integer_type == &self.value_type => self,
+            TypeSpec::Integer(integer_type) if integer_type == &self.value_type => self.into(),
             _ => panic!("Type mismatch"),
         }
     }
@@ -25,20 +25,22 @@ impl<'ctx> IntegerValue<'ctx> {
         self,
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
-    ) -> IntegerValue<'ctx> {
-        match operation {
-            UnaryOperation::Plus => self,
+    ) -> Result<Value<'ctx>, BuilderError> {
+        Ok(match operation {
+            UnaryOperation::Plus => self.into(),
 
             UnaryOperation::Minus => IntegerValue {
-                ir: builder.build_int_neg(self.ir, "").unwrap(),
+                ir: builder.build_int_neg(self.ir, "")?,
                 value_type: self.value_type,
-            },
+            }
+            .into(),
 
             UnaryOperation::BitNot => IntegerValue {
-                ir: builder.build_not(self.ir, "").unwrap(),
+                ir: builder.build_not(self.ir, "")?,
                 value_type: self.value_type,
-            },
-        }
+            }
+            .into(),
+        })
     }
 
     pub fn binary_operation(
@@ -46,149 +48,133 @@ impl<'ctx> IntegerValue<'ctx> {
         operation: BinaryOperation,
         arg: Value<'ctx>,
         builder: &Builder<'ctx>,
-    ) -> Value<'ctx> {
-        match operation {
-            BinaryOperation::Add => Value::IntegerValue(IntegerValue {
-                ir: builder
-                    .build_int_add(self.ir, arg.to_ir().into_int_value(), "")
-                    .unwrap(),
+    ) -> Result<Value<'ctx>, BuilderError> {
+        Ok(match operation {
+            BinaryOperation::Add => IntegerValue {
+                ir: builder.build_int_add(self.ir, arg.to_ir().into_int_value(), "")?,
                 value_type: self.value_type,
-            }),
+            }
+            .into(),
 
-            BinaryOperation::Sub => Value::IntegerValue(IntegerValue {
-                ir: builder
-                    .build_int_sub(self.ir, arg.to_ir().into_int_value(), "")
-                    .unwrap(),
+            BinaryOperation::Sub => IntegerValue {
+                ir: builder.build_int_sub(self.ir, arg.to_ir().into_int_value(), "")?,
                 value_type: self.value_type,
-            }),
+            }
+            .into(),
 
-            BinaryOperation::Mul => Value::IntegerValue(IntegerValue {
-                ir: builder
-                    .build_int_mul(self.ir, arg.to_ir().into_int_value(), "")
-                    .unwrap(),
+            BinaryOperation::Mul => IntegerValue {
+                ir: builder.build_int_mul(self.ir, arg.to_ir().into_int_value(), "")?,
                 value_type: self.value_type,
-            }),
+            }
+            .into(),
 
-            BinaryOperation::Div => Value::IntegerValue(IntegerValue {
-                ir: builder
-                    .build_int_unsigned_div(self.ir, arg.to_ir().into_int_value(), "")
-                    .unwrap(),
+            BinaryOperation::Div => IntegerValue {
+                ir: builder.build_int_unsigned_div(self.ir, arg.to_ir().into_int_value(), "")?,
                 value_type: self.value_type,
-            }),
+            }
+            .into(),
 
-            BinaryOperation::Mod => Value::IntegerValue(IntegerValue {
-                ir: builder
-                    .build_int_unsigned_rem(self.ir, arg.to_ir().into_int_value(), "")
-                    .unwrap(),
+            BinaryOperation::Mod => IntegerValue {
+                ir: builder.build_int_unsigned_rem(self.ir, arg.to_ir().into_int_value(), "")?,
                 value_type: self.value_type,
-            }),
+            }
+            .into(),
 
-            BinaryOperation::BitAnd => Value::IntegerValue(IntegerValue {
-                ir: builder
-                    .build_and(self.ir, arg.to_ir().into_int_value(), "")
-                    .unwrap(),
+            BinaryOperation::BitAnd => IntegerValue {
+                ir: builder.build_and(self.ir, arg.to_ir().into_int_value(), "")?,
                 value_type: self.value_type,
-            }),
+            }
+            .into(),
 
-            BinaryOperation::BitXor => Value::IntegerValue(IntegerValue {
-                ir: builder
-                    .build_xor(self.ir, arg.to_ir().into_int_value(), "")
-                    .unwrap(),
+            BinaryOperation::BitXor => IntegerValue {
+                ir: builder.build_xor(self.ir, arg.to_ir().into_int_value(), "")?,
                 value_type: self.value_type,
-            }),
+            }
+            .into(),
 
-            BinaryOperation::BitOr => Value::IntegerValue(IntegerValue {
-                ir: builder
-                    .build_or(self.ir, arg.to_ir().into_int_value(), "")
-                    .unwrap(),
+            BinaryOperation::BitOr => IntegerValue {
+                ir: builder.build_or(self.ir, arg.to_ir().into_int_value(), "")?,
                 value_type: self.value_type,
-            }),
+            }
+            .into(),
 
-            BinaryOperation::ShiftLeft => Value::IntegerValue(IntegerValue {
-                ir: builder
-                    .build_left_shift(self.ir, arg.to_ir().into_int_value(), "")
-                    .unwrap(),
+            BinaryOperation::ShiftLeft => IntegerValue {
+                ir: builder.build_left_shift(self.ir, arg.to_ir().into_int_value(), "")?,
                 value_type: self.value_type,
-            }),
+            }
+            .into(),
 
-            BinaryOperation::ShiftRight => Value::IntegerValue(IntegerValue {
-                ir: builder
-                    .build_right_shift(
-                        self.ir,
-                        arg.to_ir().into_int_value(),
-                        self.value_type.is_signed,
-                        "",
-                    )
-                    .unwrap(),
+            BinaryOperation::ShiftRight => IntegerValue {
+                ir: builder.build_right_shift(
+                    self.ir,
+                    arg.to_ir().into_int_value(),
+                    self.value_type.is_signed,
+                    "",
+                )?,
                 value_type: self.value_type,
-            }),
+            }
+            .into(),
 
-            BinaryOperation::Eq => Value::BooleanValue(BooleanValue {
-                ir: builder
-                    .build_int_compare(
-                        inkwell::IntPredicate::EQ,
-                        self.ir,
-                        arg.to_ir().into_int_value(),
-                        "",
-                    )
-                    .unwrap(),
-            }),
+            BinaryOperation::Eq => BooleanValue {
+                ir: builder.build_int_compare(
+                    inkwell::IntPredicate::EQ,
+                    self.ir,
+                    arg.to_ir().into_int_value(),
+                    "",
+                )?,
+            }
+            .into(),
 
-            BinaryOperation::Ne => Value::BooleanValue(BooleanValue {
-                ir: builder
-                    .build_int_compare(
-                        inkwell::IntPredicate::NE,
-                        self.ir,
-                        arg.to_ir().into_int_value(),
-                        "",
-                    )
-                    .unwrap(),
-            }),
+            BinaryOperation::Ne => BooleanValue {
+                ir: builder.build_int_compare(
+                    inkwell::IntPredicate::NE,
+                    self.ir,
+                    arg.to_ir().into_int_value(),
+                    "",
+                )?,
+            }
+            .into(),
 
-            BinaryOperation::Gt => Value::BooleanValue(BooleanValue {
-                ir: builder
-                    .build_int_compare(
-                        inkwell::IntPredicate::UGT,
-                        self.ir,
-                        arg.to_ir().into_int_value(),
-                        "",
-                    )
-                    .unwrap(),
-            }),
+            BinaryOperation::Gt => BooleanValue {
+                ir: builder.build_int_compare(
+                    inkwell::IntPredicate::UGT,
+                    self.ir,
+                    arg.to_ir().into_int_value(),
+                    "",
+                )?,
+            }
+            .into(),
 
-            BinaryOperation::Ge => Value::BooleanValue(BooleanValue {
-                ir: builder
-                    .build_int_compare(
-                        inkwell::IntPredicate::UGE,
-                        self.ir,
-                        arg.to_ir().into_int_value(),
-                        "",
-                    )
-                    .unwrap(),
-            }),
+            BinaryOperation::Ge => BooleanValue {
+                ir: builder.build_int_compare(
+                    inkwell::IntPredicate::UGE,
+                    self.ir,
+                    arg.to_ir().into_int_value(),
+                    "",
+                )?,
+            }
+            .into(),
 
-            BinaryOperation::Lt => Value::BooleanValue(BooleanValue {
-                ir: builder
-                    .build_int_compare(
-                        inkwell::IntPredicate::ULT,
-                        self.ir,
-                        arg.to_ir().into_int_value(),
-                        "",
-                    )
-                    .unwrap(),
-            }),
+            BinaryOperation::Lt => BooleanValue {
+                ir: builder.build_int_compare(
+                    inkwell::IntPredicate::ULT,
+                    self.ir,
+                    arg.to_ir().into_int_value(),
+                    "",
+                )?,
+            }
+            .into(),
 
-            BinaryOperation::Le => Value::BooleanValue(BooleanValue {
-                ir: builder
-                    .build_int_compare(
-                        inkwell::IntPredicate::ULE,
-                        self.ir,
-                        arg.to_ir().into_int_value(),
-                        "",
-                    )
-                    .unwrap(),
-            }),
-        }
+            BinaryOperation::Le => BooleanValue {
+                ir: builder.build_int_compare(
+                    inkwell::IntPredicate::ULE,
+                    self.ir,
+                    arg.to_ir().into_int_value(),
+                    "",
+                )?,
+            }
+            .into(),
+        })
     }
 
     pub fn to_ir(&self) -> BasicValueEnum<'ctx> {

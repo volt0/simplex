@@ -1,17 +1,19 @@
 use inkwell::builder::Builder;
-use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
+use inkwell::values::{BasicValue, BasicValueEnum};
 
 use crate::expression::{BinaryOperation, UnaryOperation};
-use crate::type_spec::TypeSpec;
+use crate::type_spec::{FloatType, TypeSpec};
 use crate::value::Value;
 
+type FloatValueIR<'ctx> = inkwell::values::FloatValue<'ctx>;
+
 #[derive(Clone)]
-#[repr(transparent)]
-pub struct BooleanValue<'ctx> {
-    pub ir: IntValue<'ctx>,
+pub struct FloatValue<'ctx> {
+    pub ir: FloatValueIR<'ctx>,
+    pub value_type: FloatType,
 }
 
-impl<'ctx> BooleanValue<'ctx> {
+impl<'ctx> FloatValue<'ctx> {
     pub fn type_check(self, type_hint: &TypeSpec) -> Value<'ctx> {
         todo!()
     }

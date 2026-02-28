@@ -5,8 +5,7 @@ use inkwell::context::Context;
 
 use crate::expression::Expression;
 use crate::expression_translator;
-use crate::integer_type::{IntegerType, IntegerTypeSize};
-use crate::type_spec::TypeSpec;
+use crate::type_spec::{IntegerType, IntegerTypeSize, TypeSpec};
 use crate::value::Value;
 
 pub struct StatementTranslator<'ctx> {
