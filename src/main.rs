@@ -2,7 +2,13 @@ use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use inkwell::module::Module;
 use inkwell::targets::TargetTriple;
+use inkwell::values::BasicValueEnum;
 use inkwell::OptimizationLevel;
+
+use crate::expression::Expression;
+
+mod expression;
+mod value;
 
 fn main() {
     let context = Context::create();
@@ -31,14 +37,18 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
     let builder = context.create_builder();
     builder.position_at_end(basic_block);
 
-    let x = function_ir.get_nth_param(0).unwrap().into_int_value();
-    let y = function_ir.get_nth_param(1).unwrap().into_int_value();
-    let z = function_ir.get_nth_param(2).unwrap().into_int_value();
+    // let expression = Expression::BinaryOperation(BinaryOperationExpression {
+    //     operation: BinaryOperation::Add,
+    //     lhs: Box::new(Expression::LoadValue("x".to_string())),
+    //     rhs: Box::new(Expression::LoadValue("y".to_string())),
+    // });
 
-    let sum = builder.build_int_add(x, y, "sum").unwrap();
-    let sum = builder.build_int_add(sum, z, "sum").unwrap();
+    let expression_translator = expression::ExpressionTranslator { context };
+    let expression = Expression::LoadConstant(expression::Constant::Integer(100));
+    let value = expression_translator.translate(&expression);
 
-    builder.build_return(Some(&sum)).unwrap();
+    let value_ir: BasicValueEnum = value.into();
+    builder.build_return(Some(&value_ir)).unwrap();
 }
 
 fn run_test(module_ir: &Module) {
