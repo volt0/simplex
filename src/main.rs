@@ -1,40 +1,8 @@
-// mod ast;
-// mod backend;
-// mod basic_block;
-// mod definitions;
-// mod function;
-// mod function_argument;
-// mod function_signature;
-// mod instruction;
-// mod module;
-// mod namespace;
-// mod scope;
-// mod statement;
-// mod types;
-
-use std::collections::HashMap;
-
 use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use inkwell::module::Module;
 use inkwell::targets::TargetTriple;
 use inkwell::OptimizationLevel;
-
-use crate::expression::{BinaryOperation, BinaryOperationExpression, Expression};
-use crate::integer_value::IntegerValue;
-use crate::statement_translator::StatementTranslator;
-use crate::type_spec::{IntegerType, IntegerTypeSize};
-use crate::value::Value;
-
-mod boolean_value;
-mod constant;
-mod expression;
-mod expression_translator;
-mod float_value;
-mod integer_value;
-mod statement_translator;
-mod type_spec;
-mod value;
 
 fn main() {
     let context = Context::create();
@@ -63,56 +31,14 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
     let builder = context.create_builder();
     builder.position_at_end(basic_block);
 
-    let statement_translator = StatementTranslator {
-        context,
-        builder,
-        values: HashMap::from([
-            (
-                "x".to_string(),
-                Value::IntegerValue(IntegerValue {
-                    ir: function_ir.get_nth_param(0).unwrap().into_int_value(),
-                    value_type: IntegerType {
-                        is_signed: false,
-                        width: IntegerTypeSize::I32,
-                    },
-                }),
-            ),
-            (
-                "y".to_string(),
-                Value::IntegerValue(IntegerValue {
-                    ir: function_ir.get_nth_param(1).unwrap().into_int_value(),
-                    value_type: IntegerType {
-                        is_signed: false,
-                        width: IntegerTypeSize::I32,
-                    },
-                }),
-            ),
-            (
-                "z".to_string(),
-                Value::IntegerValue(IntegerValue {
-                    ir: function_ir.get_nth_param(2).unwrap().into_int_value(),
-                    value_type: IntegerType {
-                        is_signed: false,
-                        width: IntegerTypeSize::I32,
-                    },
-                }),
-            ),
-        ]),
-    };
+    let x = function_ir.get_nth_param(0).unwrap().into_int_value();
+    let y = function_ir.get_nth_param(1).unwrap().into_int_value();
+    let z = function_ir.get_nth_param(2).unwrap().into_int_value();
 
-    // let expression = Expression::LoadConstant(Constant::Integer(99));
-    // let expression = Expression::LoadValue("x".to_string());
-    // let expression = Expression::UnaryOperation(UnaryOperationExpression {
-    //     operation: UnaryOperation::Minus,
-    //     arg: Box::new(Expression::LoadValue("x".to_string())),
-    // });
+    let sum = builder.build_int_add(x, y, "sum").unwrap();
+    let sum = builder.build_int_add(sum, z, "sum").unwrap();
 
-    let expression = Expression::BinaryOperation(BinaryOperationExpression {
-        operation: BinaryOperation::Add,
-        lhs: Box::new(Expression::LoadValue("x".to_string())),
-        rhs: Box::new(Expression::LoadValue("y".to_string())),
-    });
-    statement_translator.translate_return_statement(Some(&expression));
+    builder.build_return(Some(&sum)).unwrap();
 }
 
 fn run_test(module_ir: &Module) {
@@ -125,6 +51,7 @@ fn run_test(module_ir: &Module) {
     unsafe {
         let test_function: JitFunction<'_, TestFunc> =
             execution_engine.get_function("test").unwrap();
+
         let x = 1i32;
         let y = 2i32;
         let z = 3i32;
