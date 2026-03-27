@@ -1,23 +1,38 @@
+use inkwell::builder::Builder;
 use inkwell::context::Context;
 
 use crate::value::{IntegerValue, Value};
 
 pub enum Expression {
     LoadConstant(Constant),
+    BinaryOperation(BinaryOperationExpression),
 }
 
 pub enum Constant {
     Integer(i32),
 }
 
+#[derive(Copy, Clone)]
+pub enum BinaryOperation {
+    Add,
+}
+
+pub struct BinaryOperationExpression {
+    pub operation: BinaryOperation,
+    pub lhs: Box<Expression>,
+    pub rhs: Box<Expression>,
+}
+
 pub struct ExpressionTranslator<'ctx> {
     pub context: &'ctx Context,
+    pub builder: Builder<'ctx>,
 }
 
 impl<'ctx> ExpressionTranslator<'ctx> {
     pub fn translate(&self, expression: &Expression) -> Value<'ctx> {
         match expression {
             Expression::LoadConstant(constant) => self.translate_constant(constant),
+            Expression::BinaryOperation(expression) => self.translate_binary_operation(expression),
         }
     }
 
@@ -27,5 +42,11 @@ impl<'ctx> ExpressionTranslator<'ctx> {
                 Value::Integer(IntegerValue::from_constant(*value, self.context))
             }
         }
+    }
+
+    fn translate_binary_operation(&self, expression: &BinaryOperationExpression) -> Value<'ctx> {
+        let lhs = self.translate(&expression.lhs);
+        let rhs = self.translate(&expression.rhs);
+        lhs.binary_operation(expression.operation, &rhs, &self.builder)
     }
 }

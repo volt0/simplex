@@ -2,10 +2,9 @@ use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use inkwell::module::Module;
 use inkwell::targets::TargetTriple;
-use inkwell::values::BasicValueEnum;
 use inkwell::OptimizationLevel;
 
-use crate::expression::Expression;
+use crate::expression::{BinaryOperation, BinaryOperationExpression, Expression};
 
 mod expression;
 mod value;
@@ -37,17 +36,19 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
     let builder = context.create_builder();
     builder.position_at_end(basic_block);
 
-    // let expression = Expression::BinaryOperation(BinaryOperationExpression {
-    //     operation: BinaryOperation::Add,
-    //     lhs: Box::new(Expression::LoadValue("x".to_string())),
-    //     rhs: Box::new(Expression::LoadValue("y".to_string())),
-    // });
+    let expression = Expression::BinaryOperation(BinaryOperationExpression {
+        operation: BinaryOperation::Add,
+        // lhs: Box::new(Expression::LoadValue("x".to_string())),
+        // rhs: Box::new(Expression::LoadValue("y".to_string())),
+        lhs: Box::new(Expression::LoadConstant(expression::Constant::Integer(100))),
+        rhs: Box::new(Expression::LoadConstant(expression::Constant::Integer(99))),
+    });
 
-    let expression_translator = expression::ExpressionTranslator { context };
-    let expression = Expression::LoadConstant(expression::Constant::Integer(100));
+    let expression_translator = expression::ExpressionTranslator { context, builder };
     let value = expression_translator.translate(&expression);
 
-    let value_ir: BasicValueEnum = value.into();
+    let builder = expression_translator.builder;
+    let value_ir = value.into_ir();
     builder.build_return(Some(&value_ir)).unwrap();
 }
 
