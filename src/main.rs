@@ -9,6 +9,7 @@ use inkwell::OptimizationLevel;
 use crate::expression::{BinaryOperation, BinaryOperationExpression, Expression};
 use crate::value::{IntegerType, IntegerTypeSize, IntegerValue, Value};
 
+mod errors;
 mod expression;
 mod value;
 
@@ -91,7 +92,7 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
         builder,
         values,
     };
-    let value = expression_translator.translate(&expression);
+    let value = expression_translator.translate(&expression).unwrap();
 
     let builder = expression_translator.builder;
     let value_ir = value.into_ir();

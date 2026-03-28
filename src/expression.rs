@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 
+use crate::errors::CompilationError;
 use crate::value::{IntegerValue, Value};
 
 pub enum Expression {
@@ -33,7 +34,7 @@ pub struct ExpressionTranslator<'ctx> {
 }
 
 impl<'ctx> ExpressionTranslator<'ctx> {
-    pub fn translate(&self, expression: &Expression) -> Value<'ctx> {
+    pub fn translate(&self, expression: &Expression) -> Result<Value<'ctx>, CompilationError> {
         match expression {
             Expression::LoadConstant(constant) => self.translate_constant(constant),
             Expression::LoadValue(name) => self.load_value(name),
@@ -41,21 +42,28 @@ impl<'ctx> ExpressionTranslator<'ctx> {
         }
     }
 
-    fn load_value(&self, name: &str) -> Value<'ctx> {
-        self.values.get(name).unwrap().clone()
+    fn load_value(&self, name: &str) -> Result<Value<'ctx>, CompilationError> {
+        self.values
+            .get(name)
+            .ok_or(CompilationError::UnresolvedName(name.to_string()))
+            .cloned()
     }
 
-    fn translate_constant(&self, constant: &Constant) -> Value<'ctx> {
+    fn translate_constant(&self, constant: &Constant) -> Result<Value<'ctx>, CompilationError> {
         match constant {
-            Constant::Integer(value) => {
-                Value::Integer(IntegerValue::from_constant(*value, self.context))
-            }
+            Constant::Integer(value) => Ok(Value::Integer(IntegerValue::from_constant(
+                *value,
+                self.context,
+            ))),
         }
     }
 
-    fn translate_binary_operation(&self, expression: &BinaryOperationExpression) -> Value<'ctx> {
-        let lhs = self.translate(&expression.lhs);
-        let rhs = self.translate(&expression.rhs);
+    fn translate_binary_operation(
+        &self,
+        expression: &BinaryOperationExpression,
+    ) -> Result<Value<'ctx>, CompilationError> {
+        let lhs = self.translate(&expression.lhs)?;
+        let rhs = self.translate(&expression.rhs)?;
         lhs.binary_operation(expression.operation, &rhs, &self.builder, self.context)
     }
 }

@@ -3,6 +3,7 @@ use inkwell::context::Context;
 use inkwell::types::IntType;
 use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
 
+use crate::errors::CompilationError;
 use crate::expression::BinaryOperation;
 
 #[derive(Clone)]
@@ -23,14 +24,14 @@ impl<'ctx> Value<'ctx> {
         other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> Self {
-        match self {
+    ) -> Result<Self, CompilationError> {
+        Ok(match self {
             Value::Integer(value) => match other {
                 Value::Integer(other) => value
-                    .binary_operation(operation, other, builder, context)
+                    .binary_operation(operation, other, builder, context)?
                     .into(),
             },
-        }
+        })
     }
 }
 
@@ -94,7 +95,7 @@ impl<'ctx> IntegerValue<'ctx> {
         other: &IntegerValue<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> Self {
+    ) -> Result<Self, CompilationError> {
         let lhs_type = self.value_type.clone();
         let rhs_type = other.value_type.clone();
         let result_type = if lhs_type.is_signed == rhs_type.is_signed {
@@ -108,19 +109,19 @@ impl<'ctx> IntegerValue<'ctx> {
         } else if lhs_type.is_signed && lhs_type.width > rhs_type.width {
             lhs_type
         } else {
-            unimplemented!();
+            return Err(CompilationError::TypeMismatch);
         };
 
-        let lhs_ir = self.to_ir_expanded(&result_type, builder, context);
-        let rhs_ir = other.to_ir_expanded(&result_type, builder, context);
+        let lhs_ir = self.to_ir_expanded(&result_type, builder, context)?;
+        let rhs_ir = other.to_ir_expanded(&result_type, builder, context)?;
         let result_ir = match operation {
-            BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, "").unwrap(),
+            BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, "")?,
         };
 
-        IntegerValue {
+        Ok(IntegerValue {
             ir: result_ir,
             value_type: result_type,
-        }
+        })
     }
 
     fn to_ir_expanded(
@@ -128,15 +129,11 @@ impl<'ctx> IntegerValue<'ctx> {
         new_type: &IntegerType,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> IntValue<'ctx> {
-        if new_type.is_signed {
-            builder
-                .build_int_s_extend(self.ir, new_type.to_ir(context), "")
-                .unwrap()
+    ) -> Result<IntValue<'ctx>, CompilationError> {
+        Ok(if new_type.is_signed {
+            builder.build_int_s_extend(self.ir, new_type.to_ir(context), "")?
         } else {
-            builder
-                .build_int_z_extend(self.ir, new_type.to_ir(context), "")
-                .unwrap()
-        }
+            builder.build_int_z_extend(self.ir, new_type.to_ir(context), "")?
+        })
     }
 }
