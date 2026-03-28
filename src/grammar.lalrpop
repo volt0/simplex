@@ -1,4 +1,5 @@
-use crate::expression::{Constant, Expression};
+use crate::constant::Constant;
+use crate::expression::Expression;
 use crate::types::Type;
 
 grammar;

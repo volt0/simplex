@@ -6,10 +6,17 @@ use inkwell::module::Module;
 use inkwell::targets::TargetTriple;
 use inkwell::OptimizationLevel;
 
-use crate::value::{IntegerType, IntegerTypeSize, IntegerValue, Value};
+use crate::expression_translator::ExpressionTranslator;
+use crate::integer_type::{IntegerType, IntegerTypeSize};
+use crate::integer_value::IntegerValue;
+use crate::value::Value;
 
+mod constant;
 mod errors;
 mod expression;
+mod expression_translator;
+mod integer_type;
+mod integer_value;
 mod parser;
 mod types;
 mod value;
@@ -76,7 +83,7 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
 
     let parser = parser::grammar::ExpressionParser::new();
     let expression = parser.parse("x + y + z + 100").unwrap();
-    let expression_translator = expression::ExpressionTranslator {
+    let expression_translator = ExpressionTranslator {
         context,
         builder,
         values,
