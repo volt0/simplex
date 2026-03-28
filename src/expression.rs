@@ -12,8 +12,40 @@ pub enum Expression {
     BinaryOperation(BinaryOperationExpression),
 }
 
+impl Expression {
+    pub fn new_load_constant(value: Constant) -> Box<Self> {
+        Box::new(Expression::LoadConstant(value))
+    }
+
+    pub fn new_load_value(name: String) -> Box<Self> {
+        Box::new(Expression::LoadValue(name))
+    }
+
+    pub fn new_add(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Self> {
+        Self::new_binary_operation(BinaryOperation::Add, lhs, rhs)
+    }
+
+    fn new_binary_operation(
+        operation: BinaryOperation,
+        lhs: Box<Expression>,
+        rhs: Box<Expression>,
+    ) -> Box<Self> {
+        Box::new(Expression::BinaryOperation(BinaryOperationExpression {
+            operation,
+            lhs,
+            rhs,
+        }))
+    }
+}
+
 pub enum Constant {
     Integer(i32),
+}
+
+impl Constant {
+    pub fn new_integer(value: i32) -> Self {
+        Constant::Integer(value)
+    }
 }
 
 #[derive(Copy, Clone)]

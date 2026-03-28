@@ -1,0 +1,117 @@
+use crate::expression::{Constant, Expression};
+use crate::types::Type;
+
+grammar;
+
+// Expressions
+
+PrimaryExpression: Box<Expression> = {
+    <name:Identifier> => Expression::new_load_value(name),
+    <constant:Constant> => Expression::new_load_constant(constant),
+    "(" <expression:Expression> ")" => expression,
+}
+
+PostfixExpression: Box<Expression> = {
+    PrimaryExpression,
+    <val:PostfixExpression> "(" <args:CommaSeparatedList<Expression>> ")" => todo!(),
+    <val:PostfixExpression> "[" <expression:Expression> "]" => todo!(),
+    <val:PostfixExpression> "." <name:Identifier> => todo!(),
+}
+
+UnaryExpression: Box<Expression> = {
+    PostfixExpression,
+    "+" <arg:UnaryExpression> => todo!(),
+    "-" <arg:UnaryExpression> => todo!(),
+    "~" <arg:UnaryExpression> => todo!(),
+    "!" <arg:UnaryExpression> => todo!(),
+}
+
+CastExpression: Box<Expression> = {
+    UnaryExpression,
+    <arg:CastExpression> "as" <type_spec:Type> => todo!(),
+}
+
+MultiplicativeExpression: Box<Expression> = {
+    CastExpression,
+    <a:MultiplicativeExpression> "*" <b:CastExpression> => todo!(),
+    <a:MultiplicativeExpression> "/" <b:CastExpression> => todo!(),
+    <a:MultiplicativeExpression> "%" <b:CastExpression> => todo!(),
+}
+
+AdditiveExpression: Box<Expression> = {
+    MultiplicativeExpression,
+    <lhs:AdditiveExpression> "+" <rhs:MultiplicativeExpression> => Expression::new_add(lhs, rhs),
+    <a:AdditiveExpression> "-" <b:MultiplicativeExpression> => todo!(),
+}
+
+ShiftExpression: Box<Expression> = {
+    AdditiveExpression,
+    <a:ShiftExpression> "<<" <b:AdditiveExpression> => todo!(),
+    <a:ShiftExpression> ">>" <b:AdditiveExpression> => todo!(),
+}
+
+BitwiseAndExpression: Box<Expression> = {
+    ShiftExpression,
+    <a:BitwiseAndExpression> "&" <b:ShiftExpression> => todo!(),
+}
+
+BitwiseXorExpression: Box<Expression> = {
+    BitwiseAndExpression,
+    <a:BitwiseXorExpression> "^" <b:BitwiseAndExpression> => todo!(),
+}
+
+BitwiseOrExpression: Box<Expression> = {
+    BitwiseXorExpression,
+    <a:BitwiseOrExpression> "|" <b:BitwiseXorExpression> => todo!(),
+}
+
+ComparisonExpression: Box<Expression> = {
+    BitwiseOrExpression,
+    <a:ComparisonExpression> "<" <b:BitwiseOrExpression> => todo!(),
+    <a:ComparisonExpression> ">" <b:BitwiseOrExpression> => todo!(),
+    <a:ComparisonExpression> "<=" <b:BitwiseOrExpression> => todo!(),
+    <a:ComparisonExpression> ">=" <b:BitwiseOrExpression> => todo!(),
+    <a:ComparisonExpression> "==" <b:BitwiseOrExpression> => todo!(),
+    <a:ComparisonExpression> "!=" <b:BitwiseOrExpression> => todo!(),
+}
+
+LogicalAndExpression: Box<Expression> = {
+    ComparisonExpression,
+    <a:LogicalAndExpression> "&&" <b:ComparisonExpression> => todo!(),
+}
+
+LogicalOrExpression: Box<Expression> = {
+    LogicalAndExpression,
+    <a:LogicalOrExpression> "||" <b:LogicalAndExpression> => todo!(),
+}
+
+pub Expression: Box<Expression> = {
+    LogicalOrExpression,
+    <condition:LogicalOrExpression> "?" <case_a:Expression> ":" <case_b:Expression> => todo!(),
+}
+
+// Types
+
+Type: Type = {
+    <name:Identifier> => todo!(),
+}
+
+// Syntax base
+
+Identifier: String = <s:r"[_A-Za-z][_0-9A-Za-z]*"> => s.to_string();
+
+Constant: Constant = {
+    <value:IntegerConstant> => Constant::new_integer(value),
+}
+
+IntegerConstant: i32 = <s:r"[0-9]+"> => s.parse::<i32>().unwrap();
+
+CommaSeparatedList<T>: Vec<T> = {
+    <mut v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};

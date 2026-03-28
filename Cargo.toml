@@ -11,9 +11,9 @@ thiserror = "2.0.18"
 version = "0.5.0"
 features = ["llvm18-0-prefer-dynamic"]
 
-#[dependencies.lalrpop-util]
-#version = "0.22.1"
-#features = ["lexer", "unicode"]
+[dependencies.lalrpop-util]
+version = "0.23.1"
+features = ["lexer", "unicode"]
 
 [build-dependencies]
-lalrpop = "0.22.1"
+lalrpop = "0.23.1"

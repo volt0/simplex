@@ -6,11 +6,12 @@ use inkwell::module::Module;
 use inkwell::targets::TargetTriple;
 use inkwell::OptimizationLevel;
 
-use crate::expression::{BinaryOperation, BinaryOperationExpression, Expression};
 use crate::value::{IntegerType, IntegerTypeSize, IntegerValue, Value};
 
 mod errors;
 mod expression;
+mod parser;
+mod types;
 mod value;
 
 fn main() {
@@ -73,20 +74,8 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
         ),
     ]);
 
-    let expression = Expression::BinaryOperation(BinaryOperationExpression {
-        operation: BinaryOperation::Add,
-        lhs: Box::new(Expression::BinaryOperation(BinaryOperationExpression {
-            operation: BinaryOperation::Add,
-            lhs: Box::new(Expression::BinaryOperation(BinaryOperationExpression {
-                operation: BinaryOperation::Add,
-                lhs: Box::new(Expression::LoadValue("x".to_string())),
-                rhs: Box::new(Expression::LoadValue("y".to_string())),
-            })),
-            rhs: Box::new(Expression::LoadValue("z".to_string())),
-        })),
-        rhs: Box::new(Expression::LoadConstant(expression::Constant::Integer(100))),
-    });
-
+    let parser = parser::grammar::ExpressionParser::new();
+    let expression = parser.parse("x + y + z + 100").unwrap();
     let expression_translator = expression::ExpressionTranslator {
         context,
         builder,
