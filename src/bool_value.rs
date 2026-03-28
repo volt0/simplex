@@ -2,7 +2,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
 
-use crate::errors::CompilationError;
+use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::integer_value::IntegerValue;
@@ -30,7 +30,7 @@ impl<'ctx> BoolValue<'ctx> {
         &self,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> Result<IntegerValue<'ctx>, CompilationError> {
+    ) -> CompilationResult<IntegerValue<'ctx>> {
         Ok(IntegerValue {
             ir: builder.build_int_z_extend(self.ir, context.i8_type(), "")?,
             value_type: IntegerType {
@@ -46,7 +46,7 @@ impl<'ctx> BoolValue<'ctx> {
         other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> Result<Value<'ctx>, CompilationError> {
+    ) -> CompilationResult<Value<'ctx>> {
         let other = match other {
             Value::Bool(other) => other.clone(),
             Value::Integer(other) => other.to_bool(builder, context)?,
@@ -70,7 +70,7 @@ impl<'ctx> BoolValue<'ctx> {
         &self,
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
-    ) -> Result<Value<'ctx>, CompilationError> {
+    ) -> CompilationResult<Value<'ctx>> {
         Ok(BoolValue {
             ir: match operation {
                 UnaryOperation::BitNot => builder.build_not(self.ir, "")?,

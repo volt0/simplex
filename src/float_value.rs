@@ -2,7 +2,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::values::{BasicValue, BasicValueEnum};
 
-use crate::errors::CompilationError;
+use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::value::Value;
 
@@ -49,7 +49,7 @@ impl<'ctx> FloatValue<'ctx> {
         other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> Result<Value<'ctx>, CompilationError> {
+    ) -> CompilationResult<Value<'ctx>> {
         let other = match other {
             Value::Float(other) => other.clone(),
             Value::Integer(other) => other.to_float(builder, context)?,
@@ -86,7 +86,7 @@ impl<'ctx> FloatValue<'ctx> {
         &self,
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
-    ) -> Result<Value<'ctx>, CompilationError> {
+    ) -> CompilationResult<Value<'ctx>> {
         let result_ir = match operation {
             UnaryOperation::Plus => Ok(self.ir.clone()),
             UnaryOperation::Minus => builder.build_float_neg(self.ir, ""),

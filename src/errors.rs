@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+pub type CompilationResult<T> = Result<T, CompilationError>;
+
 #[derive(Error, Debug)]
 pub enum CompilationError {
     #[error("type mismatch")]

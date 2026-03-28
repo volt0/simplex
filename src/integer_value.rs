@@ -4,7 +4,7 @@ use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
 use inkwell::IntPredicate;
 
 use crate::bool_value::BoolValue;
-use crate::errors::CompilationError;
+use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::float_value::{FloatType, FloatValue};
 use crate::integer_type::{IntegerType, IntegerTypeSize};
@@ -43,7 +43,7 @@ impl<'ctx> IntegerValue<'ctx> {
         &self,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> Result<BoolValue<'ctx>, CompilationError> {
+    ) -> CompilationResult<BoolValue<'ctx>> {
         Ok(BoolValue {
             ir: builder.build_int_compare(
                 IntPredicate::NE,
@@ -58,7 +58,7 @@ impl<'ctx> IntegerValue<'ctx> {
         &self,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> Result<FloatValue<'ctx>, CompilationError> {
+    ) -> CompilationResult<FloatValue<'ctx>> {
         let result_type = match self.value_type.width {
             IntegerTypeSize::I8 | IntegerTypeSize::I16 => FloatType::F32,
             IntegerTypeSize::I32 => FloatType::F64,
@@ -84,7 +84,7 @@ impl<'ctx> IntegerValue<'ctx> {
         other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> Result<Value<'ctx>, CompilationError> {
+    ) -> CompilationResult<Value<'ctx>> {
         let other = match other {
             Value::Integer(other) => other.clone(),
             Value::Bool(other) => other.to_integer(builder, context)?,
@@ -148,7 +148,7 @@ impl<'ctx> IntegerValue<'ctx> {
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> Result<Value<'ctx>, CompilationError> {
+    ) -> CompilationResult<Value<'ctx>> {
         let arg_type = self.value_type.clone();
         let arg_ir = self.to_ir_expanded(&arg_type, builder, context)?;
         let result_ir = match operation {
@@ -168,7 +168,7 @@ impl<'ctx> IntegerValue<'ctx> {
         new_type: &IntegerType,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> Result<IntValue<'ctx>, CompilationError> {
+    ) -> CompilationResult<IntValue<'ctx>> {
         Ok(if new_type.is_signed {
             builder.build_int_s_extend(self.ir, new_type.to_ir(context), "")?
         } else {
