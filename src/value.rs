@@ -4,7 +4,7 @@ use inkwell::types::IntType;
 use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
 
 use crate::errors::CompilationError;
-use crate::expression::BinaryOperation;
+use crate::expression::{BinaryOperation, UnaryOperation};
 
 #[derive(Clone)]
 pub enum Value<'ctx> {
@@ -31,6 +31,17 @@ impl<'ctx> Value<'ctx> {
                     .binary_operation(operation, other, builder, context)?
                     .into(),
             },
+        })
+    }
+
+    pub fn unary_operation(
+        &self,
+        operation: UnaryOperation,
+        builder: &Builder<'ctx>,
+        context: &'ctx Context,
+    ) -> Result<Self, CompilationError> {
+        Ok(match self {
+            Value::Integer(value) => value.unary_operation(operation, builder, context)?.into(),
         })
     }
 }
@@ -116,11 +127,53 @@ impl<'ctx> IntegerValue<'ctx> {
         let rhs_ir = other.to_ir_expanded(&result_type, builder, context)?;
         let result_ir = match operation {
             BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::Mul => builder.build_int_mul(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::Div => {
+                if self.value_type.is_signed {
+                    builder.build_int_signed_div(lhs_ir, rhs_ir, "")?
+                } else {
+                    builder.build_int_unsigned_div(lhs_ir, rhs_ir, "")?
+                }
+            }
+            BinaryOperation::Mod => {
+                if self.value_type.is_signed {
+                    builder.build_int_signed_rem(lhs_ir, rhs_ir, "")?
+                } else {
+                    builder.build_int_unsigned_rem(lhs_ir, rhs_ir, "")?
+                }
+            }
+            BinaryOperation::BitAnd => builder.build_and(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::BitXor => builder.build_xor(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::BitOr => builder.build_or(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::ShiftLeft => builder.build_left_shift(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::ShiftRight => {
+                builder.build_right_shift(lhs_ir, rhs_ir, self.value_type.is_signed, "")?
+            }
         };
 
         Ok(IntegerValue {
             ir: result_ir,
             value_type: result_type,
+        })
+    }
+
+    fn unary_operation(
+        &self,
+        operation: UnaryOperation,
+        builder: &Builder<'ctx>,
+        context: &'ctx Context,
+    ) -> Result<Self, CompilationError> {
+        let arg_type = self.value_type.clone();
+        let arg_ir = self.to_ir_expanded(&arg_type, builder, context)?;
+        let result_ir = match operation {
+            UnaryOperation::Plus => self.ir.clone(),
+            UnaryOperation::Minus => builder.build_int_neg(arg_ir, "")?,
+            UnaryOperation::BitNot => builder.build_not(arg_ir, "")?,
+        };
+        Ok(IntegerValue {
+            ir: result_ir,
+            value_type: arg_type,
         })
     }
 

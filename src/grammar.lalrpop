@@ -20,9 +20,9 @@ PostfixExpression: Box<Expression> = {
 
 UnaryExpression: Box<Expression> = {
     PostfixExpression,
-    "+" <arg:UnaryExpression> => todo!(),
-    "-" <arg:UnaryExpression> => todo!(),
-    "~" <arg:UnaryExpression> => todo!(),
+    "+" <arg:UnaryExpression> => Expression::new_unary_plus(arg),
+    "-" <arg:UnaryExpression> => Expression::new_unary_minus(arg),
+    "~" <arg:UnaryExpression> => Expression::new_bit_not(arg),
     "!" <arg:UnaryExpression> => todo!(),
 }
 
@@ -33,36 +33,36 @@ CastExpression: Box<Expression> = {
 
 MultiplicativeExpression: Box<Expression> = {
     CastExpression,
-    <a:MultiplicativeExpression> "*" <b:CastExpression> => todo!(),
-    <a:MultiplicativeExpression> "/" <b:CastExpression> => todo!(),
-    <a:MultiplicativeExpression> "%" <b:CastExpression> => todo!(),
+    <a:MultiplicativeExpression> "*" <b:CastExpression> => Expression::new_mul(a, b),
+    <a:MultiplicativeExpression> "/" <b:CastExpression> => Expression::new_div(a, b),
+    <a:MultiplicativeExpression> "%" <b:CastExpression> => Expression::new_mod(a, b),
 }
 
 AdditiveExpression: Box<Expression> = {
     MultiplicativeExpression,
     <lhs:AdditiveExpression> "+" <rhs:MultiplicativeExpression> => Expression::new_add(lhs, rhs),
-    <a:AdditiveExpression> "-" <b:MultiplicativeExpression> => todo!(),
+    <a:AdditiveExpression> "-" <b:MultiplicativeExpression> => Expression::new_sub(a, b),
 }
 
 ShiftExpression: Box<Expression> = {
     AdditiveExpression,
-    <a:ShiftExpression> "<<" <b:AdditiveExpression> => todo!(),
-    <a:ShiftExpression> ">>" <b:AdditiveExpression> => todo!(),
+    <a:ShiftExpression> "<<" <b:AdditiveExpression> => Expression::new_shift_left(a, b),
+    <a:ShiftExpression> ">>" <b:AdditiveExpression> => Expression::new_shift_right(a, b),
 }
 
 BitwiseAndExpression: Box<Expression> = {
     ShiftExpression,
-    <a:BitwiseAndExpression> "&" <b:ShiftExpression> => todo!(),
+    <a:BitwiseAndExpression> "&" <b:ShiftExpression> => Expression::new_bit_and(a, b),
 }
 
 BitwiseXorExpression: Box<Expression> = {
     BitwiseAndExpression,
-    <a:BitwiseXorExpression> "^" <b:BitwiseAndExpression> => todo!(),
+    <a:BitwiseXorExpression> "^" <b:BitwiseAndExpression> => Expression::new_bit_xor(a, b),
 }
 
 BitwiseOrExpression: Box<Expression> = {
     BitwiseXorExpression,
-    <a:BitwiseOrExpression> "|" <b:BitwiseXorExpression> => todo!(),
+    <a:BitwiseOrExpression> "|" <b:BitwiseXorExpression> => Expression::new_bit_or(a, b),
 }
 
 ComparisonExpression: Box<Expression> = {
