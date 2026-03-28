@@ -43,9 +43,17 @@ impl<'ctx> BoolValue<'ctx> {
     pub fn binary_operation(
         &self,
         operation: BinaryOperation,
-        other: &BoolValue<'ctx>,
+        other: &Value<'ctx>,
         builder: &Builder<'ctx>,
-    ) -> Result<Self, CompilationError> {
+        context: &'ctx Context,
+    ) -> Result<Value<'ctx>, CompilationError> {
+        let other = match other {
+            Value::Bool(other) => other,
+            Value::Integer(other) => &other.to_bool(builder, context)?,
+            Value::Bool(other) => other.clone(),
+            Value::Integer(other) => other.to_bool(builder, context)?,
+        };
+
         let lhs_ir = self.ir;
         let rhs_ir = other.ir;
         Ok(BoolValue {
@@ -55,19 +63,21 @@ impl<'ctx> BoolValue<'ctx> {
                 BinaryOperation::BitOr => builder.build_or(lhs_ir, rhs_ir, "")?,
                 _ => return Err(CompilationError::InvalidOperation),
             },
-        })
+        }
+        .into())
     }
 
     pub fn unary_operation(
         &self,
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
-    ) -> Result<Self, CompilationError> {
+    ) -> Result<Value<'ctx>, CompilationError> {
         Ok(BoolValue {
             ir: match operation {
                 UnaryOperation::BitNot => builder.build_not(self.ir, "")?,
                 _ => return Err(CompilationError::InvalidOperation),
             },
-        })
+        }
+        .into())
     }
 }

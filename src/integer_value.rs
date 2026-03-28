@@ -11,7 +11,7 @@ use crate::value::Value;
 
 #[derive(Clone)]
 pub struct IntegerValue<'ctx> {
-    pub(crate) ir: IntValue<'ctx>,
+    pub ir: IntValue<'ctx>,
     pub value_type: IntegerType,
 }
 
@@ -56,10 +56,15 @@ impl<'ctx> IntegerValue<'ctx> {
     pub fn binary_operation(
         &self,
         operation: BinaryOperation,
-        other: &IntegerValue<'ctx>,
+        other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> Result<Self, CompilationError> {
+    ) -> Result<Value<'ctx>, CompilationError> {
+        let other = match other {
+            Value::Integer(other) => other.clone(),
+            Value::Bool(other) => other.to_integer(builder, context)?,
+        };
+
         let lhs_type = self.value_type.clone();
         let rhs_type = other.value_type.clone();
         let result_type = if lhs_type.is_signed == rhs_type.is_signed {
@@ -79,36 +84,37 @@ impl<'ctx> IntegerValue<'ctx> {
         let lhs_ir = self.to_ir_expanded(&result_type, builder, context)?;
         let rhs_ir = other.to_ir_expanded(&result_type, builder, context)?;
         let result_ir = match operation {
-            BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, "")?,
-            BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, "")?,
-            BinaryOperation::Mul => builder.build_int_mul(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, ""),
+            BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, ""),
+            BinaryOperation::Mul => builder.build_int_mul(lhs_ir, rhs_ir, ""),
             BinaryOperation::Div => {
                 if self.value_type.is_signed {
-                    builder.build_int_signed_div(lhs_ir, rhs_ir, "")?
+                    builder.build_int_signed_div(lhs_ir, rhs_ir, "")
                 } else {
-                    builder.build_int_unsigned_div(lhs_ir, rhs_ir, "")?
+                    builder.build_int_unsigned_div(lhs_ir, rhs_ir, "")
                 }
             }
             BinaryOperation::Mod => {
                 if self.value_type.is_signed {
-                    builder.build_int_signed_rem(lhs_ir, rhs_ir, "")?
+                    builder.build_int_signed_rem(lhs_ir, rhs_ir, "")
                 } else {
-                    builder.build_int_unsigned_rem(lhs_ir, rhs_ir, "")?
+                    builder.build_int_unsigned_rem(lhs_ir, rhs_ir, "")
                 }
             }
-            BinaryOperation::BitAnd => builder.build_and(lhs_ir, rhs_ir, "")?,
-            BinaryOperation::BitXor => builder.build_xor(lhs_ir, rhs_ir, "")?,
-            BinaryOperation::BitOr => builder.build_or(lhs_ir, rhs_ir, "")?,
-            BinaryOperation::ShiftLeft => builder.build_left_shift(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::BitAnd => builder.build_and(lhs_ir, rhs_ir, ""),
+            BinaryOperation::BitXor => builder.build_xor(lhs_ir, rhs_ir, ""),
+            BinaryOperation::BitOr => builder.build_or(lhs_ir, rhs_ir, ""),
+            BinaryOperation::ShiftLeft => builder.build_left_shift(lhs_ir, rhs_ir, ""),
             BinaryOperation::ShiftRight => {
-                builder.build_right_shift(lhs_ir, rhs_ir, self.value_type.is_signed, "")?
+                builder.build_right_shift(lhs_ir, rhs_ir, self.value_type.is_signed, "")
             }
         };
 
         Ok(IntegerValue {
-            ir: result_ir,
+            ir: result_ir?,
             value_type: result_type,
-        })
+        }
+        .into())
     }
 
     pub fn unary_operation(
@@ -116,7 +122,7 @@ impl<'ctx> IntegerValue<'ctx> {
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-    ) -> Result<Self, CompilationError> {
+    ) -> Result<Value<'ctx>, CompilationError> {
         let arg_type = self.value_type.clone();
         let arg_ir = self.to_ir_expanded(&arg_type, builder, context)?;
         let result_ir = match operation {
@@ -127,7 +133,8 @@ impl<'ctx> IntegerValue<'ctx> {
         Ok(IntegerValue {
             ir: result_ir,
             value_type: arg_type,
-        })
+        }
+        .into())
     }
 
     fn to_ir_expanded(

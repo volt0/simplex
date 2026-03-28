@@ -28,25 +28,10 @@ impl<'ctx> Value<'ctx> {
         builder: &Builder<'ctx>,
         context: &'ctx Context,
     ) -> Result<Self, CompilationError> {
-        Ok(match self {
-            Value::Integer(value) => {
-                let other = match other {
-                    Value::Integer(other) => other,
-                    Value::Bool(other) => &other.to_integer(builder, context)?,
-                };
-                value
-                    .binary_operation(operation, other, builder, context)?
-                    .into()
-            }
-            Value::Bool(value) => {
-                let other = match other {
-                    Value::Bool(other) => other,
-                    Value::Integer(other) => &other.to_bool(builder, context)?,
-                };
-
-                value.binary_operation(operation, other, builder)?.into()
-            }
-        })
+        match self {
+            Value::Integer(value) => value.binary_operation(operation, other, builder, context),
+            Value::Bool(value) => value.binary_operation(operation, other, builder, context),
+        }
     }
 
     pub fn unary_operation(
@@ -55,9 +40,9 @@ impl<'ctx> Value<'ctx> {
         builder: &Builder<'ctx>,
         context: &'ctx Context,
     ) -> Result<Self, CompilationError> {
-        Ok(match self {
-            Value::Integer(value) => value.unary_operation(operation, builder, context)?.into(),
-            Value::Bool(value) => value.unary_operation(operation, builder)?.into(),
-        })
+        match self {
+            Value::Integer(value) => value.unary_operation(operation, builder, context),
+            Value::Bool(value) => value.unary_operation(operation, builder),
+        }
     }
 }
