@@ -1,7 +1,9 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
+use inkwell::IntPredicate;
 
+use crate::bool_value::BoolValue;
 use crate::errors::CompilationError;
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::integer_type::{IntegerType, IntegerTypeSize};
@@ -34,6 +36,21 @@ impl<'ctx> IntegerValue<'ctx> {
                 width: IntegerTypeSize::I32,
             },
         }
+    }
+
+    pub fn to_bool(
+        &self,
+        builder: &Builder<'ctx>,
+        context: &'ctx Context,
+    ) -> Result<BoolValue<'ctx>, CompilationError> {
+        Ok(BoolValue {
+            ir: builder.build_int_compare(
+                IntPredicate::NE,
+                self.ir,
+                self.value_type.to_ir(context).const_int(0, false),
+                "",
+            )?,
+        })
     }
 
     pub fn binary_operation(

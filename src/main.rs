@@ -6,11 +6,13 @@ use inkwell::module::Module;
 use inkwell::targets::TargetTriple;
 use inkwell::OptimizationLevel;
 
+use crate::bool_value::BoolValue;
 use crate::expression_translator::ExpressionTranslator;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::integer_value::IntegerValue;
 use crate::value::Value;
 
+mod bool_value;
 mod constant;
 mod errors;
 mod expression;
@@ -38,6 +40,7 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
             context.i16_type().into(),
             context.i32_type().into(),
             context.i64_type().into(),
+            context.bool_type().into(),
         ],
         false,
     );
@@ -79,10 +82,16 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
                 },
             }),
         ),
+        (
+            "w".to_string(),
+            Value::Bool(BoolValue {
+                ir: function_ir.get_nth_param(3).unwrap().into_int_value(),
+            }),
+        ),
     ]);
 
     let parser = parser::grammar::ExpressionParser::new();
-    let expression = parser.parse("x + y + z + 100").unwrap();
+    let expression = parser.parse("x + y + z + w").unwrap();
     let expression_translator = ExpressionTranslator {
         context,
         builder,
@@ -96,7 +105,7 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
 }
 
 fn run_test(module_ir: &Module) {
-    type TestFunc = unsafe extern "C" fn(i16, i32, i64) -> i64;
+    type TestFunc = unsafe extern "C" fn(i16, i32, i64, bool) -> i64;
 
     let execution_engine = module_ir
         .create_jit_execution_engine(OptimizationLevel::None)
@@ -109,6 +118,7 @@ fn run_test(module_ir: &Module) {
         let x = 1i16;
         let y = 2i32;
         let z = 3i64;
-        dbg!(test_function.call(x, y, z));
+        let w = false;
+        dbg!(test_function.call(x, y, z, w));
     }
 }
