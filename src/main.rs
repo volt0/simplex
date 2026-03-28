@@ -17,6 +17,7 @@ mod constant;
 mod errors;
 mod expression;
 mod expression_translator;
+mod float_value;
 mod integer_type;
 mod integer_value;
 mod parser;

@@ -1,0 +1,101 @@
+use inkwell::builder::Builder;
+use inkwell::context::Context;
+use inkwell::values::{BasicValue, BasicValueEnum};
+
+use crate::errors::CompilationError;
+use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::value::Value;
+
+type FloatValueIR<'ctx> = inkwell::values::FloatValue<'ctx>;
+type FloatTypeIR<'ctx> = inkwell::types::FloatType<'ctx>;
+
+#[derive(Clone, PartialEq, PartialOrd)]
+pub enum FloatType {
+    F32,
+    F64,
+}
+
+impl FloatType {
+    pub fn to_ir<'ctx>(&self, context: &'ctx Context) -> FloatTypeIR<'ctx> {
+        match self {
+            FloatType::F32 => context.f32_type(),
+            FloatType::F64 => context.f64_type(),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct FloatValue<'ctx> {
+    pub ir: FloatValueIR<'ctx>,
+    pub value_type: FloatType,
+}
+
+impl<'ctx> Into<Value<'ctx>> for FloatValue<'ctx> {
+    fn into(self) -> Value<'ctx> {
+        Value::Float(self)
+    }
+}
+
+impl<'ctx> Into<BasicValueEnum<'ctx>> for FloatValue<'ctx> {
+    fn into(self) -> BasicValueEnum<'ctx> {
+        self.ir.as_basic_value_enum()
+    }
+}
+
+impl<'ctx> FloatValue<'ctx> {
+    pub fn binary_operation(
+        &self,
+        operation: BinaryOperation,
+        other: &Value<'ctx>,
+        builder: &Builder<'ctx>,
+        context: &'ctx Context,
+    ) -> Result<Value<'ctx>, CompilationError> {
+        let other = match other {
+            Value::Float(other) => other.clone(),
+            Value::Integer(other) => other.to_float(builder, context)?,
+            _ => return Err(CompilationError::TypeMismatch),
+        };
+
+        let lhs_type = self.value_type.clone();
+        let rhs_type = other.value_type.clone();
+        let result_type = if rhs_type > lhs_type {
+            rhs_type
+        } else {
+            lhs_type
+        };
+
+        let result_type_ir = result_type.to_ir(context);
+        let lhs_ir = builder.build_float_ext(self.ir, result_type_ir, "")?;
+        let rhs_ir = builder.build_float_ext(other.ir, result_type_ir, "")?;
+
+        let result_ir = match operation {
+            BinaryOperation::Add => builder.build_float_add(lhs_ir, rhs_ir, ""),
+            BinaryOperation::Sub => builder.build_float_sub(lhs_ir, rhs_ir, ""),
+            BinaryOperation::Mul => builder.build_float_mul(lhs_ir, rhs_ir, ""),
+            BinaryOperation::Div => builder.build_float_div(lhs_ir, rhs_ir, ""),
+            _ => return Err(CompilationError::InvalidOperation),
+        };
+
+        Ok(Value::Float(FloatValue {
+            ir: result_ir?,
+            value_type: result_type,
+        }))
+    }
+
+    pub fn unary_operation(
+        &self,
+        operation: UnaryOperation,
+        builder: &Builder<'ctx>,
+    ) -> Result<Value<'ctx>, CompilationError> {
+        let result_ir = match operation {
+            UnaryOperation::Plus => Ok(self.ir.clone()),
+            UnaryOperation::Minus => builder.build_float_neg(self.ir, ""),
+            _ => return Err(CompilationError::InvalidOperation),
+        };
+
+        Ok(Value::Float(FloatValue {
+            ir: result_ir?,
+            value_type: self.value_type.clone(),
+        }))
+    }
+}

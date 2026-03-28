@@ -6,6 +6,7 @@ use inkwell::IntPredicate;
 use crate::bool_value::BoolValue;
 use crate::errors::CompilationError;
 use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::float_value::{FloatType, FloatValue};
 use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::value::Value;
 
@@ -53,6 +54,30 @@ impl<'ctx> IntegerValue<'ctx> {
         })
     }
 
+    pub fn to_float(
+        &self,
+        builder: &Builder<'ctx>,
+        context: &'ctx Context,
+    ) -> Result<FloatValue<'ctx>, CompilationError> {
+        let result_type = match self.value_type.width {
+            IntegerTypeSize::I8 | IntegerTypeSize::I16 => FloatType::F32,
+            IntegerTypeSize::I32 => FloatType::F64,
+            _ => return Err(CompilationError::TypeMismatch),
+        };
+
+        let result_ir = if self.value_type.is_signed {
+            builder.build_signed_int_to_float(self.ir, result_type.to_ir(context), "")?
+        } else {
+            builder.build_unsigned_int_to_float(self.ir, result_type.to_ir(context), "")?
+        };
+
+        Ok(FloatValue {
+            ir: result_ir,
+            value_type: result_type,
+        }
+        .into())
+    }
+
     pub fn binary_operation(
         &self,
         operation: BinaryOperation,
@@ -63,6 +88,7 @@ impl<'ctx> IntegerValue<'ctx> {
         let other = match other {
             Value::Integer(other) => other.clone(),
             Value::Bool(other) => other.to_integer(builder, context)?,
+            _ => return Err(CompilationError::TypeMismatch),
         };
 
         let lhs_type = self.value_type.clone();

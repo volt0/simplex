@@ -10,7 +10,7 @@ use crate::value::Value;
 
 #[derive(Clone)]
 pub struct BoolValue<'ctx> {
-    pub(crate) ir: IntValue<'ctx>,
+    pub ir: IntValue<'ctx>,
 }
 
 impl<'ctx> Into<Value<'ctx>> for BoolValue<'ctx> {
@@ -48,10 +48,9 @@ impl<'ctx> BoolValue<'ctx> {
         context: &'ctx Context,
     ) -> Result<Value<'ctx>, CompilationError> {
         let other = match other {
-            Value::Bool(other) => other,
-            Value::Integer(other) => &other.to_bool(builder, context)?,
             Value::Bool(other) => other.clone(),
             Value::Integer(other) => other.to_bool(builder, context)?,
+            _ => return Err(CompilationError::TypeMismatch),
         };
 
         let lhs_ir = self.ir;
