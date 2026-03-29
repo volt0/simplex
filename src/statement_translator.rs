@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 
+use crate::basic_block::{BasicBlock, BasicBlockVisitor};
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression_translator::ExpressionTranslator;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
@@ -16,6 +17,25 @@ pub struct StatementTranslator<'ctx> {
     pub values: HashMap<String, Value<'ctx>>,
 }
 
+impl<'ctx> BasicBlockVisitor for StatementTranslator<'ctx> {
+    fn visit_statement(&self, statement: &Statement) -> CompilationResult<()> {
+        let expression_translator = ExpressionTranslator::new(self);
+        match statement {
+            Statement::BasicBlock(basic_block) => self.translate_basic_block(basic_block),
+            Statement::Return(expression) => {
+                let return_type = Type::Integer(IntegerType {
+                    is_signed: true,
+                    width: IntegerTypeSize::I64,
+                });
+
+                let value = expression_translator.translate(expression, Some(&return_type))?;
+                self.builder.build_return(Some(&value.into_ir()))?;
+                Ok(())
+            }
+        }
+    }
+}
+
 impl<'ctx> StatementTranslator<'ctx> {
     pub fn context(&self) -> &'ctx Context {
         self.context
@@ -25,20 +45,8 @@ impl<'ctx> StatementTranslator<'ctx> {
         &self.builder
     }
 
-    pub fn translate(&self, statement: &Statement) -> CompilationResult<()> {
-        let expression_translator = ExpressionTranslator::new(self);
-        match statement {
-            Statement::Return(expression) => {
-                let return_type = Type::Integer(IntegerType {
-                    is_signed: true,
-                    width: IntegerTypeSize::I64,
-                });
-
-                let value = expression_translator.translate(expression, Some(&return_type))?;
-                self.builder.build_return(Some(&value.into_ir()))?;
-            }
-        }
-        Ok(())
+    pub fn translate_basic_block(&self, basic_block: &BasicBlock) -> CompilationResult<()> {
+        basic_block.visit(self)
     }
 
     pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {

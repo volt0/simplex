@@ -6,12 +6,14 @@ use inkwell::module::Module;
 use inkwell::targets::TargetTriple;
 use inkwell::OptimizationLevel;
 
+use crate::basic_block::BasicBlock;
 use crate::bool_value::BoolValue;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::integer_value::IntegerValue;
 use crate::statement_translator::StatementTranslator;
 use crate::value::Value;
 
+mod basic_block;
 mod bool_value;
 mod constant;
 mod errors;
@@ -96,13 +98,16 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
 
     let parser = parser::grammar::StatementParser::new();
     let statement = parser.parse("return x + y + z + w;").unwrap();
+    let basic_block = BasicBlock::new(vec![statement]);
 
     let statement_translator = StatementTranslator {
         context,
         builder,
         values,
     };
-    statement_translator.translate(&statement).unwrap();
+    statement_translator
+        .translate_basic_block(&basic_block)
+        .unwrap();
 }
 
 fn run_test(module_ir: &Module) {

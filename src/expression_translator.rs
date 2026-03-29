@@ -8,6 +8,7 @@ use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
 use crate::value::Value;
 
+#[repr(transparent)]
 pub struct ExpressionTranslator<'ctx, 'b> {
     parent: &'b StatementTranslator<'ctx>,
 }

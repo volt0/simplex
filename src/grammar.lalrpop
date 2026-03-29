@@ -8,6 +8,7 @@ grammar;
 // Statements
 
 pub Statement: Statement = {
+    "{" <statements:(<Statement>)*> "}" => Statement::new_basic_block(statements),
     "return" <expression:Expression> ";" => Statement::new_return(expression),
 }
 
