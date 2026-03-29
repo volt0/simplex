@@ -7,6 +7,7 @@ use crate::constant::Constant;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperationExpression, Expression, UnaryOperationExpression};
 use crate::integer_value::IntegerValue;
+use crate::types::Type;
 use crate::value::Value;
 
 pub struct ExpressionTranslator<'ctx> {
@@ -16,12 +17,20 @@ pub struct ExpressionTranslator<'ctx> {
 }
 
 impl<'ctx> ExpressionTranslator<'ctx> {
-    pub fn translate(&self, expression: &Expression) -> CompilationResult<Value<'ctx>> {
+    pub fn translate(
+        &self,
+        expression: &Expression,
+        type_hint: Option<&Type>,
+    ) -> CompilationResult<Value<'ctx>> {
         match expression {
             Expression::LoadConstant(constant) => self.translate_constant(constant),
             Expression::LoadValue(name) => self.load_value(name),
-            Expression::BinaryOperation(expression) => self.translate_binary_operation(expression),
-            Expression::UnaryOperation(expression) => self.translate_unary_operation(expression),
+            Expression::BinaryOperation(expression) => {
+                self.translate_binary_operation(expression, type_hint)
+            }
+            Expression::UnaryOperation(expression) => {
+                self.translate_unary_operation(expression, type_hint)
+            }
         }
     }
 
@@ -44,17 +53,25 @@ impl<'ctx> ExpressionTranslator<'ctx> {
     fn translate_binary_operation(
         &self,
         expression: &BinaryOperationExpression,
+        type_hint: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let lhs = self.translate(&expression.lhs)?;
-        let rhs = self.translate(&expression.rhs)?;
-        lhs.binary_operation(expression.operation, &rhs, &self.builder, self.context)
+        let lhs = self.translate(&expression.lhs, type_hint)?;
+        let rhs = self.translate(&expression.rhs, type_hint)?;
+        lhs.binary_operation(
+            expression.operation,
+            &rhs,
+            &self.builder,
+            self.context,
+            type_hint,
+        )
     }
 
     fn translate_unary_operation(
         &self,
         expression: &UnaryOperationExpression,
+        type_hint: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let arg = self.translate(&expression.arg)?;
-        arg.unary_operation(expression.operation, &self.builder, self.context)
+        let arg = self.translate(&expression.arg, type_hint)?;
+        arg.unary_operation(expression.operation, &self.builder, self.context, type_hint)
     }
 }

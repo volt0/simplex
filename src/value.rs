@@ -7,6 +7,7 @@ use crate::errors::CompilationResult;
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::float_value::FloatValue;
 use crate::integer_value::IntegerValue;
+use crate::types::Type;
 
 #[derive(Clone)]
 pub enum Value<'ctx> {
@@ -30,11 +31,18 @@ impl<'ctx> Value<'ctx> {
         other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
+        type_hint: Option<&Type>,
     ) -> CompilationResult<Self> {
         match self {
-            Value::Integer(value) => value.binary_operation(operation, other, builder, context),
-            Value::Float(value) => value.binary_operation(operation, other, builder, context),
-            Value::Bool(value) => value.binary_operation(operation, other, builder, context),
+            Value::Integer(value) => {
+                value.binary_operation(operation, other, builder, context, type_hint)
+            }
+            Value::Float(value) => {
+                value.binary_operation(operation, other, builder, context, type_hint)
+            }
+            Value::Bool(value) => {
+                value.binary_operation(operation, other, builder, context, type_hint)
+            }
         }
     }
 
@@ -43,11 +51,12 @@ impl<'ctx> Value<'ctx> {
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
+        type_hint: Option<&Type>,
     ) -> CompilationResult<Self> {
         match self {
-            Value::Integer(value) => value.unary_operation(operation, builder, context),
-            Value::Float(value) => value.unary_operation(operation, builder),
-            Value::Bool(value) => value.unary_operation(operation, builder),
+            Value::Integer(value) => value.unary_operation(operation, builder, context, type_hint),
+            Value::Float(value) => value.unary_operation(operation, builder, context, type_hint),
+            Value::Bool(value) => value.unary_operation(operation, builder, type_hint),
         }
     }
 }

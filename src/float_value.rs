@@ -4,25 +4,11 @@ use inkwell::values::{BasicValue, BasicValueEnum};
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::float_type::FloatType;
+use crate::types::Type;
 use crate::value::Value;
 
 type FloatValueIR<'ctx> = inkwell::values::FloatValue<'ctx>;
-type FloatTypeIR<'ctx> = inkwell::types::FloatType<'ctx>;
-
-#[derive(Clone, PartialEq, PartialOrd)]
-pub enum FloatType {
-    F32,
-    F64,
-}
-
-impl FloatType {
-    pub fn to_ir<'ctx>(&self, context: &'ctx Context) -> FloatTypeIR<'ctx> {
-        match self {
-            FloatType::F32 => context.f32_type(),
-            FloatType::F64 => context.f64_type(),
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct FloatValue<'ctx> {
@@ -49,6 +35,7 @@ impl<'ctx> FloatValue<'ctx> {
         other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
+        type_hint: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         let other = match other {
             Value::Float(other) => other.clone(),
@@ -58,10 +45,16 @@ impl<'ctx> FloatValue<'ctx> {
 
         let lhs_type = self.value_type.clone();
         let rhs_type = other.value_type.clone();
-        let result_type = if rhs_type > lhs_type {
-            rhs_type
-        } else {
-            lhs_type
+        let result_type = match type_hint {
+            None => {
+                if rhs_type > lhs_type {
+                    rhs_type
+                } else {
+                    lhs_type
+                }
+            }
+            Some(Type::Float(type_hint)) => type_hint.clone(),
+            _ => unreachable!(),
         };
 
         let result_type_ir = result_type.to_ir(context);
@@ -86,16 +79,25 @@ impl<'ctx> FloatValue<'ctx> {
         &self,
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
+        context: &'ctx Context,
+        type_hint: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
+        let result_type = match type_hint {
+            None => self.value_type.clone(),
+            Some(Type::Float(type_hint)) => type_hint.clone(),
+            _ => unreachable!(),
+        };
+
+        let arg_ir = builder.build_float_ext(self.ir, result_type.to_ir(context), "")?;
         let result_ir = match operation {
-            UnaryOperation::Plus => Ok(self.ir.clone()),
-            UnaryOperation::Minus => builder.build_float_neg(self.ir, ""),
+            UnaryOperation::Plus => Ok(arg_ir),
+            UnaryOperation::Minus => builder.build_float_neg(arg_ir, ""),
             _ => return Err(CompilationError::InvalidOperation),
         };
 
         Ok(Value::Float(FloatValue {
             ir: result_ir?,
-            value_type: self.value_type.clone(),
+            value_type: result_type,
         }))
     }
 }

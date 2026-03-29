@@ -6,6 +6,7 @@ use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::integer_value::IntegerValue;
+use crate::types::Type;
 use crate::value::Value;
 
 #[derive(Clone)]
@@ -30,13 +31,20 @@ impl<'ctx> BoolValue<'ctx> {
         &self,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
+        type_hint: Option<&Type>,
     ) -> CompilationResult<IntegerValue<'ctx>> {
-        Ok(IntegerValue {
-            ir: builder.build_int_z_extend(self.ir, context.i8_type(), "")?,
-            value_type: IntegerType {
+        let value_type = match type_hint {
+            None => IntegerType {
                 is_signed: false,
                 width: IntegerTypeSize::I8,
             },
+            Some(Type::Integer(type_hint)) => type_hint.clone(),
+            _ => unreachable!(),
+        };
+
+        Ok(IntegerValue {
+            ir: builder.build_int_z_extend(self.ir, value_type.to_ir(context), "")?,
+            value_type,
         })
     }
 
@@ -46,7 +54,14 @@ impl<'ctx> BoolValue<'ctx> {
         other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
+        type_hint: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
+        if let Some(type_hint) = type_hint {
+            if !matches!(type_hint, &Type::Bool) {
+                return Err(CompilationError::TypeMismatch);
+            }
+        }
+
         let other = match other {
             Value::Bool(other) => other.clone(),
             Value::Integer(other) => other.to_bool(builder, context)?,
@@ -70,7 +85,14 @@ impl<'ctx> BoolValue<'ctx> {
         &self,
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
+        type_hint: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
+        if let Some(type_hint) = type_hint {
+            if !matches!(type_hint, &Type::Bool) {
+                return Err(CompilationError::TypeMismatch);
+            }
+        }
+
         Ok(BoolValue {
             ir: match operation {
                 UnaryOperation::BitNot => builder.build_not(self.ir, "")?,

@@ -10,6 +10,7 @@ use crate::bool_value::BoolValue;
 use crate::expression_translator::ExpressionTranslator;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::integer_value::IntegerValue;
+use crate::types::Type;
 use crate::value::Value;
 
 mod bool_value;
@@ -17,6 +18,7 @@ mod constant;
 mod errors;
 mod expression;
 mod expression_translator;
+mod float_type;
 mod float_value;
 mod integer_type;
 mod integer_value;
@@ -40,7 +42,7 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
         &[
             context.i16_type().into(),
             context.i32_type().into(),
-            context.i64_type().into(),
+            context.i32_type().into(),
             context.bool_type().into(),
         ],
         false,
@@ -79,7 +81,7 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
                 ir: function_ir.get_nth_param(2).unwrap().into_int_value(),
                 value_type: IntegerType {
                     is_signed: true,
-                    width: IntegerTypeSize::I64,
+                    width: IntegerTypeSize::I32,
                 },
             }),
         ),
@@ -91,6 +93,11 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
         ),
     ]);
 
+    let return_type = Type::Integer(IntegerType {
+        is_signed: true,
+        width: IntegerTypeSize::I64,
+    });
+
     let parser = parser::grammar::ExpressionParser::new();
     let expression = parser.parse("x + y + z + w").unwrap();
     let expression_translator = ExpressionTranslator {
@@ -98,7 +105,10 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
         builder,
         values,
     };
-    let value = expression_translator.translate(&expression).unwrap();
+
+    let value = expression_translator
+        .translate(&expression, Some(&return_type))
+        .unwrap();
 
     let builder = expression_translator.builder;
     let value_ir = value.into_ir();
@@ -106,7 +116,7 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
 }
 
 fn run_test(module_ir: &Module) {
-    type TestFunc = unsafe extern "C" fn(i16, i32, i64, bool) -> i64;
+    type TestFunc = unsafe extern "C" fn(i16, i32, i32, bool) -> i64;
 
     let execution_engine = module_ir
         .create_jit_execution_engine(OptimizationLevel::None)
@@ -118,8 +128,8 @@ fn run_test(module_ir: &Module) {
 
         let x = 1i16;
         let y = 2i32;
-        let z = 3i64;
-        let w = false;
+        let z = 3i32;
+        let w = true;
         dbg!(test_function.call(x, y, z, w));
     }
 }

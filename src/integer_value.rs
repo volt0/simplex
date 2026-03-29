@@ -6,8 +6,10 @@ use inkwell::IntPredicate;
 use crate::bool_value::BoolValue;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
-use crate::float_value::{FloatType, FloatValue};
+use crate::float_type::FloatType;
+use crate::float_value::FloatValue;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
+use crate::types::Type;
 use crate::value::Value;
 
 #[derive(Clone)]
@@ -84,27 +86,37 @@ impl<'ctx> IntegerValue<'ctx> {
         other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
+        type_hint: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         let other = match other {
             Value::Integer(other) => other.clone(),
-            Value::Bool(other) => other.to_integer(builder, context)?,
+            Value::Bool(other) => other.to_integer(builder, context, type_hint)?,
             _ => return Err(CompilationError::TypeMismatch),
         };
 
         let lhs_type = self.value_type.clone();
         let rhs_type = other.value_type.clone();
-        let result_type = if lhs_type.is_signed == rhs_type.is_signed {
-            if rhs_type.width > lhs_type.width {
-                rhs_type
-            } else {
-                lhs_type
+        let result_type = match type_hint {
+            None => {
+                if lhs_type.is_signed == rhs_type.is_signed {
+                    if rhs_type.width > lhs_type.width {
+                        rhs_type
+                    } else {
+                        lhs_type
+                    }
+                } else if rhs_type.is_signed && rhs_type.width > lhs_type.width {
+                    rhs_type
+                } else if lhs_type.is_signed && lhs_type.width > rhs_type.width {
+                    lhs_type
+                } else {
+                    return Err(CompilationError::TypeMismatch);
+                }
             }
-        } else if rhs_type.is_signed && rhs_type.width > lhs_type.width {
-            rhs_type
-        } else if lhs_type.is_signed && lhs_type.width > rhs_type.width {
-            lhs_type
-        } else {
-            return Err(CompilationError::TypeMismatch);
+
+            Some(type_hint) => match type_hint {
+                Type::Integer(type_hint) => type_hint.clone(),
+                _ => return Err(CompilationError::TypeMismatch),
+            },
         };
 
         let lhs_ir = self.to_ir_expanded(&result_type, builder, context)?;
@@ -148,14 +160,23 @@ impl<'ctx> IntegerValue<'ctx> {
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
+        type_hint: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let arg_type = self.value_type.clone();
+        let arg_type = match type_hint {
+            None => self.value_type.clone(),
+            Some(type_hint) => match type_hint {
+                Type::Integer(type_hint) => type_hint.clone(),
+                _ => return Err(CompilationError::TypeMismatch),
+            },
+        };
+
         let arg_ir = self.to_ir_expanded(&arg_type, builder, context)?;
         let result_ir = match operation {
-            UnaryOperation::Plus => self.ir.clone(),
+            UnaryOperation::Plus => arg_ir,
             UnaryOperation::Minus => builder.build_int_neg(arg_ir, "")?,
             UnaryOperation::BitNot => builder.build_not(arg_ir, "")?,
         };
+
         Ok(IntegerValue {
             ir: result_ir,
             value_type: arg_type,
