@@ -7,10 +7,9 @@ use inkwell::targets::TargetTriple;
 use inkwell::OptimizationLevel;
 
 use crate::bool_value::BoolValue;
-use crate::expression_translator::ExpressionTranslator;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::integer_value::IntegerValue;
-use crate::types::Type;
+use crate::statement_translator::StatementTranslator;
 use crate::value::Value;
 
 mod bool_value;
@@ -23,6 +22,8 @@ mod float_value;
 mod integer_type;
 mod integer_value;
 mod parser;
+mod statement;
+mod statement_translator;
 mod types;
 mod value;
 
@@ -93,26 +94,15 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
         ),
     ]);
 
-    let return_type = Type::Integer(IntegerType {
-        is_signed: true,
-        width: IntegerTypeSize::I64,
-    });
+    let parser = parser::grammar::StatementParser::new();
+    let statement = parser.parse("return x + y + z + w;").unwrap();
 
-    let parser = parser::grammar::ExpressionParser::new();
-    let expression = parser.parse("x + y + z + w").unwrap();
-    let expression_translator = ExpressionTranslator {
+    let statement_translator = StatementTranslator {
         context,
         builder,
         values,
     };
-
-    let value = expression_translator
-        .translate(&expression, Some(&return_type))
-        .unwrap();
-
-    let builder = expression_translator.builder;
-    let value_ir = value.into_ir();
-    builder.build_return(Some(&value_ir)).unwrap();
+    statement_translator.translate(&statement).unwrap();
 }
 
 fn run_test(module_ir: &Module) {

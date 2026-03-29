@@ -1,22 +1,30 @@
-use std::collections::HashMap;
-
-use inkwell::builder::Builder;
-use inkwell::context::Context;
+use std::ops::Deref;
 
 use crate::constant::Constant;
-use crate::errors::{CompilationError, CompilationResult};
+use crate::errors::CompilationResult;
 use crate::expression::{BinaryOperationExpression, Expression, UnaryOperationExpression};
 use crate::integer_value::IntegerValue;
+use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
 use crate::value::Value;
 
-pub struct ExpressionTranslator<'ctx> {
-    pub context: &'ctx Context,
-    pub builder: Builder<'ctx>,
-    pub values: HashMap<String, Value<'ctx>>,
+pub struct ExpressionTranslator<'ctx, 'b> {
+    parent: &'b StatementTranslator<'ctx>,
 }
 
-impl<'ctx> ExpressionTranslator<'ctx> {
+impl<'ctx, 'b> Deref for ExpressionTranslator<'ctx, 'b> {
+    type Target = StatementTranslator<'ctx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.parent
+    }
+}
+
+impl<'ctx, 'b> ExpressionTranslator<'ctx, 'b> {
+    pub fn new(parent: &'b StatementTranslator<'ctx>) -> ExpressionTranslator<'ctx, 'b> {
+        ExpressionTranslator { parent }
+    }
+
     pub fn translate(
         &self,
         expression: &Expression,
@@ -34,18 +42,11 @@ impl<'ctx> ExpressionTranslator<'ctx> {
         }
     }
 
-    fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
-        self.values
-            .get(name)
-            .ok_or(CompilationError::UnresolvedName(name.to_string()))
-            .cloned()
-    }
-
     fn translate_constant(&self, constant: &Constant) -> CompilationResult<Value<'ctx>> {
         match constant {
             Constant::Integer(value) => Ok(Value::Integer(IntegerValue::from_constant(
                 *value,
-                self.context,
+                self.context(),
             ))),
         }
     }
@@ -60,8 +61,8 @@ impl<'ctx> ExpressionTranslator<'ctx> {
         lhs.binary_operation(
             expression.operation,
             &rhs,
-            &self.builder,
-            self.context,
+            self.builder(),
+            self.context(),
             type_hint,
         )
     }
@@ -72,6 +73,11 @@ impl<'ctx> ExpressionTranslator<'ctx> {
         type_hint: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         let arg = self.translate(&expression.arg, type_hint)?;
-        arg.unary_operation(expression.operation, &self.builder, self.context, type_hint)
+        arg.unary_operation(
+            expression.operation,
+            self.builder(),
+            self.context(),
+            type_hint,
+        )
     }
 }

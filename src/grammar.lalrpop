@@ -1,8 +1,15 @@
 use crate::constant::Constant;
 use crate::expression::Expression;
+use crate::statement::Statement;
 use crate::types::Type;
 
 grammar;
+
+// Statements
+
+pub Statement: Statement = {
+    "return" <expression:Expression> ";" => Statement::new_return(expression),
+}
 
 // Expressions
 
@@ -86,7 +93,7 @@ LogicalOrExpression: Box<Expression> = {
     <a:LogicalOrExpression> "||" <b:LogicalAndExpression> => todo!(),
 }
 
-pub Expression: Box<Expression> = {
+Expression: Box<Expression> = {
     LogicalOrExpression,
     <condition:LogicalOrExpression> "?" <case_a:Expression> ":" <case_b:Expression> => todo!(),
 }
