@@ -29,6 +29,19 @@ impl<'ctx> Into<BasicValueEnum<'ctx>> for FloatValue<'ctx> {
 }
 
 impl<'ctx> FloatValue<'ctx> {
+    pub fn from_ir(
+        value_ir: BasicValueEnum<'ctx>,
+        value_type: &FloatType,
+    ) -> CompilationResult<Self> {
+        if let BasicValueEnum::FloatValue(value_ir) = value_ir {
+            return Ok(FloatValue {
+                ir: value_ir,
+                value_type: value_type.clone(),
+            });
+        }
+        panic!("Expected FloatValue, got {:?}", value_ir);
+    }
+
     pub fn binary_operation(
         &self,
         operation: BinaryOperation,

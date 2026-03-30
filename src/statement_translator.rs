@@ -1,23 +1,29 @@
 use std::collections::HashMap;
-
-use inkwell::builder::Builder;
-use inkwell::context::Context;
+use std::ops::Deref;
 
 use crate::basic_block::{BasicBlock, BasicBlockVisitor};
-use crate::errors::{CompilationError, CompilationResult};
+use crate::errors::CompilationResult;
 use crate::expression_translator::ExpressionTranslator;
+use crate::function_translator::FunctionTranslator;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::statement::Statement;
 use crate::types::Type;
 use crate::value::Value;
 
-pub struct StatementTranslator<'ctx> {
-    pub context: &'ctx Context,
-    pub builder: Builder<'ctx>,
-    pub values: HashMap<String, Value<'ctx>>,
+pub struct StatementTranslator<'ctx, 'f> {
+    parent: &'f FunctionTranslator<'ctx>,
+    values: HashMap<String, Value<'ctx>>,
 }
 
-impl<'ctx> BasicBlockVisitor for StatementTranslator<'ctx> {
+impl<'ctx, 'f> Deref for StatementTranslator<'ctx, 'f> {
+    type Target = FunctionTranslator<'ctx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.parent
+    }
+}
+
+impl<'ctx, 'f> BasicBlockVisitor for StatementTranslator<'ctx, 'f> {
     fn visit_statement(&self, statement: &Statement) -> CompilationResult<()> {
         let expression_translator = ExpressionTranslator::new(self);
         match statement {
@@ -36,13 +42,12 @@ impl<'ctx> BasicBlockVisitor for StatementTranslator<'ctx> {
     }
 }
 
-impl<'ctx> StatementTranslator<'ctx> {
-    pub fn context(&self) -> &'ctx Context {
-        self.context
-    }
-
-    pub fn builder(&self) -> &Builder<'ctx> {
-        &self.builder
+impl<'ctx, 'f> StatementTranslator<'ctx, 'f> {
+    pub fn new(parent: &'f FunctionTranslator<'ctx>) -> Self {
+        Self {
+            parent,
+            values: HashMap::new(),
+        }
     }
 
     pub fn translate_basic_block(&self, basic_block: &BasicBlock) -> CompilationResult<()> {
@@ -50,9 +55,9 @@ impl<'ctx> StatementTranslator<'ctx> {
     }
 
     pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
-        self.values
-            .get(name)
-            .ok_or(CompilationError::UnresolvedName(name.to_string()))
-            .cloned()
+        match self.values.get(name) {
+            Some(value) => Ok(value.clone()),
+            None => self.parent.load_value(name),
+        }
     }
 }

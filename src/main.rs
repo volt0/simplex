@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use inkwell::module::Module;
@@ -7,11 +5,10 @@ use inkwell::targets::TargetTriple;
 use inkwell::OptimizationLevel;
 
 use crate::basic_block::BasicBlock;
-use crate::bool_value::BoolValue;
+use crate::function::{Function, FunctionArgument, FunctionSignature};
+use crate::function_translator::FunctionTranslator;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
-use crate::integer_value::IntegerValue;
-use crate::statement_translator::StatementTranslator;
-use crate::value::Value;
+use crate::types::Type;
 
 mod basic_block;
 mod bool_value;
@@ -21,6 +18,8 @@ mod expression;
 mod expression_translator;
 mod float_type;
 mod float_value;
+mod function;
+mod function_translator;
 mod integer_type;
 mod integer_value;
 mod parser;
@@ -50,64 +49,49 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
         ],
         false,
     );
-
     let function_ir = module_ir.add_function("test", fn_type, None);
-    let basic_block = context.append_basic_block(function_ir.clone(), "entry");
-
-    let builder = context.create_builder();
-    builder.position_at_end(basic_block);
-
-    let values = HashMap::from([
-        (
-            "x".to_string(),
-            Value::Integer(IntegerValue {
-                ir: function_ir.get_nth_param(0).unwrap().into_int_value(),
-                value_type: IntegerType {
-                    is_signed: true,
-                    width: IntegerTypeSize::I16,
-                },
-            }),
-        ),
-        (
-            "y".to_string(),
-            Value::Integer(IntegerValue {
-                ir: function_ir.get_nth_param(1).unwrap().into_int_value(),
-                value_type: IntegerType {
-                    is_signed: true,
-                    width: IntegerTypeSize::I32,
-                },
-            }),
-        ),
-        (
-            "z".to_string(),
-            Value::Integer(IntegerValue {
-                ir: function_ir.get_nth_param(2).unwrap().into_int_value(),
-                value_type: IntegerType {
-                    is_signed: true,
-                    width: IntegerTypeSize::I32,
-                },
-            }),
-        ),
-        (
-            "w".to_string(),
-            Value::Bool(BoolValue {
-                ir: function_ir.get_nth_param(3).unwrap().into_int_value(),
-            }),
-        ),
-    ]);
 
     let parser = parser::grammar::StatementParser::new();
-    let statement = parser.parse("return x + y + z + w;").unwrap();
-    let basic_block = BasicBlock::new(vec![statement]);
+    let function = Function::new(
+        Some("test".to_string()),
+        FunctionSignature {
+            args: vec![
+                FunctionArgument {
+                    name: "x".to_string(),
+                    value_type: Type::Integer(IntegerType {
+                        is_signed: true,
+                        width: IntegerTypeSize::I16,
+                    }),
+                },
+                FunctionArgument {
+                    name: "y".to_string(),
+                    value_type: Type::Integer(IntegerType {
+                        is_signed: true,
+                        width: IntegerTypeSize::I32,
+                    }),
+                },
+                FunctionArgument {
+                    name: "z".to_string(),
+                    value_type: Type::Integer(IntegerType {
+                        is_signed: true,
+                        width: IntegerTypeSize::I32,
+                    }),
+                },
+                FunctionArgument {
+                    name: "w".to_string(),
+                    value_type: Type::Bool,
+                },
+            ],
+            return_type: Type::Integer(IntegerType {
+                is_signed: true,
+                width: IntegerTypeSize::I64,
+            }),
+        },
+        BasicBlock::new(vec![parser.parse("return x + y + z + w;").unwrap()]),
+    );
 
-    let statement_translator = StatementTranslator {
-        context,
-        builder,
-        values,
-    };
-    statement_translator
-        .translate_basic_block(&basic_block)
-        .unwrap();
+    let function_translator = FunctionTranslator::new(function_ir, &function, context).unwrap();
+    function.visit(&function_translator).unwrap();
 }
 
 fn run_test(module_ir: &Module) {

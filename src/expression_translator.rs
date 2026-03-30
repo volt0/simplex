@@ -9,20 +9,20 @@ use crate::types::Type;
 use crate::value::Value;
 
 #[repr(transparent)]
-pub struct ExpressionTranslator<'ctx, 'b> {
-    parent: &'b StatementTranslator<'ctx>,
+pub struct ExpressionTranslator<'ctx, 'f, 's> {
+    parent: &'s StatementTranslator<'ctx, 'f>,
 }
 
-impl<'ctx, 'b> Deref for ExpressionTranslator<'ctx, 'b> {
-    type Target = StatementTranslator<'ctx>;
+impl<'ctx, 'f, 's> Deref for ExpressionTranslator<'ctx, 'f, 's> {
+    type Target = StatementTranslator<'ctx, 'f>;
 
     fn deref(&self) -> &Self::Target {
         self.parent
     }
 }
 
-impl<'ctx, 'b> ExpressionTranslator<'ctx, 'b> {
-    pub fn new(parent: &'b StatementTranslator<'ctx>) -> ExpressionTranslator<'ctx, 'b> {
+impl<'ctx, 'f, 's> ExpressionTranslator<'ctx, 'f, 's> {
+    pub fn new(parent: &'s StatementTranslator<'ctx, 'f>) -> ExpressionTranslator<'ctx, 'f, 's> {
         ExpressionTranslator { parent }
     }
 

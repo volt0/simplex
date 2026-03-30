@@ -31,6 +31,19 @@ impl<'ctx> Into<BasicValueEnum<'ctx>> for IntegerValue<'ctx> {
 }
 
 impl<'ctx> IntegerValue<'ctx> {
+    pub fn from_ir(
+        value_ir: BasicValueEnum<'ctx>,
+        value_type: &IntegerType,
+    ) -> CompilationResult<Self> {
+        if let BasicValueEnum::IntValue(value_ir) = value_ir {
+            return Ok(IntegerValue {
+                ir: value_ir,
+                value_type: value_type.clone(),
+            });
+        }
+        panic!("Expected IntValue, got {:?}", value_ir);
+    }
+
     pub fn from_constant(value: i32, context: &'ctx Context) -> Self {
         IntegerValue {
             ir: context.i32_type().const_int(value as u64, true),
