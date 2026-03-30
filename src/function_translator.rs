@@ -1,23 +1,32 @@
 use std::collections::HashMap;
+use std::ops::Deref;
 
 use inkwell::builder::Builder;
-use inkwell::context::Context;
 use inkwell::values::FunctionValue;
 
 use crate::basic_block::BasicBlock;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::function::{Function, FunctionVisitor};
+use crate::module_translator::ModuleTranslator;
 use crate::statement_translator::StatementTranslator;
 use crate::value::Value;
 
-pub struct FunctionTranslator<'ctx> {
-    pub function_ir: FunctionValue<'ctx>,
-    pub arguments_ir: HashMap<String, Value<'ctx>>,
-    pub context: &'ctx Context,
-    pub builder: Builder<'ctx>,
+pub struct FunctionTranslator<'ctx, 'm> {
+    function_ir: FunctionValue<'ctx>,
+    arguments_ir: HashMap<String, Value<'ctx>>,
+    parent: &'m ModuleTranslator<'ctx>,
+    builder: Builder<'ctx>,
 }
 
-impl<'ctx> FunctionVisitor for FunctionTranslator<'ctx> {
+impl<'ctx, 'm> Deref for FunctionTranslator<'ctx, 'm> {
+    type Target = ModuleTranslator<'ctx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.parent
+    }
+}
+
+impl<'ctx, 'm> FunctionVisitor for FunctionTranslator<'ctx, 'm> {
     fn visit_body(&self, body: &BasicBlock) -> CompilationResult<()> {
         let root_basic_block = self
             .context()
@@ -30,13 +39,13 @@ impl<'ctx> FunctionVisitor for FunctionTranslator<'ctx> {
     }
 }
 
-impl<'ctx> FunctionTranslator<'ctx> {
+impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
     pub fn new(
         function_ir: FunctionValue<'ctx>,
         function: &Function,
-        context: &'ctx Context,
+        parent: &'m ModuleTranslator<'ctx>,
     ) -> CompilationResult<Self> {
-        let builder = context.create_builder();
+        let builder = parent.context().create_builder();
         let mut arguments_ir = HashMap::with_capacity(function_ir.count_params() as usize);
         for (arg_id, arg) in function.signature.args.iter().enumerate() {
             let arg_ir = function_ir.get_nth_param(arg_id as u32).unwrap();
@@ -47,13 +56,9 @@ impl<'ctx> FunctionTranslator<'ctx> {
         Ok(Self {
             function_ir,
             arguments_ir,
-            context,
+            parent,
             builder,
         })
-    }
-
-    pub fn context(&self) -> &'ctx Context {
-        self.context
     }
 
     pub fn builder(&self) -> &Builder<'ctx> {

@@ -10,20 +10,20 @@ use crate::statement::Statement;
 use crate::types::Type;
 use crate::value::Value;
 
-pub struct StatementTranslator<'ctx, 'f> {
-    parent: &'f FunctionTranslator<'ctx>,
+pub struct StatementTranslator<'ctx, 'm, 'f> {
+    parent: &'f FunctionTranslator<'ctx, 'm>,
     values: HashMap<String, Value<'ctx>>,
 }
 
-impl<'ctx, 'f> Deref for StatementTranslator<'ctx, 'f> {
-    type Target = FunctionTranslator<'ctx>;
+impl<'ctx, 'm, 'f> Deref for StatementTranslator<'ctx, 'm, 'f> {
+    type Target = FunctionTranslator<'ctx, 'm>;
 
     fn deref(&self) -> &Self::Target {
         self.parent
     }
 }
 
-impl<'ctx, 'f> BasicBlockVisitor for StatementTranslator<'ctx, 'f> {
+impl<'ctx, 'm, 'f> BasicBlockVisitor for StatementTranslator<'ctx, 'm, 'f> {
     fn visit_statement(&self, statement: &Statement) -> CompilationResult<()> {
         let expression_translator = ExpressionTranslator::new(self);
         match statement {
@@ -35,15 +35,15 @@ impl<'ctx, 'f> BasicBlockVisitor for StatementTranslator<'ctx, 'f> {
                 });
 
                 let value = expression_translator.translate(expression, Some(&return_type))?;
-                self.builder.build_return(Some(&value.into_ir()))?;
+                self.builder().build_return(Some(&value.into_ir()))?;
                 Ok(())
             }
         }
     }
 }
 
-impl<'ctx, 'f> StatementTranslator<'ctx, 'f> {
-    pub fn new(parent: &'f FunctionTranslator<'ctx>) -> Self {
+impl<'ctx, 'm, 'f> StatementTranslator<'ctx, 'm, 'f> {
+    pub fn new(parent: &'f FunctionTranslator<'ctx, 'm>) -> Self {
         Self {
             parent,
             values: HashMap::new(),
