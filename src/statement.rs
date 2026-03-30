@@ -7,8 +7,8 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn new_basic_block(statements: Vec<Statement>) -> Statement {
-        Statement::BasicBlock(BasicBlock::new(statements))
+    pub fn new_basic_block(basic_block: BasicBlock) -> Statement {
+        Statement::BasicBlock(basic_block)
     }
 
     pub fn new_return(expression: Box<Expression>) -> Statement {

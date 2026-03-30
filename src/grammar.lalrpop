@@ -1,14 +1,40 @@
+use crate::basic_block::BasicBlock;
 use crate::constant::Constant;
 use crate::expression::Expression;
+use crate::float_type::FloatType;
+use crate::function::{Function, FunctionArgument, FunctionSignature};
+use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::statement::Statement;
 use crate::types::Type;
 
 grammar;
 
+// Functions
+
+pub Function: Function = {
+    "proc" <name:Identifier> <signature:FunctionSignature> <body:BasicBlock> => {
+        Function::new(Some(name), signature, body)
+    }
+};
+
+FunctionSignature: FunctionSignature = {
+    "(" <args:CommaSeparatedList<FunctionArgument>> ")" <return_type:TypeAnnotation> => FunctionSignature {
+        args, return_type
+    }
+}
+
+FunctionArgument: FunctionArgument = {
+    <name:Identifier> <value_type:TypeAnnotation> => FunctionArgument {name, value_type}
+}
+
 // Statements
 
-pub Statement: Statement = {
-    "{" <statements:(<Statement>)*> "}" => Statement::new_basic_block(statements),
+BasicBlock: BasicBlock = {
+    "{" <statements:(<Statement>)*> "}" => BasicBlock::new(statements)
+}
+
+Statement: Statement = {
+    <basic_block:BasicBlock> => Statement::new_basic_block(basic_block),
     "return" <expression:Expression> ";" => Statement::new_return(expression),
 }
 
@@ -101,8 +127,21 @@ Expression: Box<Expression> = {
 
 // Types
 
+TypeAnnotation: Type = {
+    ":" <type_spec:Type> => type_spec
+}
+
 Type: Type = {
-    <name:Identifier> => todo!(),
+    "i32" => Type::Integer(IntegerType {
+        width: IntegerTypeSize::I32,
+        is_signed: true,
+    }),
+    "i64" => Type::Integer(IntegerType {
+        width: IntegerTypeSize::I64,
+        is_signed: true,
+    }),
+    "f32" => Type::Float(FloatType::F32),
+    "bool" => Type::Bool,
 }
 
 // Syntax base

@@ -4,11 +4,7 @@ use inkwell::module::Module;
 use inkwell::targets::TargetTriple;
 use inkwell::OptimizationLevel;
 
-use crate::basic_block::BasicBlock;
-use crate::function::{Function, FunctionArgument, FunctionSignature};
 use crate::function_translator::FunctionTranslator;
-use crate::integer_type::{IntegerType, IntegerTypeSize};
-use crate::types::Type;
 
 mod basic_block;
 mod bool_value;
@@ -28,6 +24,12 @@ mod statement_translator;
 mod types;
 mod value;
 
+const SRC: &'static str = r#"
+proc test(x: i32, y: i32, z: i32, w: bool): i64 {
+    return x + y + z;
+}
+"#;
+
 fn main() {
     let context = Context::create();
     let module_ir = context.create_module("test_module");
@@ -42,7 +44,7 @@ fn main() {
 pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) {
     let fn_type = context.i64_type().fn_type(
         &[
-            context.i16_type().into(),
+            context.i32_type().into(),
             context.i32_type().into(),
             context.i32_type().into(),
             context.bool_type().into(),
@@ -51,51 +53,14 @@ pub fn compile_function<'ctx>(context: &'ctx Context, module_ir: &Module<'ctx>) 
     );
     let function_ir = module_ir.add_function("test", fn_type, None);
 
-    let parser = parser::grammar::StatementParser::new();
-    let function = Function::new(
-        Some("test".to_string()),
-        FunctionSignature {
-            args: vec![
-                FunctionArgument {
-                    name: "x".to_string(),
-                    value_type: Type::Integer(IntegerType {
-                        is_signed: true,
-                        width: IntegerTypeSize::I16,
-                    }),
-                },
-                FunctionArgument {
-                    name: "y".to_string(),
-                    value_type: Type::Integer(IntegerType {
-                        is_signed: true,
-                        width: IntegerTypeSize::I32,
-                    }),
-                },
-                FunctionArgument {
-                    name: "z".to_string(),
-                    value_type: Type::Integer(IntegerType {
-                        is_signed: true,
-                        width: IntegerTypeSize::I32,
-                    }),
-                },
-                FunctionArgument {
-                    name: "w".to_string(),
-                    value_type: Type::Bool,
-                },
-            ],
-            return_type: Type::Integer(IntegerType {
-                is_signed: true,
-                width: IntegerTypeSize::I64,
-            }),
-        },
-        BasicBlock::new(vec![parser.parse("return x + y + z + w;").unwrap()]),
-    );
-
+    let parser = parser::grammar::FunctionParser::new();
+    let function = parser.parse(SRC).unwrap();
     let function_translator = FunctionTranslator::new(function_ir, &function, context).unwrap();
     function.visit(&function_translator).unwrap();
 }
 
 fn run_test(module_ir: &Module) {
-    type TestFunc = unsafe extern "C" fn(i16, i32, i32, bool) -> i64;
+    type TestFunc = unsafe extern "C" fn(i32, i32, i32, bool) -> i64;
 
     let execution_engine = module_ir
         .create_jit_execution_engine(OptimizationLevel::None)
@@ -105,7 +70,7 @@ fn run_test(module_ir: &Module) {
         let test_function: JitFunction<'_, TestFunc> =
             execution_engine.get_function("test").unwrap();
 
-        let x = 1i16;
+        let x = 1i32;
         let y = 2i32;
         let z = 3i32;
         let w = true;
