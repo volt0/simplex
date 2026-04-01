@@ -31,16 +31,16 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
     pub fn translate(
         &self,
         expression: &Expression,
-        type_hint: Option<&Type>,
+        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         match expression {
             Expression::LoadConstant(constant) => self.translate_constant(constant),
             Expression::LoadValue(name) => self.load_value(name),
             Expression::BinaryOperation(expression) => {
-                self.translate_binary_operation(expression, type_hint)
+                self.translate_binary_operation(expression, expression_type)
             }
             Expression::UnaryOperation(expression) => {
-                self.translate_unary_operation(expression, type_hint)
+                self.translate_unary_operation(expression, expression_type)
             }
         }
     }
@@ -57,30 +57,30 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
     fn translate_binary_operation(
         &self,
         expression: &BinaryOperationExpression,
-        type_hint: Option<&Type>,
+        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let lhs = self.translate(&expression.lhs, type_hint)?;
-        let rhs = self.translate(&expression.rhs, type_hint)?;
+        let lhs = self.translate(&expression.lhs, expression_type)?;
+        let rhs = self.translate(&expression.rhs, expression_type)?;
         lhs.binary_operation(
             expression.operation,
             &rhs,
             self.builder(),
             self.context(),
-            type_hint,
+            expression_type,
         )
     }
 
     fn translate_unary_operation(
         &self,
         expression: &UnaryOperationExpression,
-        type_hint: Option<&Type>,
+        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let arg = self.translate(&expression.arg, type_hint)?;
+        let arg = self.translate(&expression.arg, expression_type)?;
         arg.unary_operation(
             expression.operation,
             self.builder(),
             self.context(),
-            type_hint,
+            expression_type,
         )
     }
 }

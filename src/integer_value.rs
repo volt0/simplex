@@ -99,17 +99,17 @@ impl<'ctx> IntegerValue<'ctx> {
         other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-        type_hint: Option<&Type>,
+        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         let other = match other {
             Value::Integer(other) => other.clone(),
-            Value::Bool(other) => other.to_integer(builder, context, type_hint)?,
+            Value::Bool(other) => other.to_integer(builder, context, expression_type)?,
             _ => return Err(CompilationError::TypeMismatch),
         };
 
         let lhs_type = self.value_type.clone();
         let rhs_type = other.value_type.clone();
-        let result_type = match type_hint {
+        let result_type = match expression_type {
             None => {
                 if lhs_type.is_signed == rhs_type.is_signed {
                     if rhs_type.width > lhs_type.width {
@@ -126,8 +126,8 @@ impl<'ctx> IntegerValue<'ctx> {
                 }
             }
 
-            Some(type_hint) => match type_hint {
-                Type::Integer(type_hint) => type_hint.clone(),
+            Some(expression_type) => match expression_type {
+                Type::Integer(expression_type) => expression_type.clone(),
                 _ => return Err(CompilationError::TypeMismatch),
             },
         };
@@ -173,12 +173,12 @@ impl<'ctx> IntegerValue<'ctx> {
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-        type_hint: Option<&Type>,
+        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let arg_type = match type_hint {
+        let arg_type = match expression_type {
             None => self.value_type.clone(),
-            Some(type_hint) => match type_hint {
-                Type::Integer(type_hint) => type_hint.clone(),
+            Some(expression_type) => match expression_type {
+                Type::Integer(expression_type) => expression_type.clone(),
                 _ => return Err(CompilationError::TypeMismatch),
             },
         };

@@ -38,14 +38,14 @@ impl<'ctx> BoolValue<'ctx> {
         &self,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-        type_hint: Option<&Type>,
+        expression_type: Option<&Type>,
     ) -> CompilationResult<IntegerValue<'ctx>> {
-        let value_type = match type_hint {
+        let value_type = match expression_type {
             None => IntegerType {
                 is_signed: false,
                 width: IntegerTypeSize::I8,
             },
-            Some(Type::Integer(type_hint)) => type_hint.clone(),
+            Some(Type::Integer(expression_type)) => expression_type.clone(),
             _ => unreachable!(),
         };
 
@@ -61,10 +61,10 @@ impl<'ctx> BoolValue<'ctx> {
         other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-        type_hint: Option<&Type>,
+        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        if let Some(type_hint) = type_hint {
-            if !matches!(type_hint, &Type::Bool) {
+        if let Some(expression_type) = expression_type {
+            if !matches!(expression_type, &Type::Bool) {
                 return Err(CompilationError::TypeMismatch);
             }
         }
@@ -92,10 +92,10 @@ impl<'ctx> BoolValue<'ctx> {
         &self,
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
-        type_hint: Option<&Type>,
+        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        if let Some(type_hint) = type_hint {
-            if !matches!(type_hint, &Type::Bool) {
+        if let Some(expression_type) = expression_type {
+            if !matches!(expression_type, &Type::Bool) {
                 return Err(CompilationError::TypeMismatch);
             }
         }

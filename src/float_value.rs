@@ -48,7 +48,7 @@ impl<'ctx> FloatValue<'ctx> {
         other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-        type_hint: Option<&Type>,
+        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         let other = match other {
             Value::Float(other) => other.clone(),
@@ -58,7 +58,7 @@ impl<'ctx> FloatValue<'ctx> {
 
         let lhs_type = self.value_type.clone();
         let rhs_type = other.value_type.clone();
-        let result_type = match type_hint {
+        let result_type = match expression_type {
             None => {
                 if rhs_type > lhs_type {
                     rhs_type
@@ -66,7 +66,7 @@ impl<'ctx> FloatValue<'ctx> {
                     lhs_type
                 }
             }
-            Some(Type::Float(type_hint)) => type_hint.clone(),
+            Some(Type::Float(expression_type)) => expression_type.clone(),
             _ => unreachable!(),
         };
 
@@ -93,11 +93,11 @@ impl<'ctx> FloatValue<'ctx> {
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-        type_hint: Option<&Type>,
+        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let result_type = match type_hint {
+        let result_type = match expression_type {
             None => self.value_type.clone(),
-            Some(Type::Float(type_hint)) => type_hint.clone(),
+            Some(Type::Float(expression_type)) => expression_type.clone(),
             _ => unreachable!(),
         };
 

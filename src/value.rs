@@ -41,17 +41,17 @@ impl<'ctx> Value<'ctx> {
         other: &Value<'ctx>,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-        type_hint: Option<&Type>,
+        expression_type: Option<&Type>,
     ) -> CompilationResult<Self> {
         match self {
             Value::Integer(value) => {
-                value.binary_operation(operation, other, builder, context, type_hint)
+                value.binary_operation(operation, other, builder, context, expression_type)
             }
             Value::Float(value) => {
-                value.binary_operation(operation, other, builder, context, type_hint)
+                value.binary_operation(operation, other, builder, context, expression_type)
             }
             Value::Bool(value) => {
-                value.binary_operation(operation, other, builder, context, type_hint)
+                value.binary_operation(operation, other, builder, context, expression_type)
             }
         }
     }
@@ -61,12 +61,16 @@ impl<'ctx> Value<'ctx> {
         operation: UnaryOperation,
         builder: &Builder<'ctx>,
         context: &'ctx Context,
-        type_hint: Option<&Type>,
+        expression_type: Option<&Type>,
     ) -> CompilationResult<Self> {
         match self {
-            Value::Integer(value) => value.unary_operation(operation, builder, context, type_hint),
-            Value::Float(value) => value.unary_operation(operation, builder, context, type_hint),
-            Value::Bool(value) => value.unary_operation(operation, builder, type_hint),
+            Value::Integer(value) => {
+                value.unary_operation(operation, builder, context, expression_type)
+            }
+            Value::Float(value) => {
+                value.unary_operation(operation, builder, context, expression_type)
+            }
+            Value::Bool(value) => value.unary_operation(operation, builder, expression_type),
         }
     }
 }
