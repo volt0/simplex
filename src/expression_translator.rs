@@ -47,10 +47,9 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
 
     fn translate_constant(&self, constant: &Constant) -> CompilationResult<Value<'ctx>> {
         match constant {
-            Constant::Integer(value) => Ok(Value::Integer(IntegerValue::from_constant(
-                *value,
-                self.context(),
-            ))),
+            Constant::Integer(value) => {
+                Ok(Value::Integer(IntegerValue::from_constant(*value, self)))
+            }
         }
     }
 
@@ -61,13 +60,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
     ) -> CompilationResult<Value<'ctx>> {
         let lhs = self.translate(&expression.lhs, expression_type)?;
         let rhs = self.translate(&expression.rhs, expression_type)?;
-        lhs.binary_operation(
-            expression.operation,
-            &rhs,
-            self.builder(),
-            self.context(),
-            expression_type,
-        )
+        lhs.binary_operation(expression.operation, &rhs, self, expression_type)
     }
 
     fn translate_unary_operation(
@@ -76,11 +69,6 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         let arg = self.translate(&expression.arg, expression_type)?;
-        arg.unary_operation(
-            expression.operation,
-            self.builder(),
-            self.context(),
-            expression_type,
-        )
+        arg.unary_operation(expression.operation, self, expression_type)
     }
 }

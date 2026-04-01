@@ -48,6 +48,7 @@ impl<'ctx> ModuleTranslator<'ctx> {
         ModuleTranslator { context, module_ir }
     }
 
+    #[inline(always)]
     pub fn context(&self) -> &'ctx Context {
         self.context
     }

@@ -1,10 +1,9 @@
-use inkwell::builder::Builder;
-use inkwell::context::Context;
 use inkwell::values::BasicValueEnum;
 
 use crate::bool_value::BoolValue;
 use crate::errors::CompilationResult;
 use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::expression_translator::ExpressionTranslator;
 use crate::float_value::FloatValue;
 use crate::integer_value::IntegerValue;
 use crate::types::Type;
@@ -39,19 +38,18 @@ impl<'ctx> Value<'ctx> {
         &self,
         operation: BinaryOperation,
         other: &Value<'ctx>,
-        builder: &Builder<'ctx>,
-        context: &'ctx Context,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
         expression_type: Option<&Type>,
     ) -> CompilationResult<Self> {
         match self {
             Value::Integer(value) => {
-                value.binary_operation(operation, other, builder, context, expression_type)
+                value.binary_operation(operation, other, expression_translator, expression_type)
             }
             Value::Float(value) => {
-                value.binary_operation(operation, other, builder, context, expression_type)
+                value.binary_operation(operation, other, expression_translator, expression_type)
             }
             Value::Bool(value) => {
-                value.binary_operation(operation, other, builder, context, expression_type)
+                value.binary_operation(operation, other, expression_translator, expression_type)
             }
         }
     }
@@ -59,18 +57,19 @@ impl<'ctx> Value<'ctx> {
     pub fn unary_operation(
         &self,
         operation: UnaryOperation,
-        builder: &Builder<'ctx>,
-        context: &'ctx Context,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
         expression_type: Option<&Type>,
     ) -> CompilationResult<Self> {
         match self {
             Value::Integer(value) => {
-                value.unary_operation(operation, builder, context, expression_type)
+                value.unary_operation(operation, expression_translator, expression_type)
             }
             Value::Float(value) => {
-                value.unary_operation(operation, builder, context, expression_type)
+                value.unary_operation(operation, expression_translator, expression_type)
             }
-            Value::Bool(value) => value.unary_operation(operation, builder, expression_type),
+            Value::Bool(value) => {
+                value.unary_operation(operation, expression_translator, expression_type)
+            }
         }
     }
 }

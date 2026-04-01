@@ -1,9 +1,8 @@
-use inkwell::builder::Builder;
-use inkwell::context::Context;
 use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::expression_translator::ExpressionTranslator;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::integer_value::IntegerValue;
 use crate::types::Type;
@@ -36,8 +35,7 @@ impl<'ctx> BoolValue<'ctx> {
 
     pub fn to_integer(
         &self,
-        builder: &Builder<'ctx>,
-        context: &'ctx Context,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
         expression_type: Option<&Type>,
     ) -> CompilationResult<IntegerValue<'ctx>> {
         let value_type = match expression_type {
@@ -49,6 +47,8 @@ impl<'ctx> BoolValue<'ctx> {
             _ => unreachable!(),
         };
 
+        let builder = expression_translator.builder();
+        let context = expression_translator.context();
         Ok(IntegerValue {
             ir: builder.build_int_z_extend(self.ir, value_type.to_ir(context), "")?,
             value_type,
@@ -59,8 +59,7 @@ impl<'ctx> BoolValue<'ctx> {
         &self,
         operation: BinaryOperation,
         other: &Value<'ctx>,
-        builder: &Builder<'ctx>,
-        context: &'ctx Context,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
         expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         if let Some(expression_type) = expression_type {
@@ -71,10 +70,11 @@ impl<'ctx> BoolValue<'ctx> {
 
         let other = match other {
             Value::Bool(other) => other.clone(),
-            Value::Integer(other) => other.to_bool(builder, context)?,
+            Value::Integer(other) => other.to_bool(expression_translator)?,
             _ => return Err(CompilationError::TypeMismatch),
         };
 
+        let builder = expression_translator.builder();
         let lhs_ir = self.ir;
         let rhs_ir = other.ir;
         Ok(BoolValue {
@@ -91,7 +91,7 @@ impl<'ctx> BoolValue<'ctx> {
     pub fn unary_operation(
         &self,
         operation: UnaryOperation,
-        builder: &Builder<'ctx>,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
         expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         if let Some(expression_type) = expression_type {
@@ -100,6 +100,7 @@ impl<'ctx> BoolValue<'ctx> {
             }
         }
 
+        let builder = expression_translator.builder();
         Ok(BoolValue {
             ir: match operation {
                 UnaryOperation::BitNot => builder.build_not(self.ir, "")?,

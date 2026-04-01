@@ -1,11 +1,10 @@
-use inkwell::builder::Builder;
-use inkwell::context::Context;
 use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
 use inkwell::IntPredicate;
 
 use crate::bool_value::BoolValue;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::expression_translator::ExpressionTranslator;
 use crate::float_type::FloatType;
 use crate::float_value::FloatValue;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
@@ -44,7 +43,11 @@ impl<'ctx> IntegerValue<'ctx> {
         panic!("Expected IntValue, got {:?}", value_ir);
     }
 
-    pub fn from_constant(value: i32, context: &'ctx Context) -> Self {
+    pub fn from_constant(
+        value: i32,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+    ) -> Self {
+        let context = expression_translator.context();
         IntegerValue {
             ir: context.i32_type().const_int(value as u64, true),
             value_type: IntegerType {
@@ -56,9 +59,10 @@ impl<'ctx> IntegerValue<'ctx> {
 
     pub fn to_bool(
         &self,
-        builder: &Builder<'ctx>,
-        context: &'ctx Context,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<BoolValue<'ctx>> {
+        let builder = expression_translator.builder();
+        let context = expression_translator.context();
         Ok(BoolValue {
             ir: builder.build_int_compare(
                 IntPredicate::NE,
@@ -71,8 +75,7 @@ impl<'ctx> IntegerValue<'ctx> {
 
     pub fn to_float(
         &self,
-        builder: &Builder<'ctx>,
-        context: &'ctx Context,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<FloatValue<'ctx>> {
         let result_type = match self.value_type.width {
             IntegerTypeSize::I8 | IntegerTypeSize::I16 => FloatType::F32,
@@ -80,6 +83,8 @@ impl<'ctx> IntegerValue<'ctx> {
             _ => return Err(CompilationError::TypeMismatch),
         };
 
+        let builder = expression_translator.builder();
+        let context = expression_translator.context();
         let result_ir = if self.value_type.is_signed {
             builder.build_signed_int_to_float(self.ir, result_type.to_ir(context), "")?
         } else {
@@ -97,13 +102,12 @@ impl<'ctx> IntegerValue<'ctx> {
         &self,
         operation: BinaryOperation,
         other: &Value<'ctx>,
-        builder: &Builder<'ctx>,
-        context: &'ctx Context,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
         expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         let other = match other {
             Value::Integer(other) => other.clone(),
-            Value::Bool(other) => other.to_integer(builder, context, expression_type)?,
+            Value::Bool(other) => other.to_integer(expression_translator, expression_type)?,
             _ => return Err(CompilationError::TypeMismatch),
         };
 
@@ -132,8 +136,9 @@ impl<'ctx> IntegerValue<'ctx> {
             },
         };
 
-        let lhs_ir = self.to_ir_expanded(&result_type, builder, context)?;
-        let rhs_ir = other.to_ir_expanded(&result_type, builder, context)?;
+        let builder = expression_translator.builder();
+        let lhs_ir = self.to_ir_expanded(&result_type, expression_translator)?;
+        let rhs_ir = other.to_ir_expanded(&result_type, expression_translator)?;
         let result_ir = match operation {
             BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, ""),
             BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, ""),
@@ -171,8 +176,7 @@ impl<'ctx> IntegerValue<'ctx> {
     pub fn unary_operation(
         &self,
         operation: UnaryOperation,
-        builder: &Builder<'ctx>,
-        context: &'ctx Context,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
         expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         let arg_type = match expression_type {
@@ -183,7 +187,8 @@ impl<'ctx> IntegerValue<'ctx> {
             },
         };
 
-        let arg_ir = self.to_ir_expanded(&arg_type, builder, context)?;
+        let builder = expression_translator.builder();
+        let arg_ir = self.to_ir_expanded(&arg_type, expression_translator)?;
         let result_ir = match operation {
             UnaryOperation::Plus => arg_ir,
             UnaryOperation::Minus => builder.build_int_neg(arg_ir, "")?,
@@ -200,9 +205,10 @@ impl<'ctx> IntegerValue<'ctx> {
     fn to_ir_expanded(
         &self,
         new_type: &IntegerType,
-        builder: &Builder<'ctx>,
-        context: &'ctx Context,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<IntValue<'ctx>> {
+        let builder = expression_translator.builder();
+        let context = expression_translator.context();
         Ok(if new_type.is_signed {
             builder.build_int_s_extend(self.ir, new_type.to_ir(context), "")?
         } else {

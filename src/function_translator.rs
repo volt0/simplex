@@ -61,6 +61,7 @@ impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
         })
     }
 
+    #[inline(always)]
     pub fn builder(&self) -> &Builder<'ctx> {
         &self.builder
     }

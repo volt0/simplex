@@ -1,9 +1,8 @@
-use inkwell::builder::Builder;
-use inkwell::context::Context;
 use inkwell::values::{BasicValue, BasicValueEnum};
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::expression_translator::ExpressionTranslator;
 use crate::float_type::FloatType;
 use crate::types::Type;
 use crate::value::Value;
@@ -46,13 +45,12 @@ impl<'ctx> FloatValue<'ctx> {
         &self,
         operation: BinaryOperation,
         other: &Value<'ctx>,
-        builder: &Builder<'ctx>,
-        context: &'ctx Context,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
         expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         let other = match other {
             Value::Float(other) => other.clone(),
-            Value::Integer(other) => other.to_float(builder, context)?,
+            Value::Integer(other) => other.to_float(expression_translator)?,
             _ => return Err(CompilationError::TypeMismatch),
         };
 
@@ -70,6 +68,8 @@ impl<'ctx> FloatValue<'ctx> {
             _ => unreachable!(),
         };
 
+        let builder = expression_translator.builder();
+        let context = expression_translator.context();
         let result_type_ir = result_type.to_ir(context);
         let lhs_ir = builder.build_float_ext(self.ir, result_type_ir, "")?;
         let rhs_ir = builder.build_float_ext(other.ir, result_type_ir, "")?;
@@ -91,8 +91,7 @@ impl<'ctx> FloatValue<'ctx> {
     pub fn unary_operation(
         &self,
         operation: UnaryOperation,
-        builder: &Builder<'ctx>,
-        context: &'ctx Context,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
         expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
         let result_type = match expression_type {
@@ -101,6 +100,8 @@ impl<'ctx> FloatValue<'ctx> {
             _ => unreachable!(),
         };
 
+        let builder = expression_translator.builder();
+        let context = expression_translator.context();
         let arg_ir = builder.build_float_ext(self.ir, result_type.to_ir(context), "")?;
         let result_ir = match operation {
             UnaryOperation::Plus => Ok(arg_ir),
