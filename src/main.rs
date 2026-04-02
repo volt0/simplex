@@ -25,7 +25,7 @@ mod value;
 
 const SRC: &'static str = r#"
 proc test(x: i32, y: i32, z: i32, w: bool): i64 {
-    return x + y + z;
+    return x + y + z + w;
 }
 "#;
 

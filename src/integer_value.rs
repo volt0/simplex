@@ -8,7 +8,6 @@ use crate::expression_translator::ExpressionTranslator;
 use crate::float_type::FloatType;
 use crate::float_value::FloatValue;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
-use crate::types::Type;
 use crate::value::Value;
 
 #[derive(Clone)]
@@ -30,6 +29,43 @@ impl<'ctx> Into<BasicValueEnum<'ctx>> for IntegerValue<'ctx> {
 }
 
 impl<'ctx> IntegerValue<'ctx> {
+    pub fn from_value(
+        value: &Value<'ctx>,
+        expression_type: &IntegerType,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+    ) -> CompilationResult<Self> {
+        Ok(match value {
+            Value::Integer(value) => {
+                let value_type = value.value_type.clone();
+                match (expression_type.is_signed, value_type.is_signed) {
+                    (true, true) | (false, false) => {
+                        if value_type.width <= expression_type.width {
+                            IntegerValue {
+                                ir: value.to_ir_expanded(expression_type, expression_translator)?,
+                                value_type: expression_type.clone(),
+                            }
+                        } else {
+                            return Err(CompilationError::TypeMismatch);
+                        }
+                    }
+                    (true, false) => {
+                        if value_type.width < expression_type.width {
+                            IntegerValue {
+                                ir: value.to_ir_expanded(expression_type, expression_translator)?,
+                                value_type: expression_type.clone(),
+                            }
+                        } else {
+                            return Err(CompilationError::TypeMismatch);
+                        }
+                    }
+                    _ => return Err(CompilationError::TypeMismatch),
+                }
+            }
+            Value::Bool(other) => other.to_integer(Some(expression_type), expression_translator)?,
+            _ => return Err(CompilationError::TypeMismatch),
+        })
+    }
+
     pub fn from_ir(
         value_ir: BasicValueEnum<'ctx>,
         value_type: &IntegerType,
@@ -103,42 +139,14 @@ impl<'ctx> IntegerValue<'ctx> {
         operation: BinaryOperation,
         other: &Value<'ctx>,
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
-        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let other = match other {
-            Value::Integer(other) => other.clone(),
-            Value::Bool(other) => other.to_integer(expression_translator, expression_type)?,
+        let lhs_ir = self.ir;
+        let rhs_ir = match other {
+            Value::Integer(value) => value.ir,
             _ => return Err(CompilationError::TypeMismatch),
         };
 
-        let lhs_type = self.value_type.clone();
-        let rhs_type = other.value_type.clone();
-        let result_type = match expression_type {
-            None => {
-                if lhs_type.is_signed == rhs_type.is_signed {
-                    if rhs_type.width > lhs_type.width {
-                        rhs_type
-                    } else {
-                        lhs_type
-                    }
-                } else if rhs_type.is_signed && rhs_type.width > lhs_type.width {
-                    rhs_type
-                } else if lhs_type.is_signed && lhs_type.width > rhs_type.width {
-                    lhs_type
-                } else {
-                    return Err(CompilationError::TypeMismatch);
-                }
-            }
-
-            Some(expression_type) => match expression_type {
-                Type::Integer(expression_type) => expression_type.clone(),
-                _ => return Err(CompilationError::TypeMismatch),
-            },
-        };
-
         let builder = expression_translator.builder();
-        let lhs_ir = self.to_ir_expanded(&result_type, expression_translator)?;
-        let rhs_ir = other.to_ir_expanded(&result_type, expression_translator)?;
         let result_ir = match operation {
             BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, ""),
             BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, ""),
@@ -168,7 +176,7 @@ impl<'ctx> IntegerValue<'ctx> {
 
         Ok(IntegerValue {
             ir: result_ir?,
-            value_type: result_type,
+            value_type: self.value_type.clone(),
         }
         .into())
     }
@@ -177,27 +185,17 @@ impl<'ctx> IntegerValue<'ctx> {
         &self,
         operation: UnaryOperation,
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
-        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let arg_type = match expression_type {
-            None => self.value_type.clone(),
-            Some(expression_type) => match expression_type {
-                Type::Integer(expression_type) => expression_type.clone(),
-                _ => return Err(CompilationError::TypeMismatch),
-            },
-        };
-
         let builder = expression_translator.builder();
-        let arg_ir = self.to_ir_expanded(&arg_type, expression_translator)?;
         let result_ir = match operation {
-            UnaryOperation::Plus => arg_ir,
-            UnaryOperation::Minus => builder.build_int_neg(arg_ir, "")?,
-            UnaryOperation::BitNot => builder.build_not(arg_ir, "")?,
+            UnaryOperation::Plus => self.ir,
+            UnaryOperation::Minus => builder.build_int_neg(self.ir, "")?,
+            UnaryOperation::BitNot => builder.build_not(self.ir, "")?,
         };
 
         Ok(IntegerValue {
             ir: result_ir,
-            value_type: arg_type,
+            value_type: self.value_type.clone(),
         }
         .into())
     }

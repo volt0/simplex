@@ -28,12 +28,12 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         ExpressionTranslator { parent }
     }
 
-    pub fn translate(
+    pub fn translate_expression(
         &self,
         expression: &Expression,
         expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        match expression {
+        let value = match expression {
             Expression::LoadConstant(constant) => self.translate_constant(constant),
             Expression::LoadValue(name) => self.load_value(name),
             Expression::BinaryOperation(expression) => {
@@ -42,6 +42,11 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
             Expression::UnaryOperation(expression) => {
                 self.translate_unary_operation(expression, expression_type)
             }
+        };
+
+        match expression_type {
+            Some(expression_type) => value?.validate_type(expression_type, self),
+            None => value,
         }
     }
 
@@ -58,9 +63,16 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         expression: &BinaryOperationExpression,
         expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let lhs = self.translate(&expression.lhs, expression_type)?;
-        let rhs = self.translate(&expression.rhs, expression_type)?;
-        lhs.binary_operation(expression.operation, &rhs, self, expression_type)
+        let mut lhs = self.translate_expression(&expression.lhs, expression_type)?;
+        let mut rhs = self.translate_expression(&expression.rhs, expression_type)?;
+
+        if let None = expression_type {
+            let common_type = Type::combined_type(&lhs.value_type(), &rhs.value_type())?;
+            lhs = lhs.validate_type(&common_type, self)?;
+            rhs = rhs.validate_type(&common_type, self)?;
+        }
+
+        lhs.binary_operation(expression.operation, &rhs, self)
     }
 
     fn translate_unary_operation(
@@ -68,7 +80,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         expression: &UnaryOperationExpression,
         expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let arg = self.translate(&expression.arg, expression_type)?;
-        arg.unary_operation(expression.operation, self, expression_type)
+        let arg = self.translate_expression(&expression.arg, expression_type)?;
+        arg.unary_operation(expression.operation, self)
     }
 }

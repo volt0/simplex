@@ -1,7 +1,7 @@
 use inkwell::values::BasicValueEnum;
 
 use crate::bool_value::BoolValue;
-use crate::errors::CompilationResult;
+use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::expression_translator::ExpressionTranslator;
 use crate::float_value::FloatValue;
@@ -34,23 +34,53 @@ impl<'ctx> Value<'ctx> {
         }
     }
 
+    pub fn value_type(&self) -> Type {
+        match self {
+            Value::Integer(value) => Type::Integer(value.value_type.clone()),
+            Value::Float(value) => Type::Float(value.value_type.clone()),
+            Value::Bool(_) => Type::Bool,
+        }
+    }
+
+    pub fn validate_type(
+        &self,
+        expected_type: &Type,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+    ) -> CompilationResult<Self> {
+        Ok(match expected_type {
+            Type::Integer(expected_type) => {
+                IntegerValue::from_value(self, expected_type, expression_translator)?.into()
+            }
+            Type::Float(expected_type) => {
+                FloatValue::from_value(self, expected_type, expression_translator)?.into()
+            }
+            Type::Bool => self.to_bool(expression_translator)?,
+        })
+    }
+
+    pub fn to_bool(
+        &self,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+    ) -> CompilationResult<Value<'ctx>> {
+        Ok(match self {
+            Value::Integer(value) => value.to_bool(expression_translator)?.into(),
+            Value::Bool(value) => Value::Bool(value.clone()),
+            _ => return Err(CompilationError::TypeMismatch),
+        })
+    }
+
     pub fn binary_operation(
         &self,
         operation: BinaryOperation,
         other: &Value<'ctx>,
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
-        expression_type: Option<&Type>,
     ) -> CompilationResult<Self> {
         match self {
             Value::Integer(value) => {
-                value.binary_operation(operation, other, expression_translator, expression_type)
+                value.binary_operation(operation, other, expression_translator)
             }
-            Value::Float(value) => {
-                value.binary_operation(operation, other, expression_translator, expression_type)
-            }
-            Value::Bool(value) => {
-                value.binary_operation(operation, other, expression_translator, expression_type)
-            }
+            Value::Float(value) => value.binary_operation(operation, other, expression_translator),
+            Value::Bool(value) => value.binary_operation(operation, other, expression_translator),
         }
     }
 
@@ -58,18 +88,11 @@ impl<'ctx> Value<'ctx> {
         &self,
         operation: UnaryOperation,
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
-        expression_type: Option<&Type>,
     ) -> CompilationResult<Self> {
         match self {
-            Value::Integer(value) => {
-                value.unary_operation(operation, expression_translator, expression_type)
-            }
-            Value::Float(value) => {
-                value.unary_operation(operation, expression_translator, expression_type)
-            }
-            Value::Bool(value) => {
-                value.unary_operation(operation, expression_translator, expression_type)
-            }
+            Value::Integer(value) => value.unary_operation(operation, expression_translator),
+            Value::Float(value) => value.unary_operation(operation, expression_translator),
+            Value::Bool(value) => value.unary_operation(operation, expression_translator),
         }
     }
 }

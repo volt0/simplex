@@ -34,8 +34,12 @@ impl<'ctx, 'm, 'f> BasicBlockVisitor for StatementTranslator<'ctx, 'm, 'f> {
                     width: IntegerTypeSize::I64,
                 });
 
-                let value = expression_translator.translate(expression, Some(&return_type))?;
-                self.builder().build_return(Some(&value.into_ir()))?;
+                self.builder().build_return(Some(
+                    &expression_translator
+                        .translate_expression(expression, Some(&return_type))?
+                        .into_ir(),
+                ))?;
+
                 Ok(())
             }
         }

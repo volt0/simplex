@@ -4,7 +4,6 @@ use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::expression_translator::ExpressionTranslator;
 use crate::float_type::FloatType;
-use crate::types::Type;
 use crate::value::Value;
 
 type FloatValueIR<'ctx> = inkwell::values::FloatValue<'ctx>;
@@ -28,6 +27,33 @@ impl<'ctx> Into<BasicValueEnum<'ctx>> for FloatValue<'ctx> {
 }
 
 impl<'ctx> FloatValue<'ctx> {
+    pub fn from_value(
+        value: &Value<'ctx>,
+        expression_type: &FloatType,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+    ) -> CompilationResult<Self> {
+        let builder = expression_translator.builder();
+        let context = expression_translator.context();
+        Ok(match value {
+            Value::Float(value) => {
+                if &value.value_type <= expression_type {
+                    FloatValue {
+                        ir: builder.build_float_ext(
+                            value.ir,
+                            expression_type.to_ir(context),
+                            "",
+                        )?,
+                        value_type: expression_type.clone(),
+                    }
+                } else {
+                    return Err(CompilationError::TypeMismatch);
+                }
+            }
+            Value::Integer(value) => value.to_float(expression_translator)?,
+            _ => return Err(CompilationError::TypeMismatch),
+        })
+    }
+
     pub fn from_ir(
         value_ir: BasicValueEnum<'ctx>,
         value_type: &FloatType,
@@ -46,34 +72,14 @@ impl<'ctx> FloatValue<'ctx> {
         operation: BinaryOperation,
         other: &Value<'ctx>,
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
-        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let other = match other {
-            Value::Float(other) => other.clone(),
-            Value::Integer(other) => other.to_float(expression_translator)?,
+        let lhs_ir = self.ir;
+        let rhs_ir = match other {
+            Value::Float(other) => other.ir,
             _ => return Err(CompilationError::TypeMismatch),
         };
 
-        let lhs_type = self.value_type.clone();
-        let rhs_type = other.value_type.clone();
-        let result_type = match expression_type {
-            None => {
-                if rhs_type > lhs_type {
-                    rhs_type
-                } else {
-                    lhs_type
-                }
-            }
-            Some(Type::Float(expression_type)) => expression_type.clone(),
-            _ => unreachable!(),
-        };
-
         let builder = expression_translator.builder();
-        let context = expression_translator.context();
-        let result_type_ir = result_type.to_ir(context);
-        let lhs_ir = builder.build_float_ext(self.ir, result_type_ir, "")?;
-        let rhs_ir = builder.build_float_ext(other.ir, result_type_ir, "")?;
-
         let result_ir = match operation {
             BinaryOperation::Add => builder.build_float_add(lhs_ir, rhs_ir, ""),
             BinaryOperation::Sub => builder.build_float_sub(lhs_ir, rhs_ir, ""),
@@ -84,7 +90,7 @@ impl<'ctx> FloatValue<'ctx> {
 
         Ok(Value::Float(FloatValue {
             ir: result_ir?,
-            value_type: result_type,
+            value_type: self.value_type.clone(),
         }))
     }
 
@@ -92,26 +98,17 @@ impl<'ctx> FloatValue<'ctx> {
         &self,
         operation: UnaryOperation,
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
-        expression_type: Option<&Type>,
     ) -> CompilationResult<Value<'ctx>> {
-        let result_type = match expression_type {
-            None => self.value_type.clone(),
-            Some(Type::Float(expression_type)) => expression_type.clone(),
-            _ => unreachable!(),
-        };
-
         let builder = expression_translator.builder();
-        let context = expression_translator.context();
-        let arg_ir = builder.build_float_ext(self.ir, result_type.to_ir(context), "")?;
         let result_ir = match operation {
-            UnaryOperation::Plus => Ok(arg_ir),
-            UnaryOperation::Minus => builder.build_float_neg(arg_ir, ""),
+            UnaryOperation::Plus => self.ir.clone(),
+            UnaryOperation::Minus => builder.build_float_neg(self.ir, "")?,
             _ => return Err(CompilationError::InvalidOperation),
         };
 
         Ok(Value::Float(FloatValue {
-            ir: result_ir?,
-            value_type: result_type,
+            ir: result_ir,
+            value_type: self.value_type.clone(),
         }))
     }
 }
