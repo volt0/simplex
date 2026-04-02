@@ -1,6 +1,5 @@
 use inkwell::context::Context;
 
-use crate::module::Module;
 use crate::module_translator::ModuleTranslator;
 
 mod basic_block;
@@ -31,9 +30,8 @@ proc test(x: i32, y: i32, z: i32, w: bool): i64 {
 "#;
 
 fn main() {
-    let parser = parser::grammar::FunctionDefinitionParser::new();
-    let definition = parser.parse(SRC).unwrap();
-    let module = Module::new(vec![definition]);
+    let parser = parser::grammar::ModuleParser::new();
+    let module = parser.parse(SRC).unwrap();
 
     let context = Context::create();
     let module_translator = ModuleTranslator::new(&context);

@@ -5,10 +5,21 @@ use crate::expression::Expression;
 use crate::float_type::FloatType;
 use crate::function::{Function, FunctionArgument, FunctionSignature};
 use crate::integer_type::{IntegerType, IntegerTypeSize};
+use crate::module::Module;
 use crate::statement::Statement;
 use crate::types::Type;
 
 grammar;
+
+// Module
+
+pub Module: Module = {
+    <definitions:Definition*> => Module::new(definitions)
+};
+
+Definition: Definition = {
+    FunctionDefinition,
+};
 
 // Functions
 
