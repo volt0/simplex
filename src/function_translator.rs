@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use inkwell::builder::Builder;
-use inkwell::values::FunctionValue;
+use inkwell::values::{AnyValue, FunctionValue};
 
 use crate::basic_block::BasicBlock;
 use crate::errors::{CompilationError, CompilationResult};
@@ -51,7 +51,10 @@ impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
         for (arg_id, arg) in function_signature.args.iter().enumerate() {
             let arg_ir = function_ir.get_nth_param(arg_id as u32).unwrap();
             let arg_type = &arg.value_type;
-            arguments_ir.insert(arg.name.clone(), Value::from_ir(arg_ir, arg_type)?);
+            arguments_ir.insert(
+                arg.name.clone(),
+                Value::from_ir(arg_ir.as_any_value_enum(), arg_type)?,
+            );
         }
 
         Ok(Self {

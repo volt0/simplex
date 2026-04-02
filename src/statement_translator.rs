@@ -30,12 +30,11 @@ impl<'ctx, 'm, 'f> StatementVisitor for StatementTranslator<'ctx, 'm, 'f> {
     fn add_return_statement(&self, expression: &Expression) -> CompilationResult<()> {
         let function_signature = self.function_signature();
         let expression_translator = ExpressionTranslator::new(self);
-        self.builder().build_return(Some(
-            &expression_translator
-                .translate_expression(expression, Some(&function_signature.return_type))?
-                .into_ir(),
-        ))?;
+        let expression_ir = expression_translator
+            .translate_expression(expression, Some(&function_signature.return_type))?
+            .into_basic_value_ir()?;
 
+        self.builder().build_return(Some(&expression_ir))?;
         Ok(())
     }
 }

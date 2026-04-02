@@ -1,4 +1,4 @@
-use inkwell::values::{BasicValue, BasicValueEnum};
+use inkwell::values::AnyValueEnum;
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
@@ -20,12 +20,6 @@ impl<'ctx> Into<Value<'ctx>> for FloatValue<'ctx> {
     }
 }
 
-impl<'ctx> Into<BasicValueEnum<'ctx>> for FloatValue<'ctx> {
-    fn into(self) -> BasicValueEnum<'ctx> {
-        self.ir.as_basic_value_enum()
-    }
-}
-
 impl<'ctx> FloatValue<'ctx> {
     pub fn from_value(
         value: &Value<'ctx>,
@@ -39,14 +33,18 @@ impl<'ctx> FloatValue<'ctx> {
         })
     }
 
-    pub fn from_ir(value_ir: BasicValueEnum<'ctx>, value_type: &FloatType) -> Self {
-        if let BasicValueEnum::FloatValue(value_ir) = value_ir {
+    pub fn from_ir(value_ir: AnyValueEnum<'ctx>, value_type: &FloatType) -> Self {
+        if let AnyValueEnum::FloatValue(value_ir) = value_ir {
             return FloatValue {
                 ir: value_ir,
                 value_type: value_type.clone(),
             };
         }
         panic!("Expected FloatValue, got {:?}", value_ir);
+    }
+
+    pub fn into_ir(self) -> AnyValueEnum<'ctx> {
+        AnyValueEnum::FloatValue(self.ir)
     }
 
     pub fn binary_operation(

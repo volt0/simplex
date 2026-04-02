@@ -1,4 +1,4 @@
-use inkwell::values::BasicValueEnum;
+use inkwell::values::{AnyValueEnum, BasicValueEnum};
 
 use crate::bool_value::BoolValue;
 use crate::errors::{CompilationError, CompilationResult};
@@ -16,7 +16,7 @@ pub enum Value<'ctx> {
 }
 
 impl<'ctx> Value<'ctx> {
-    pub fn from_ir(value_ir: BasicValueEnum<'ctx>, value_type: &Type) -> CompilationResult<Self> {
+    pub fn from_ir(value_ir: AnyValueEnum<'ctx>, value_type: &Type) -> CompilationResult<Self> {
         Ok(match value_type {
             Type::Integer(value_type) => IntegerValue::from_ir(value_ir, value_type).into(),
             Type::Float(value_type) => FloatValue::from_ir(value_ir, value_type).into(),
@@ -24,11 +24,18 @@ impl<'ctx> Value<'ctx> {
         })
     }
 
-    pub fn into_ir(self) -> BasicValueEnum<'ctx> {
+    pub fn into_ir(self) -> AnyValueEnum<'ctx> {
         match self {
-            Value::Integer(value) => value.into(),
-            Value::Float(value) => value.into(),
-            Value::Bool(value) => value.into(),
+            Value::Integer(value) => value.into_ir(),
+            Value::Float(value) => value.into_ir(),
+            Value::Bool(value) => value.into_ir(),
+        }
+    }
+
+    pub fn into_basic_value_ir(self) -> CompilationResult<BasicValueEnum<'ctx>> {
+        match self.into_ir().try_into() {
+            Ok(ir) => Ok(ir),
+            Err(_) => Err(CompilationError::InvalidOperation),
         }
     }
 

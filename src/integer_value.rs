@@ -1,4 +1,4 @@
-use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
+use inkwell::values::{AnyValueEnum, IntValue};
 use inkwell::IntPredicate;
 
 use crate::bool_value::BoolValue;
@@ -22,12 +22,6 @@ impl<'ctx> Into<Value<'ctx>> for IntegerValue<'ctx> {
     }
 }
 
-impl<'ctx> Into<BasicValueEnum<'ctx>> for IntegerValue<'ctx> {
-    fn into(self) -> BasicValueEnum<'ctx> {
-        self.ir.as_basic_value_enum()
-    }
-}
-
 impl<'ctx> IntegerValue<'ctx> {
     pub fn from_value(
         value: &Value<'ctx>,
@@ -39,16 +33,6 @@ impl<'ctx> IntegerValue<'ctx> {
             Value::Bool(other) => other.to_integer(Some(expression_type), expression_translator)?,
             _ => return Err(CompilationError::TypeMismatch),
         })
-    }
-
-    pub fn from_ir(value_ir: BasicValueEnum<'ctx>, value_type: &IntegerType) -> Self {
-        match value_ir {
-            BasicValueEnum::IntValue(value_ir) => IntegerValue {
-                ir: value_ir,
-                value_type: value_type.clone(),
-            },
-            _ => panic!("Expected IntValue, got {:?}", value_ir),
-        }
     }
 
     pub fn from_constant(
@@ -63,6 +47,20 @@ impl<'ctx> IntegerValue<'ctx> {
                 width: IntegerTypeSize::I32,
             },
         }
+    }
+
+    pub fn from_ir(value_ir: AnyValueEnum<'ctx>, value_type: &IntegerType) -> Self {
+        match value_ir {
+            AnyValueEnum::IntValue(value_ir) => IntegerValue {
+                ir: value_ir,
+                value_type: value_type.clone(),
+            },
+            _ => panic!("Expected IntValue, got {:?}", value_ir),
+        }
+    }
+
+    pub fn into_ir(self) -> AnyValueEnum<'ctx> {
+        AnyValueEnum::IntValue(self.ir)
     }
 
     pub fn to_bool(

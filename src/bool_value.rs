@@ -1,4 +1,4 @@
-use inkwell::values::{BasicValue, BasicValueEnum, IntValue};
+use inkwell::values::{AnyValueEnum, IntValue};
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
@@ -18,18 +18,16 @@ impl<'ctx> Into<Value<'ctx>> for BoolValue<'ctx> {
     }
 }
 
-impl<'ctx> Into<BasicValueEnum<'ctx>> for BoolValue<'ctx> {
-    fn into(self) -> BasicValueEnum<'ctx> {
-        self.ir.as_basic_value_enum()
-    }
-}
-
 impl<'ctx> BoolValue<'ctx> {
-    pub fn from_ir(value_ir: BasicValueEnum<'ctx>) -> Self {
-        if let BasicValueEnum::IntValue(value_ir) = value_ir {
+    pub fn from_ir(value_ir: AnyValueEnum<'ctx>) -> Self {
+        if let AnyValueEnum::IntValue(value_ir) = value_ir {
             return BoolValue { ir: value_ir };
         }
         panic!("Expected BoolValue, got {:?}", value_ir);
+    }
+
+    pub fn into_ir(self) -> AnyValueEnum<'ctx> {
+        AnyValueEnum::IntValue(self.ir)
     }
 
     pub fn to_integer(
