@@ -1,11 +1,12 @@
 use inkwell::context::Context;
 
-use crate::module::{Definition, Module};
+use crate::module::Module;
 use crate::module_translator::ModuleTranslator;
 
 mod basic_block;
 mod bool_value;
 mod constant;
+mod definition;
 mod errors;
 mod expression;
 mod expression_translator;
@@ -30,9 +31,9 @@ proc test(x: i32, y: i32, z: i32, w: bool): i64 {
 "#;
 
 fn main() {
-    let parser = parser::grammar::FunctionParser::new();
-    let function = parser.parse(SRC).unwrap();
-    let module = Module::new(vec![Definition::Function(function)]);
+    let parser = parser::grammar::FunctionDefinitionParser::new();
+    let definition = parser.parse(SRC).unwrap();
+    let module = Module::new(vec![definition]);
 
     let context = Context::create();
     let module_translator = ModuleTranslator::new(&context);

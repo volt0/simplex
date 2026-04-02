@@ -1,5 +1,6 @@
 use crate::basic_block::BasicBlock;
 use crate::constant::Constant;
+use crate::definition::Definition;
 use crate::expression::Expression;
 use crate::float_type::FloatType;
 use crate::function::{Function, FunctionArgument, FunctionSignature};
@@ -11,20 +12,22 @@ grammar;
 
 // Functions
 
-pub Function: Function = {
-    "proc" <name:Identifier> <signature:FunctionSignature> <body:BasicBlock> => {
-        Function::new(Some(name), signature, body)
-    }
+pub FunctionDefinition: Definition = {
+    "proc" <name:Identifier> <signature:FunctionSignature> <body:BasicBlock> => Definition::define_function(
+        name,
+        Function::new(signature, body)
+    ),
 };
 
 FunctionSignature: FunctionSignature = {
     "(" <args:CommaSeparatedList<FunctionArgument>> ")" <return_type:TypeAnnotation> => FunctionSignature {
-        args, return_type
+        args,
+        return_type
     }
 }
 
 FunctionArgument: FunctionArgument = {
-    <name:Identifier> <value_type:TypeAnnotation> => FunctionArgument {name, value_type}
+    <name:Identifier> <value_type:TypeAnnotation> => FunctionArgument { name, value_type }
 }
 
 // Statements

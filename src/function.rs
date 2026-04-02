@@ -17,18 +17,13 @@ pub struct FunctionArgument {
 }
 
 pub struct Function {
-    pub name: Option<String>,
     pub signature: FunctionSignature,
     pub body: BasicBlock,
 }
 
 impl Function {
-    pub fn new(name: Option<String>, signature: FunctionSignature, body: BasicBlock) -> Self {
-        Function {
-            name,
-            signature,
-            body,
-        }
+    pub fn new(signature: FunctionSignature, body: BasicBlock) -> Self {
+        Function { signature, body }
     }
 
     pub fn visit(&self, visitor: &dyn FunctionVisitor) -> CompilationResult<()> {
