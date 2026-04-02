@@ -25,9 +25,9 @@ impl<'ctx> Into<BasicValueEnum<'ctx>> for BoolValue<'ctx> {
 }
 
 impl<'ctx> BoolValue<'ctx> {
-    pub fn from_ir(value_ir: BasicValueEnum<'ctx>) -> CompilationResult<Self> {
+    pub fn from_ir(value_ir: BasicValueEnum<'ctx>) -> Self {
         if let BasicValueEnum::IntValue(value_ir) = value_ir {
-            return Ok(BoolValue { ir: value_ir });
+            return BoolValue { ir: value_ir };
         }
         panic!("Expected BoolValue, got {:?}", value_ir);
     }

@@ -32,37 +32,19 @@ impl<'ctx> FloatValue<'ctx> {
         expression_type: &FloatType,
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
-        let builder = expression_translator.builder();
-        let context = expression_translator.context();
         Ok(match value {
-            Value::Float(value) => {
-                if &value.value_type <= expression_type {
-                    FloatValue {
-                        ir: builder.build_float_ext(
-                            value.ir,
-                            expression_type.to_ir(context),
-                            "",
-                        )?,
-                        value_type: expression_type.clone(),
-                    }
-                } else {
-                    return Err(CompilationError::TypeMismatch);
-                }
-            }
+            Value::Float(value) => value.extend_to(expression_type, expression_translator)?,
             Value::Integer(value) => value.to_float(expression_translator)?,
             _ => return Err(CompilationError::TypeMismatch),
         })
     }
 
-    pub fn from_ir(
-        value_ir: BasicValueEnum<'ctx>,
-        value_type: &FloatType,
-    ) -> CompilationResult<Self> {
+    pub fn from_ir(value_ir: BasicValueEnum<'ctx>, value_type: &FloatType) -> Self {
         if let BasicValueEnum::FloatValue(value_ir) = value_ir {
-            return Ok(FloatValue {
+            return FloatValue {
                 ir: value_ir,
                 value_type: value_type.clone(),
-            });
+            };
         }
         panic!("Expected FloatValue, got {:?}", value_ir);
     }
@@ -110,5 +92,25 @@ impl<'ctx> FloatValue<'ctx> {
             ir: result_ir,
             value_type: self.value_type.clone(),
         }))
+    }
+
+    fn extend_to(
+        &self,
+        target_type: &FloatType,
+        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+    ) -> CompilationResult<Self> {
+        let context = expression_translator.context();
+        if &self.value_type <= target_type {
+            Ok(FloatValue {
+                ir: expression_translator.builder().build_float_ext(
+                    self.ir,
+                    target_type.to_ir(context),
+                    "",
+                )?,
+                value_type: target_type.clone(),
+            })
+        } else {
+            Err(CompilationError::TypeMismatch)
+        }
     }
 }

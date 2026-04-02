@@ -35,48 +35,20 @@ impl<'ctx> IntegerValue<'ctx> {
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         Ok(match value {
-            Value::Integer(value) => {
-                let value_type = value.value_type.clone();
-                match (expression_type.is_signed, value_type.is_signed) {
-                    (true, true) | (false, false) => {
-                        if value_type.width <= expression_type.width {
-                            IntegerValue {
-                                ir: value.to_ir_expanded(expression_type, expression_translator)?,
-                                value_type: expression_type.clone(),
-                            }
-                        } else {
-                            return Err(CompilationError::TypeMismatch);
-                        }
-                    }
-                    (true, false) => {
-                        if value_type.width < expression_type.width {
-                            IntegerValue {
-                                ir: value.to_ir_expanded(expression_type, expression_translator)?,
-                                value_type: expression_type.clone(),
-                            }
-                        } else {
-                            return Err(CompilationError::TypeMismatch);
-                        }
-                    }
-                    _ => return Err(CompilationError::TypeMismatch),
-                }
-            }
+            Value::Integer(value) => value.extend_to(expression_type, expression_translator)?,
             Value::Bool(other) => other.to_integer(Some(expression_type), expression_translator)?,
             _ => return Err(CompilationError::TypeMismatch),
         })
     }
 
-    pub fn from_ir(
-        value_ir: BasicValueEnum<'ctx>,
-        value_type: &IntegerType,
-    ) -> CompilationResult<Self> {
-        if let BasicValueEnum::IntValue(value_ir) = value_ir {
-            return Ok(IntegerValue {
+    pub fn from_ir(value_ir: BasicValueEnum<'ctx>, value_type: &IntegerType) -> Self {
+        match value_ir {
+            BasicValueEnum::IntValue(value_ir) => IntegerValue {
                 ir: value_ir,
                 value_type: value_type.clone(),
-            });
+            },
+            _ => panic!("Expected IntValue, got {:?}", value_ir),
         }
-        panic!("Expected IntValue, got {:?}", value_ir);
     }
 
     pub fn from_constant(
@@ -200,17 +172,34 @@ impl<'ctx> IntegerValue<'ctx> {
         .into())
     }
 
-    fn to_ir_expanded(
+    fn extend_to(
         &self,
-        new_type: &IntegerType,
+        target_type: &IntegerType,
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
-    ) -> CompilationResult<IntValue<'ctx>> {
+    ) -> CompilationResult<Self> {
+        let is_compatible = if self.value_type.is_signed == target_type.is_signed {
+            self.value_type.width <= target_type.width
+        } else if target_type.is_signed && !self.value_type.is_signed {
+            self.value_type.width < target_type.width
+        } else {
+            false
+        };
+
+        if !is_compatible {
+            return Err(CompilationError::TypeMismatch);
+        }
+
         let builder = expression_translator.builder();
         let context = expression_translator.context();
-        Ok(if new_type.is_signed {
-            builder.build_int_s_extend(self.ir, new_type.to_ir(context), "")?
+        let result_ir = if target_type.is_signed {
+            builder.build_int_s_extend(self.ir, target_type.to_ir(context), "")?
         } else {
-            builder.build_int_z_extend(self.ir, new_type.to_ir(context), "")?
+            builder.build_int_z_extend(self.ir, target_type.to_ir(context), "")?
+        };
+
+        Ok(IntegerValue {
+            ir: result_ir,
+            value_type: target_type.clone(),
         })
     }
 }

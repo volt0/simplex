@@ -18,11 +18,9 @@ pub enum Value<'ctx> {
 impl<'ctx> Value<'ctx> {
     pub fn from_ir(value_ir: BasicValueEnum<'ctx>, value_type: &Type) -> CompilationResult<Self> {
         Ok(match value_type {
-            Type::Integer(value_type) => {
-                Value::Integer(IntegerValue::from_ir(value_ir, value_type)?)
-            }
-            Type::Float(value_type) => Value::Float(FloatValue::from_ir(value_ir, value_type)?),
-            Type::Bool => Value::Bool(BoolValue::from_ir(value_ir)?),
+            Type::Integer(value_type) => IntegerValue::from_ir(value_ir, value_type).into(),
+            Type::Float(value_type) => FloatValue::from_ir(value_ir, value_type).into(),
+            Type::Bool => BoolValue::from_ir(value_ir).into(),
         })
     }
 
