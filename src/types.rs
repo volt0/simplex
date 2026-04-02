@@ -2,6 +2,7 @@ use crate::errors::CompilationResult;
 use crate::float_type::FloatType;
 use crate::integer_type::IntegerType;
 
+#[derive(Clone)]
 pub enum Type {
     Integer(IntegerType),
     Float(FloatType),

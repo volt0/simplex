@@ -6,9 +6,7 @@ use crate::errors::CompilationResult;
 use crate::expression::Expression;
 use crate::expression_translator::ExpressionTranslator;
 use crate::function_translator::FunctionTranslator;
-use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::statement::StatementVisitor;
-use crate::types::Type;
 use crate::value::Value;
 
 pub struct StatementTranslator<'ctx, 'm, 'f> {
@@ -30,15 +28,11 @@ impl<'ctx, 'm, 'f> StatementVisitor for StatementTranslator<'ctx, 'm, 'f> {
     }
 
     fn add_return_statement(&self, expression: &Expression) -> CompilationResult<()> {
+        let function_signature = self.function_signature();
         let expression_translator = ExpressionTranslator::new(self);
-        let return_type = Type::Integer(IntegerType {
-            is_signed: true,
-            width: IntegerTypeSize::I64,
-        });
-
         self.builder().build_return(Some(
             &expression_translator
-                .translate_expression(expression, Some(&return_type))?
+                .translate_expression(expression, Some(&function_signature.return_type))?
                 .into_ir(),
         ))?;
 

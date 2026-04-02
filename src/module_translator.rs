@@ -21,18 +21,20 @@ pub struct ModuleTranslator<'ctx> {
 
 impl<'ctx> ModuleVisitor for ModuleTranslator<'ctx> {
     fn visit_function(&self, name: Option<&str>, function: &Function) -> CompilationResult<()> {
+        let function_signature = function.signature();
+
         let mut arg_type_irs = Vec::<BasicMetadataTypeEnum>::new();
-        for argument in &function.signature.args {
+        for argument in &function_signature.args {
             arg_type_irs.push(self.translate_type(&argument.value_type).into());
         }
 
-        let return_type_ir = self.translate_type(&function.signature.return_type);
+        let return_type_ir = self.translate_type(&function_signature.return_type);
         let function_type_ir = return_type_ir.fn_type(&arg_type_irs, false);
         let function_ir = self
             .module_ir
             .add_function(name.unwrap_or(""), function_type_ir, None);
 
-        let function_translator = FunctionTranslator::new(function_ir, function, self)?;
+        let function_translator = FunctionTranslator::new(function_ir, function_signature, self)?;
         function.visit(&function_translator)?;
 
         Ok(())
