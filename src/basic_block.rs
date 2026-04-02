@@ -1,9 +1,5 @@
 use crate::errors::CompilationResult;
-use crate::statement::Statement;
-
-pub trait BasicBlockVisitor {
-    fn visit_statement(&self, statement: &Statement) -> CompilationResult<()>;
-}
+use crate::statement::{Statement, StatementVisitor};
 
 pub struct BasicBlock {
     statements: Vec<Statement>,
@@ -14,9 +10,9 @@ impl BasicBlock {
         Self { statements }
     }
 
-    pub fn visit(&self, visitor: &dyn BasicBlockVisitor) -> CompilationResult<()> {
+    pub fn visit(&self, visitor: &dyn StatementVisitor) -> CompilationResult<()> {
         for stmt in self.statements.iter() {
-            visitor.visit_statement(stmt)?;
+            stmt.visit(visitor)?;
         }
         Ok(())
     }

@@ -35,7 +35,7 @@ impl<'ctx, 'm> FunctionVisitor for FunctionTranslator<'ctx, 'm> {
         self.builder().position_at_end(root_basic_block);
 
         let statement_translator = StatementTranslator::new(self);
-        statement_translator.translate_basic_block(body)
+        body.visit(&statement_translator)
     }
 }
 
