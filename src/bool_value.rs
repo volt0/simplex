@@ -47,7 +47,7 @@ impl<'ctx> BoolValue<'ctx> {
         let context = expression_translator.context();
         Ok(IntegerValue {
             ir: builder.build_int_z_extend(self.ir, value_type.to_ir(context), "")?,
-            value_type: value_type.clone(),
+            is_signed: value_type.is_signed,
         })
     }
 

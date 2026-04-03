@@ -20,7 +20,9 @@ pub enum Value<'ctx> {
 impl<'ctx> Value<'ctx> {
     pub fn from_ir(value_ir: AnyValueEnum<'ctx>, value_type: &Type) -> CompilationResult<Self> {
         Ok(match value_type {
-            Type::Integer(value_type) => IntegerValue::from_ir(value_ir, value_type).into(),
+            Type::Integer(value_type) => {
+                IntegerValue::from_ir(value_ir, value_type.is_signed).into()
+            }
             Type::Float(value_type) => FloatValue::from_ir(value_ir, value_type).into(),
             Type::Bool => BoolValue::from_ir(value_ir).into(),
         })
@@ -44,7 +46,7 @@ impl<'ctx> Value<'ctx> {
 
     pub fn value_type(&self) -> Type {
         match self {
-            Value::Integer(value) => Type::Integer(value.value_type.clone()),
+            Value::Integer(value) => Type::Integer(value.value_type()),
             Value::Float(value) => Type::Float(value.value_type.clone()),
             Value::Bool(_) => Type::Bool,
             Value::Function(_) => todo!(),

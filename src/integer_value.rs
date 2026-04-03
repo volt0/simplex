@@ -13,7 +13,7 @@ use crate::value::Value;
 #[derive(Clone)]
 pub struct IntegerValue<'ctx> {
     pub ir: IntValue<'ctx>,
-    pub value_type: IntegerType,
+    pub is_signed: bool,
 }
 
 impl<'ctx> Into<Value<'ctx>> for IntegerValue<'ctx> {
@@ -42,19 +42,13 @@ impl<'ctx> IntegerValue<'ctx> {
         let context = expression_translator.context();
         IntegerValue {
             ir: context.i32_type().const_int(value as u64, true),
-            value_type: IntegerType {
-                is_signed: true,
-                width: IntegerTypeSize::I32,
-            },
+            is_signed: true,
         }
     }
 
-    pub fn from_ir(value_ir: AnyValueEnum<'ctx>, value_type: &IntegerType) -> Self {
+    pub fn from_ir(value_ir: AnyValueEnum<'ctx>, is_signed: bool) -> Self {
         match value_ir {
-            AnyValueEnum::IntValue(value_ir) => IntegerValue {
-                ir: value_ir,
-                value_type: value_type.clone(),
-            },
+            AnyValueEnum::IntValue(ir) => IntegerValue { ir, is_signed },
             _ => panic!("Expected IntValue, got {:?}", value_ir),
         }
     }
@@ -68,12 +62,11 @@ impl<'ctx> IntegerValue<'ctx> {
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<BoolValue<'ctx>> {
         let builder = expression_translator.builder();
-        let context = expression_translator.context();
         Ok(BoolValue {
             ir: builder.build_int_compare(
                 IntPredicate::NE,
                 self.ir,
-                self.value_type.to_ir(context).const_int(0, false),
+                self.ir.get_type().const_int(0, false),
                 "",
             )?,
         })
@@ -83,7 +76,7 @@ impl<'ctx> IntegerValue<'ctx> {
         &self,
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<FloatValue<'ctx>> {
-        let result_type = match self.value_type.width {
+        let result_type = match self.value_type().width {
             IntegerTypeSize::I8 | IntegerTypeSize::I16 => FloatType::F32,
             IntegerTypeSize::I32 => FloatType::F64,
             _ => return Err(CompilationError::TypeMismatch),
@@ -91,7 +84,7 @@ impl<'ctx> IntegerValue<'ctx> {
 
         let builder = expression_translator.builder();
         let context = expression_translator.context();
-        let result_ir = if self.value_type.is_signed {
+        let result_ir = if self.is_signed {
             builder.build_signed_int_to_float(self.ir, result_type.to_ir(context), "")?
         } else {
             builder.build_unsigned_int_to_float(self.ir, result_type.to_ir(context), "")?
@@ -102,6 +95,20 @@ impl<'ctx> IntegerValue<'ctx> {
             value_type: result_type,
         }
         .into())
+    }
+
+    pub fn value_type(&self) -> IntegerType {
+        let value_type_ir = self.ir.get_type();
+        IntegerType {
+            width: match value_type_ir.get_bit_width() {
+                8 => IntegerTypeSize::I8,
+                16 => IntegerTypeSize::I16,
+                32 => IntegerTypeSize::I32,
+                64 => IntegerTypeSize::I64,
+                bit_width => panic!("Invalid integer type width: {}", bit_width),
+            },
+            is_signed: self.is_signed,
+        }
     }
 
     pub fn binary_operation(
@@ -122,14 +129,14 @@ impl<'ctx> IntegerValue<'ctx> {
             BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, ""),
             BinaryOperation::Mul => builder.build_int_mul(lhs_ir, rhs_ir, ""),
             BinaryOperation::Div => {
-                if self.value_type.is_signed {
+                if self.is_signed {
                     builder.build_int_signed_div(lhs_ir, rhs_ir, "")
                 } else {
                     builder.build_int_unsigned_div(lhs_ir, rhs_ir, "")
                 }
             }
             BinaryOperation::Mod => {
-                if self.value_type.is_signed {
+                if self.is_signed {
                     builder.build_int_signed_rem(lhs_ir, rhs_ir, "")
                 } else {
                     builder.build_int_unsigned_rem(lhs_ir, rhs_ir, "")
@@ -140,13 +147,13 @@ impl<'ctx> IntegerValue<'ctx> {
             BinaryOperation::BitOr => builder.build_or(lhs_ir, rhs_ir, ""),
             BinaryOperation::ShiftLeft => builder.build_left_shift(lhs_ir, rhs_ir, ""),
             BinaryOperation::ShiftRight => {
-                builder.build_right_shift(lhs_ir, rhs_ir, self.value_type.is_signed, "")
+                builder.build_right_shift(lhs_ir, rhs_ir, self.is_signed, "")
             }
         };
 
         Ok(IntegerValue {
             ir: result_ir?,
-            value_type: self.value_type.clone(),
+            is_signed: self.is_signed,
         }
         .into())
     }
@@ -165,7 +172,7 @@ impl<'ctx> IntegerValue<'ctx> {
 
         Ok(IntegerValue {
             ir: result_ir,
-            value_type: self.value_type.clone(),
+            is_signed: self.is_signed,
         }
         .into())
     }
@@ -175,10 +182,11 @@ impl<'ctx> IntegerValue<'ctx> {
         target_type: &IntegerType,
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
-        let is_compatible = if self.value_type.is_signed == target_type.is_signed {
-            self.value_type.width <= target_type.width
-        } else if target_type.is_signed && !self.value_type.is_signed {
-            self.value_type.width < target_type.width
+        let value_type = self.value_type();
+        let is_compatible = if value_type.is_signed == target_type.is_signed {
+            value_type.width <= target_type.width
+        } else if target_type.is_signed && !value_type.is_signed {
+            value_type.width < target_type.width
         } else {
             false
         };
@@ -197,7 +205,7 @@ impl<'ctx> IntegerValue<'ctx> {
 
         Ok(IntegerValue {
             ir: result_ir,
-            value_type: target_type.clone(),
+            is_signed: target_type.is_signed,
         })
     }
 }
