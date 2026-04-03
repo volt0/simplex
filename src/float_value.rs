@@ -9,9 +9,9 @@ use crate::value::Value;
 type FloatValueIR<'ctx> = inkwell::values::FloatValue<'ctx>;
 
 #[derive(Clone)]
+#[repr(transparent)]
 pub struct FloatValue<'ctx> {
     pub ir: FloatValueIR<'ctx>,
-    pub value_type: FloatType,
 }
 
 impl<'ctx> Into<Value<'ctx>> for FloatValue<'ctx> {
@@ -33,18 +33,23 @@ impl<'ctx> FloatValue<'ctx> {
         })
     }
 
-    pub fn from_ir(value_ir: AnyValueEnum<'ctx>, value_type: &FloatType) -> Self {
+    pub fn from_ir(value_ir: AnyValueEnum<'ctx>, _: &FloatType) -> Self {
         if let AnyValueEnum::FloatValue(value_ir) = value_ir {
-            return FloatValue {
-                ir: value_ir,
-                value_type: value_type.clone(),
-            };
+            return FloatValue { ir: value_ir };
         }
         panic!("Expected FloatValue, got {:?}", value_ir);
     }
 
     pub fn into_ir(self) -> AnyValueEnum<'ctx> {
         AnyValueEnum::FloatValue(self.ir)
+    }
+
+    pub fn value_type(&self) -> FloatType {
+        match self.ir.get_type().get_bit_width() {
+            32 => FloatType::F32,
+            64 => FloatType::F64,
+            bit_width => panic!("Unsupported float bit width: {}", bit_width),
+        }
     }
 
     pub fn binary_operation(
@@ -68,10 +73,7 @@ impl<'ctx> FloatValue<'ctx> {
             _ => return Err(CompilationError::InvalidOperation),
         };
 
-        Ok(Value::Float(FloatValue {
-            ir: result_ir?,
-            value_type: self.value_type.clone(),
-        }))
+        Ok(Value::Float(FloatValue { ir: result_ir? }))
     }
 
     pub fn unary_operation(
@@ -86,10 +88,7 @@ impl<'ctx> FloatValue<'ctx> {
             _ => return Err(CompilationError::InvalidOperation),
         };
 
-        Ok(Value::Float(FloatValue {
-            ir: result_ir,
-            value_type: self.value_type.clone(),
-        }))
+        Ok(Value::Float(FloatValue { ir: result_ir }))
     }
 
     fn extend_to(
@@ -98,14 +97,13 @@ impl<'ctx> FloatValue<'ctx> {
         expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         let context = expression_translator.context();
-        if &self.value_type <= target_type {
+        if &self.value_type() <= target_type {
             Ok(FloatValue {
                 ir: expression_translator.builder().build_float_ext(
                     self.ir,
                     target_type.to_ir(context),
                     "",
                 )?,
-                value_type: target_type.clone(),
             })
         } else {
             Err(CompilationError::TypeMismatch)

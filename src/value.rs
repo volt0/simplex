@@ -47,7 +47,7 @@ impl<'ctx> Value<'ctx> {
     pub fn value_type(&self) -> Type {
         match self {
             Value::Integer(value) => Type::Integer(value.value_type()),
-            Value::Float(value) => Type::Float(value.value_type.clone()),
+            Value::Float(value) => Type::Float(value.value_type()),
             Value::Bool(_) => Type::Bool,
             Value::Function(_) => todo!(),
         }

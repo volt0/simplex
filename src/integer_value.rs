@@ -90,11 +90,7 @@ impl<'ctx> IntegerValue<'ctx> {
             builder.build_unsigned_int_to_float(self.ir, result_type.to_ir(context), "")?
         };
 
-        Ok(FloatValue {
-            ir: result_ir,
-            value_type: result_type,
-        }
-        .into())
+        Ok(FloatValue { ir: result_ir }.into())
     }
 
     pub fn value_type(&self) -> IntegerType {

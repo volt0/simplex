@@ -25,6 +25,10 @@ mod types;
 mod value;
 
 const SRC: &'static str = r#"
+proc bar(x: f32): f64 {
+    return x;
+}
+
 proc foo(x: i32): i32 {
     return x;
 }
