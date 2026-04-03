@@ -1,22 +1,27 @@
+use std::collections::HashMap;
+
 use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use inkwell::targets::TargetTriple;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 use inkwell::OptimizationLevel;
 
-use crate::errors::CompilationResult;
+use crate::errors::{CompilationError, CompilationResult};
 use crate::float_type::FloatType;
-use crate::function::Function;
+use crate::function::{Function, FunctionArgument, FunctionSignature};
 use crate::function_translator::FunctionTranslator;
-use crate::integer_type::IntegerTypeSize;
+use crate::function_value::FunctionValue;
+use crate::integer_type::{IntegerType, IntegerTypeSize};
 use crate::module::ModuleVisitor;
 use crate::types::Type;
+use crate::value::Value;
 
 type ModuleIR<'ctx> = inkwell::module::Module<'ctx>;
 
 pub struct ModuleTranslator<'ctx> {
     context: &'ctx Context,
     module_ir: ModuleIR<'ctx>,
+    globals: HashMap<String, Value<'ctx>>,
 }
 
 impl<'ctx> ModuleVisitor for ModuleTranslator<'ctx> {
@@ -45,7 +50,49 @@ impl<'ctx> ModuleTranslator<'ctx> {
     pub fn new(context: &'ctx Context) -> ModuleTranslator<'ctx> {
         let module_ir = context.create_module("test_module");
         module_ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
-        ModuleTranslator { context, module_ir }
+
+        let globals = HashMap::from([(
+            String::from("foo"),
+            Value::Function(FunctionValue {
+                ir: {
+                    let function_ir = module_ir.add_function(
+                        "foo",
+                        context
+                            .i32_type()
+                            .fn_type(&[context.i32_type().into()], false),
+                        None,
+                    );
+
+                    let callee_block = context.append_basic_block(function_ir.clone(), "entry");
+                    let builder = context.create_builder();
+                    builder.position_at_end(callee_block);
+
+                    let arg_ir = function_ir.get_nth_param(0).unwrap();
+                    builder.build_return(Some(&arg_ir)).unwrap();
+
+                    function_ir
+                },
+                signature: FunctionSignature {
+                    args: vec![FunctionArgument {
+                        name: String::from("arg"),
+                        value_type: Type::Integer(IntegerType {
+                            is_signed: true,
+                            width: IntegerTypeSize::I32,
+                        }),
+                    }],
+                    return_type: Type::Integer(IntegerType {
+                        is_signed: true,
+                        width: IntegerTypeSize::I32,
+                    }),
+                },
+            }),
+        )]);
+
+        ModuleTranslator {
+            context,
+            module_ir,
+            globals,
+        }
     }
 
     #[inline(always)]
@@ -73,6 +120,13 @@ impl<'ctx> ModuleTranslator<'ctx> {
                 };
                 type_ir.as_basic_type_enum()
             }
+        }
+    }
+
+    pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
+        match self.globals.get(name) {
+            Some(value) => Ok(value.clone()),
+            None => Err(CompilationError::UnresolvedName(name.to_string())),
         }
     }
 

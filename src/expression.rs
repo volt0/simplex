@@ -5,6 +5,7 @@ pub enum Expression {
     LoadValue(String),
     BinaryOperation(BinaryOperationExpression),
     UnaryOperation(UnaryOperationExpression),
+    Call(CallExpression),
 }
 
 #[derive(Copy, Clone)]
@@ -37,6 +38,11 @@ pub enum UnaryOperation {
 pub struct UnaryOperationExpression {
     pub operation: UnaryOperation,
     pub arg: Box<Expression>,
+}
+
+pub struct CallExpression {
+    pub callee: Box<Expression>,
+    pub arguments: Vec<Box<Expression>>,
 }
 
 impl Expression {
@@ -117,5 +123,9 @@ impl Expression {
             operation,
             arg,
         }))
+    }
+
+    pub fn new_call(callee: Box<Expression>, arguments: Vec<Box<Expression>>) -> Box<Self> {
+        Box::new(Expression::Call(CallExpression { callee, arguments }))
     }
 }

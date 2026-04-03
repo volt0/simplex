@@ -1,8 +1,12 @@
 use std::ops::Deref;
 
+use inkwell::values::AnyValue;
+
 use crate::constant::Constant;
-use crate::errors::CompilationResult;
-use crate::expression::{BinaryOperationExpression, Expression, UnaryOperationExpression};
+use crate::errors::{CompilationError, CompilationResult};
+use crate::expression::{
+    BinaryOperationExpression, CallExpression, Expression, UnaryOperationExpression,
+};
 use crate::integer_value::IntegerValue;
 use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
@@ -42,6 +46,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
             Expression::UnaryOperation(expression) => {
                 self.translate_unary_operation(expression, expression_type)
             }
+            Expression::Call(expression) => self.translate_call(expression),
         };
 
         match expression_type {
@@ -82,5 +87,33 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
     ) -> CompilationResult<Value<'ctx>> {
         let arg = self.translate_expression(&expression.arg, expression_type)?;
         arg.unary_operation(expression.operation, self)
+    }
+
+    fn translate_call(&self, expression: &CallExpression) -> CompilationResult<Value<'ctx>> {
+        let callee = match self.translate_expression(&expression.callee, None)? {
+            Value::Function(callee) => callee,
+            _ => return Err(CompilationError::InvalidOperation),
+        };
+
+        let mut arguments_ir = Vec::with_capacity(expression.arguments.len());
+        for (argument, arg_signature) in expression
+            .arguments
+            .iter()
+            .zip(callee.signature.args.iter())
+        {
+            arguments_ir.push(
+                self.translate_expression(argument, Some(&arg_signature.value_type))?
+                    .into_basic_value_ir()?
+                    .into(),
+            );
+        }
+
+        let builder = self.builder();
+        let callee_ir = callee.clone().into_ir();
+        let result_ir = builder.build_call(callee_ir, arguments_ir.as_slice(), "")?;
+        Ok(Value::from_ir(
+            result_ir.as_any_value_enum(),
+            &callee.signature.return_type,
+        )?)
     }
 }

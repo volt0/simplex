@@ -62,7 +62,7 @@ PrimaryExpression: Box<Expression> = {
 
 PostfixExpression: Box<Expression> = {
     PrimaryExpression,
-    <val:PostfixExpression> "(" <args:CommaSeparatedList<Expression>> ")" => todo!(),
+    <val:PostfixExpression> "(" <args:CommaSeparatedList<Expression>> ")" => Expression::new_call(val, args),
     <val:PostfixExpression> "[" <expression:Expression> "]" => todo!(),
     <val:PostfixExpression> "." <name:Identifier> => todo!(),
 }

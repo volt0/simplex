@@ -5,7 +5,7 @@ use inkwell::builder::Builder;
 use inkwell::values::{AnyValue, FunctionValue};
 
 use crate::basic_block::BasicBlock;
-use crate::errors::{CompilationError, CompilationResult};
+use crate::errors::CompilationResult;
 use crate::function::{FunctionSignature, FunctionVisitor};
 use crate::module_translator::ModuleTranslator;
 use crate::statement_translator::StatementTranslator;
@@ -79,7 +79,7 @@ impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
     pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
         match self.arguments_ir.get(name) {
             Some(value) => Ok(value.clone()),
-            None => Err(CompilationError::UnresolvedName(name.to_string())),
+            None => self.parent.load_value(name),
         }
     }
 }

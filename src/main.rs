@@ -1,6 +1,7 @@
 use inkwell::context::Context;
 
 use crate::module_translator::ModuleTranslator;
+use crate::parser::grammar::ModuleParser;
 
 mod basic_block;
 mod bool_value;
@@ -13,6 +14,7 @@ mod float_type;
 mod float_value;
 mod function;
 mod function_translator;
+mod function_value;
 mod integer_type;
 mod integer_value;
 mod module;
@@ -25,12 +27,12 @@ mod value;
 
 const SRC: &'static str = r#"
 proc test(x: i32, y: i32, z: i32, w: bool): i64 {
-    return x + y + z + w;
+    return foo(x);
 }
 "#;
 
 fn main() {
-    let parser = parser::grammar::ModuleParser::new();
+    let parser = ModuleParser::new();
     let module = parser.parse(SRC).unwrap();
 
     let context = Context::create();

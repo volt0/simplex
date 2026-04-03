@@ -1,10 +1,11 @@
-use inkwell::values::{AnyValueEnum, BasicValueEnum};
+use inkwell::values::{AnyValue, AnyValueEnum, BasicValueEnum};
 
 use crate::bool_value::BoolValue;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::expression_translator::ExpressionTranslator;
 use crate::float_value::FloatValue;
+use crate::function_value::FunctionValue;
 use crate::integer_value::IntegerValue;
 use crate::types::Type;
 
@@ -13,6 +14,7 @@ pub enum Value<'ctx> {
     Integer(IntegerValue<'ctx>),
     Float(FloatValue<'ctx>),
     Bool(BoolValue<'ctx>),
+    Function(FunctionValue<'ctx>),
 }
 
 impl<'ctx> Value<'ctx> {
@@ -29,6 +31,7 @@ impl<'ctx> Value<'ctx> {
             Value::Integer(value) => value.into_ir(),
             Value::Float(value) => value.into_ir(),
             Value::Bool(value) => value.into_ir(),
+            Value::Function(value) => value.ir.as_any_value_enum(),
         }
     }
 
@@ -44,6 +47,7 @@ impl<'ctx> Value<'ctx> {
             Value::Integer(value) => Type::Integer(value.value_type.clone()),
             Value::Float(value) => Type::Float(value.value_type.clone()),
             Value::Bool(_) => Type::Bool,
+            Value::Function(_) => todo!(),
         }
     }
 
@@ -86,6 +90,7 @@ impl<'ctx> Value<'ctx> {
             }
             Value::Float(value) => value.binary_operation(operation, other, expression_translator),
             Value::Bool(value) => value.binary_operation(operation, other, expression_translator),
+            Value::Function(_) => Err(CompilationError::InvalidOperation),
         }
     }
 
@@ -98,6 +103,7 @@ impl<'ctx> Value<'ctx> {
             Value::Integer(value) => value.unary_operation(operation, expression_translator),
             Value::Float(value) => value.unary_operation(operation, expression_translator),
             Value::Bool(value) => value.unary_operation(operation, expression_translator),
+            Value::Function(_) => Err(CompilationError::InvalidOperation),
         }
     }
 }
