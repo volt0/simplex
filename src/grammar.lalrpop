@@ -146,15 +146,16 @@ TypeAnnotation: Type = {
 }
 
 Type: Type = {
-    "i32" => Type::Integer(IntegerType {
-        width: IntegerTypeSize::I32,
-        is_signed: true,
-    }),
-    "i64" => Type::Integer(IntegerType {
-        width: IntegerTypeSize::I64,
-        is_signed: true,
-    }),
+    "i8" => Type::Integer(IntegerType { width: IntegerTypeSize::I8, is_signed: true }),
+    "i16" => Type::Integer(IntegerType { width: IntegerTypeSize::I16, is_signed: true }),
+    "i32" => Type::Integer(IntegerType { width: IntegerTypeSize::I32, is_signed: true }),
+    "i64" => Type::Integer(IntegerType { width: IntegerTypeSize::I64, is_signed: true }),
+    "u8" => Type::Integer(IntegerType { width: IntegerTypeSize::I8, is_signed: false }),
+    "u16" => Type::Integer(IntegerType { width: IntegerTypeSize::I16, is_signed: false }),
+    "u32" => Type::Integer(IntegerType { width: IntegerTypeSize::I32, is_signed: false }),
+    "u64" => Type::Integer(IntegerType { width: IntegerTypeSize::I64, is_signed: false }),
     "f32" => Type::Float(FloatType::F32),
+    "f64" => Type::Float(FloatType::F64),
     "bool" => Type::Bool,
 }
 
