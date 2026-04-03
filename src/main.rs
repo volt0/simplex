@@ -1,7 +1,5 @@
-use inkwell::context::Context;
-
-use crate::module_translator::ModuleTranslator;
 use crate::parser::grammar::ModuleParser;
+use crate::translator::Translator;
 
 mod basic_block;
 mod bool_value;
@@ -22,6 +20,7 @@ mod module_translator;
 mod parser;
 mod statement;
 mod statement_translator;
+mod translator;
 mod types;
 mod value;
 
@@ -39,8 +38,6 @@ fn main() {
     let parser = ModuleParser::new();
     let module = parser.parse(SRC).unwrap();
 
-    let context = Context::create();
-    let mut module_translator = ModuleTranslator::new(&context);
-    module.visit(&mut module_translator).unwrap();
-    module_translator.run_test();
+    let translator = Translator::new();
+    translator.translate_module(&module);
 }

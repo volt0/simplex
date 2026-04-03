@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::Deref;
 
 use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
@@ -13,15 +14,24 @@ use crate::function_translator::FunctionTranslator;
 use crate::function_value::FunctionValue;
 use crate::integer_type::IntegerTypeSize;
 use crate::module::ModuleVisitor;
+use crate::translator::Translator;
 use crate::types::Type;
 use crate::value::Value;
 
 type ModuleIR<'ctx> = inkwell::module::Module<'ctx>;
 
 pub struct ModuleTranslator<'ctx> {
-    context: &'ctx Context,
+    parent: &'ctx Translator,
     module_ir: ModuleIR<'ctx>,
     globals: HashMap<String, Value<'ctx>>,
+}
+
+impl<'ctx> Deref for ModuleTranslator<'ctx> {
+    type Target = Translator;
+
+    fn deref(&self) -> &Self::Target {
+        self.parent
+    }
 }
 
 impl<'ctx> ModuleVisitor for ModuleTranslator<'ctx> {
@@ -54,12 +64,12 @@ impl<'ctx> ModuleVisitor for ModuleTranslator<'ctx> {
 }
 
 impl<'ctx> ModuleTranslator<'ctx> {
-    pub fn new(context: &'ctx Context) -> ModuleTranslator<'ctx> {
-        let module_ir = context.create_module("test_module");
+    pub fn new(parent: &'ctx Translator) -> ModuleTranslator<'ctx> {
+        let module_ir = parent.context().create_module("test_module");
         module_ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
 
         ModuleTranslator {
-            context,
+            parent,
             module_ir,
             globals: HashMap::new(),
         }
@@ -67,11 +77,11 @@ impl<'ctx> ModuleTranslator<'ctx> {
 
     #[inline(always)]
     pub fn context(&self) -> &'ctx Context {
-        self.context
+        self.parent.context()
     }
 
     pub fn translate_type(&self, type_spec: &Type) -> BasicTypeEnum<'ctx> {
-        let context = self.context;
+        let context = self.context();
         match type_spec {
             Type::Bool => context.bool_type().as_basic_type_enum(),
             Type::Integer(integer_type) => {
