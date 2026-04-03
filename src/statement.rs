@@ -3,8 +3,8 @@ use crate::errors::CompilationResult;
 use crate::expression::Expression;
 
 pub trait StatementVisitor {
-    fn visit_basic_block(&self, basic_block: &BasicBlock) -> CompilationResult<()>;
-    fn add_return_statement(&self, expression: &Expression) -> CompilationResult<()>;
+    fn visit_basic_block(&self, block: &BasicBlock) -> CompilationResult<()>;
+    fn add_return_statement(&self, expr: &Expression) -> CompilationResult<()>;
 }
 
 pub enum Statement {
@@ -13,18 +13,18 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn new_basic_block(basic_block: BasicBlock) -> Statement {
-        Statement::BasicBlock(basic_block)
+    pub fn new_basic_block(block: BasicBlock) -> Statement {
+        Statement::BasicBlock(block)
     }
 
-    pub fn new_return(expression: Box<Expression>) -> Statement {
-        Statement::Return(expression)
+    pub fn new_return(expr: Box<Expression>) -> Statement {
+        Statement::Return(expr)
     }
 
     pub fn visit(&self, visitor: &dyn StatementVisitor) -> CompilationResult<()> {
         match self {
-            Statement::BasicBlock(basic_block) => visitor.visit_basic_block(basic_block),
-            Statement::Return(expression) => visitor.add_return_statement(expression),
+            Statement::BasicBlock(block) => visitor.visit_basic_block(block),
+            Statement::Return(expr) => visitor.add_return_statement(expr),
         }
     }
 }

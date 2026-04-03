@@ -12,9 +12,9 @@ use crate::statement_translator::StatementTranslator;
 use crate::value::Value;
 
 pub struct FunctionTranslator<'ctx, 'm> {
-    function_signature: FunctionSignature,
-    function_ir: FunctionValue<'ctx>,
-    arguments_ir: HashMap<String, Value<'ctx>>,
+    func_signature: FunctionSignature,
+    func_ir: FunctionValue<'ctx>,
+    args_ir: HashMap<String, Value<'ctx>>,
     parent: &'m mut ModuleTranslator<'ctx>,
     builder: Builder<'ctx>,
 }
@@ -35,38 +35,32 @@ impl<'ctx, 'm> DerefMut for FunctionTranslator<'ctx, 'm> {
 
 impl<'ctx, 'm> FunctionVisitor for FunctionTranslator<'ctx, 'm> {
     fn visit_body(&self, body: &BasicBlock) -> CompilationResult<()> {
-        let root_basic_block = self
-            .context()
-            .append_basic_block(self.function_ir.clone(), "entry");
+        let body_ir = self.context().append_basic_block(self.func_ir.clone(), "");
+        self.builder().position_at_end(body_ir);
 
-        self.builder().position_at_end(root_basic_block);
-
-        let statement_translator = StatementTranslator::new(self);
-        body.visit(&statement_translator)
+        let stmt_translator = StatementTranslator::new(self);
+        body.visit(&stmt_translator)
     }
 }
 
 impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
     pub fn new(
-        function_ir: FunctionValue<'ctx>,
-        function_signature: &FunctionSignature,
+        func_ir: FunctionValue<'ctx>,
+        func_signature: &FunctionSignature,
         parent: &'m mut ModuleTranslator<'ctx>,
     ) -> CompilationResult<Self> {
         let builder = parent.context().create_builder();
-        let mut arguments_ir = HashMap::with_capacity(function_ir.count_params() as usize);
-        for (arg_id, arg) in function_signature.args.iter().enumerate() {
-            let arg_ir = function_ir.get_nth_param(arg_id as u32).unwrap();
+        let mut args_ir = HashMap::with_capacity(func_ir.count_params() as usize);
+        for (i, arg) in func_signature.args.iter().enumerate() {
+            let arg_ir = func_ir.get_nth_param(i as u32).unwrap().as_any_value_enum();
             let arg_type = &arg.value_type;
-            arguments_ir.insert(
-                arg.name.clone(),
-                Value::from_ir(arg_ir.as_any_value_enum(), arg_type)?,
-            );
+            args_ir.insert(arg.name.clone(), Value::from_ir(arg_ir, arg_type)?);
         }
 
         Ok(Self {
-            function_signature: function_signature.clone(),
-            function_ir,
-            arguments_ir,
+            func_signature: func_signature.clone(),
+            func_ir,
+            args_ir,
             parent,
             builder,
         })
@@ -79,11 +73,11 @@ impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
 
     #[inline(always)]
     pub fn function_signature(&self) -> &FunctionSignature {
-        &self.function_signature
+        &self.func_signature
     }
 
     pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
-        match self.arguments_ir.get(name) {
+        match self.args_ir.get(name) {
             Some(value) => Ok(value.clone()),
             None => self.parent.load_value(name),
         }

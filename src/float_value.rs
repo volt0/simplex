@@ -23,21 +23,21 @@ impl<'ctx> Into<Value<'ctx>> for FloatValue<'ctx> {
 impl<'ctx> FloatValue<'ctx> {
     pub fn from_value(
         value: &Value<'ctx>,
-        expression_type: &FloatType,
-        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        expr_type: &FloatType,
+        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         Ok(match value {
-            Value::Float(value) => value.extend_to(expression_type, expression_translator)?,
-            Value::Integer(value) => value.to_float(expression_translator)?,
+            Value::Float(value) => value.extend_to(expr_type, expr_translator)?,
+            Value::Integer(value) => value.to_float(expr_translator)?,
             _ => return Err(CompilationError::TypeMismatch),
         })
     }
 
-    pub fn from_ir(value_ir: AnyValueEnum<'ctx>, _: &FloatType) -> Self {
-        if let AnyValueEnum::FloatValue(value_ir) = value_ir {
-            return FloatValue { ir: value_ir };
+    pub fn from_ir(ir: AnyValueEnum<'ctx>, _: &FloatType) -> Self {
+        if let AnyValueEnum::FloatValue(ir) = ir {
+            return FloatValue { ir };
         }
-        panic!("Expected FloatValue, got {:?}", value_ir);
+        panic!("Expected FloatValue, got {:?}", ir);
     }
 
     pub fn into_ir(self) -> AnyValueEnum<'ctx> {
@@ -54,9 +54,9 @@ impl<'ctx> FloatValue<'ctx> {
 
     pub fn binary_operation(
         &self,
-        operation: BinaryOperation,
+        op: BinaryOperation,
         other: &Value<'ctx>,
-        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Value<'ctx>> {
         let lhs_ir = self.ir;
         let rhs_ir = match other {
@@ -64,25 +64,25 @@ impl<'ctx> FloatValue<'ctx> {
             _ => return Err(CompilationError::TypeMismatch),
         };
 
-        let builder = expression_translator.builder();
-        let result_ir = match operation {
-            BinaryOperation::Add => builder.build_float_add(lhs_ir, rhs_ir, ""),
-            BinaryOperation::Sub => builder.build_float_sub(lhs_ir, rhs_ir, ""),
-            BinaryOperation::Mul => builder.build_float_mul(lhs_ir, rhs_ir, ""),
-            BinaryOperation::Div => builder.build_float_div(lhs_ir, rhs_ir, ""),
+        let builder = expr_translator.builder();
+        let result_ir = match op {
+            BinaryOperation::Add => builder.build_float_add(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::Sub => builder.build_float_sub(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::Mul => builder.build_float_mul(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::Div => builder.build_float_div(lhs_ir, rhs_ir, "")?,
             _ => return Err(CompilationError::InvalidOperation),
         };
 
-        Ok(Value::Float(FloatValue { ir: result_ir? }))
+        Ok(Value::Float(FloatValue { ir: result_ir }))
     }
 
     pub fn unary_operation(
         &self,
-        operation: UnaryOperation,
-        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        op: UnaryOperation,
+        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Value<'ctx>> {
-        let builder = expression_translator.builder();
-        let result_ir = match operation {
+        let builder = expr_translator.builder();
+        let result_ir = match op {
             UnaryOperation::Plus => self.ir.clone(),
             UnaryOperation::Minus => builder.build_float_neg(self.ir, "")?,
             _ => return Err(CompilationError::InvalidOperation),
@@ -94,12 +94,12 @@ impl<'ctx> FloatValue<'ctx> {
     fn extend_to(
         &self,
         target_type: &FloatType,
-        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
-        let context = expression_translator.context();
+        let context = expr_translator.context();
         if &self.value_type() <= target_type {
             Ok(FloatValue {
-                ir: expression_translator.builder().build_float_ext(
+                ir: expr_translator.builder().build_float_ext(
                     self.ir,
                     target_type.to_ir(context),
                     "",

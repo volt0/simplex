@@ -3,7 +3,7 @@ use crate::errors::CompilationResult;
 use crate::types::Type;
 
 pub trait FunctionVisitor {
-    fn visit_body(&self, basic_block: &BasicBlock) -> CompilationResult<()>;
+    fn visit_body(&self, body: &BasicBlock) -> CompilationResult<()>;
 }
 
 #[derive(Clone)]

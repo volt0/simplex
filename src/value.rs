@@ -18,13 +18,11 @@ pub enum Value<'ctx> {
 }
 
 impl<'ctx> Value<'ctx> {
-    pub fn from_ir(value_ir: AnyValueEnum<'ctx>, value_type: &Type) -> CompilationResult<Self> {
+    pub fn from_ir(ir: AnyValueEnum<'ctx>, value_type: &Type) -> CompilationResult<Self> {
         Ok(match value_type {
-            Type::Integer(value_type) => {
-                IntegerValue::from_ir(value_ir, value_type.is_signed).into()
-            }
-            Type::Float(value_type) => FloatValue::from_ir(value_ir, value_type).into(),
-            Type::Bool => BoolValue::from_ir(value_ir).into(),
+            Type::Integer(value_type) => IntegerValue::from_ir(ir, value_type.is_signed).into(),
+            Type::Float(value_type) => FloatValue::from_ir(ir, value_type).into(),
+            Type::Bool => BoolValue::from_ir(ir).into(),
         })
     }
 
@@ -56,25 +54,25 @@ impl<'ctx> Value<'ctx> {
     pub fn validate_type(
         &self,
         expected_type: &Type,
-        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         Ok(match expected_type {
-            Type::Integer(expected_type) => {
-                IntegerValue::from_value(self, expected_type, expression_translator)?.into()
+            Type::Integer(value_type) => {
+                IntegerValue::from_value(self, value_type, expr_translator)?.into()
             }
-            Type::Float(expected_type) => {
-                FloatValue::from_value(self, expected_type, expression_translator)?.into()
+            Type::Float(value_type) => {
+                FloatValue::from_value(self, value_type, expr_translator)?.into()
             }
-            Type::Bool => self.to_bool(expression_translator)?,
+            Type::Bool => self.to_bool(expr_translator)?,
         })
     }
 
     pub fn to_bool(
         &self,
-        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Value<'ctx>> {
         Ok(match self {
-            Value::Integer(value) => value.to_bool(expression_translator)?.into(),
+            Value::Integer(value) => value.to_bool(expr_translator)?.into(),
             Value::Bool(value) => Value::Bool(value.clone()),
             _ => return Err(CompilationError::TypeMismatch),
         })
@@ -82,29 +80,27 @@ impl<'ctx> Value<'ctx> {
 
     pub fn binary_operation(
         &self,
-        operation: BinaryOperation,
+        op: BinaryOperation,
         other: &Value<'ctx>,
-        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         match self {
-            Value::Integer(value) => {
-                value.binary_operation(operation, other, expression_translator)
-            }
-            Value::Float(value) => value.binary_operation(operation, other, expression_translator),
-            Value::Bool(value) => value.binary_operation(operation, other, expression_translator),
+            Value::Integer(value) => value.binary_operation(op, other, expr_translator),
+            Value::Float(value) => value.binary_operation(op, other, expr_translator),
+            Value::Bool(value) => value.binary_operation(op, other, expr_translator),
             Value::Function(_) => Err(CompilationError::InvalidOperation),
         }
     }
 
     pub fn unary_operation(
         &self,
-        operation: UnaryOperation,
-        expression_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        op: UnaryOperation,
+        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         match self {
-            Value::Integer(value) => value.unary_operation(operation, expression_translator),
-            Value::Float(value) => value.unary_operation(operation, expression_translator),
-            Value::Bool(value) => value.unary_operation(operation, expression_translator),
+            Value::Integer(value) => value.unary_operation(op, expr_translator),
+            Value::Float(value) => value.unary_operation(op, expr_translator),
+            Value::Bool(value) => value.unary_operation(op, expr_translator),
             Value::Function(_) => Err(CompilationError::InvalidOperation),
         }
     }

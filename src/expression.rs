@@ -23,7 +23,7 @@ pub enum BinaryOperation {
 }
 
 pub struct BinaryOperationExpression {
-    pub operation: BinaryOperation,
+    pub op: BinaryOperation,
     pub lhs: Box<Expression>,
     pub rhs: Box<Expression>,
 }
@@ -36,13 +36,13 @@ pub enum UnaryOperation {
 }
 
 pub struct UnaryOperationExpression {
-    pub operation: UnaryOperation,
+    pub op: UnaryOperation,
     pub arg: Box<Expression>,
 }
 
 pub struct CallExpression {
     pub callee: Box<Expression>,
-    pub arguments: Vec<Box<Expression>>,
+    pub args: Vec<Box<Expression>>,
 }
 
 impl Expression {
@@ -95,12 +95,12 @@ impl Expression {
     }
 
     fn new_binary_operation(
-        operation: BinaryOperation,
+        op: BinaryOperation,
         lhs: Box<Expression>,
         rhs: Box<Expression>,
     ) -> Box<Self> {
         Box::new(Expression::BinaryOperation(BinaryOperationExpression {
-            operation,
+            op,
             lhs,
             rhs,
         }))
@@ -118,14 +118,14 @@ impl Expression {
         Self::new_unary_operation(UnaryOperation::BitNot, arg)
     }
 
-    fn new_unary_operation(operation: UnaryOperation, arg: Box<Expression>) -> Box<Self> {
+    fn new_unary_operation(op: UnaryOperation, arg: Box<Expression>) -> Box<Self> {
         Box::new(Expression::UnaryOperation(UnaryOperationExpression {
-            operation,
+            op,
             arg,
         }))
     }
 
-    pub fn new_call(callee: Box<Expression>, arguments: Vec<Box<Expression>>) -> Box<Self> {
-        Box::new(Expression::Call(CallExpression { callee, arguments }))
+    pub fn new_call(callee: Box<Expression>, args: Vec<Box<Expression>>) -> Box<Self> {
+        Box::new(Expression::Call(CallExpression { callee, args }))
     }
 }

@@ -7,17 +7,17 @@ pub trait ModuleVisitor {
 }
 
 pub struct Module {
-    pub definitions: Vec<Definition>,
+    pub defs: Vec<Definition>,
 }
 
 impl Module {
-    pub fn new(definitions: Vec<Definition>) -> Module {
-        Module { definitions }
+    pub fn new(defs: Vec<Definition>) -> Module {
+        Module { defs }
     }
 
     pub fn visit(&self, visitor: &mut dyn ModuleVisitor) -> CompilationResult<()> {
-        for definition in &self.definitions {
-            definition.visit(visitor)?;
+        for def in &self.defs {
+            def.visit(visitor)?;
         }
         Ok(())
     }

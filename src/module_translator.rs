@@ -35,29 +35,29 @@ impl<'ctx> Deref for ModuleTranslator<'ctx> {
 }
 
 impl<'ctx> ModuleVisitor for ModuleTranslator<'ctx> {
-    fn visit_function(&mut self, name: Option<&str>, function: &Function) -> CompilationResult<()> {
-        let function_signature = function.signature();
+    fn visit_function(&mut self, name: Option<&str>, func: &Function) -> CompilationResult<()> {
+        let func_signature = func.signature();
 
-        let mut arg_type_irs = Vec::<BasicMetadataTypeEnum>::new();
-        for argument in &function_signature.args {
-            arg_type_irs.push(self.translate_type(&argument.value_type).into());
+        let mut arg_types_ir = Vec::<BasicMetadataTypeEnum>::new();
+        for arg in &func_signature.args {
+            arg_types_ir.push(self.translate_type(&arg.value_type).into());
         }
 
-        let return_type_ir = self.translate_type(&function_signature.return_type);
-        let function_type_ir = return_type_ir.fn_type(&arg_type_irs, false);
-        let function_ir = self
+        let return_type_ir = self.translate_type(&func_signature.return_type);
+        let func_type_ir = return_type_ir.fn_type(&arg_types_ir, false);
+        let func_ir = self
             .module_ir
-            .add_function(name.unwrap_or(""), function_type_ir, None);
+            .add_function(name.unwrap_or(""), func_type_ir, None);
 
         if let Some(name) = name {
             self.globals.insert(
                 name.to_string(),
-                FunctionValue::from_ir(function_ir, function_signature).into(),
+                FunctionValue::from_ir(func_ir, func_signature).into(),
             );
         }
 
-        let function_translator = FunctionTranslator::new(function_ir, function_signature, self)?;
-        function.visit(&function_translator)?;
+        let func_translator = FunctionTranslator::new(func_ir, func_signature, self)?;
+        func.visit(&func_translator)?;
 
         Ok(())
     }
@@ -121,14 +121,14 @@ impl<'ctx> ModuleTranslator<'ctx> {
             .unwrap();
 
         unsafe {
-            let test_function: JitFunction<'_, TestFunc> =
+            let test_func: JitFunction<'_, TestFunc> =
                 execution_engine.get_function("test").unwrap();
 
             let x = 1i32;
             let y = 2i32;
             let z = 3i32;
             let w = true;
-            dbg!(test_function.call(x, y, z, w));
+            dbg!(test_func.call(x, y, z, w));
         }
     }
 }
