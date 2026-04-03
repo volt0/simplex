@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use inkwell::builder::Builder;
 use inkwell::values::{AnyValue, FunctionValue};
@@ -15,7 +15,7 @@ pub struct FunctionTranslator<'ctx, 'm> {
     function_signature: FunctionSignature,
     function_ir: FunctionValue<'ctx>,
     arguments_ir: HashMap<String, Value<'ctx>>,
-    parent: &'m ModuleTranslator<'ctx>,
+    parent: &'m mut ModuleTranslator<'ctx>,
     builder: Builder<'ctx>,
 }
 
@@ -23,6 +23,12 @@ impl<'ctx, 'm> Deref for FunctionTranslator<'ctx, 'm> {
     type Target = ModuleTranslator<'ctx>;
 
     fn deref(&self) -> &Self::Target {
+        self.parent
+    }
+}
+
+impl<'ctx, 'm> DerefMut for FunctionTranslator<'ctx, 'm> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         self.parent
     }
 }
@@ -44,7 +50,7 @@ impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
     pub fn new(
         function_ir: FunctionValue<'ctx>,
         function_signature: &FunctionSignature,
-        parent: &'m ModuleTranslator<'ctx>,
+        parent: &'m mut ModuleTranslator<'ctx>,
     ) -> CompilationResult<Self> {
         let builder = parent.context().create_builder();
         let mut arguments_ir = HashMap::with_capacity(function_ir.count_params() as usize);

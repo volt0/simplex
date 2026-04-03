@@ -3,7 +3,7 @@ use crate::errors::CompilationResult;
 use crate::function::Function;
 
 pub trait ModuleVisitor {
-    fn visit_function(&self, name: Option<&str>, function: &Function) -> CompilationResult<()>;
+    fn visit_function(&mut self, name: Option<&str>, function: &Function) -> CompilationResult<()>;
 }
 
 pub struct Module {
@@ -15,7 +15,7 @@ impl Module {
         Module { definitions }
     }
 
-    pub fn visit(&self, visitor: &dyn ModuleVisitor) -> CompilationResult<()> {
+    pub fn visit(&self, visitor: &mut dyn ModuleVisitor) -> CompilationResult<()> {
         for definition in &self.definitions {
             definition.visit(visitor)?;
         }

@@ -26,6 +26,10 @@ mod types;
 mod value;
 
 const SRC: &'static str = r#"
+proc foo(x: i32): i32 {
+    return x;
+}
+
 proc test(x: i32, y: i32, z: i32, w: bool): i64 {
     return foo(x);
 }
@@ -36,7 +40,7 @@ fn main() {
     let module = parser.parse(SRC).unwrap();
 
     let context = Context::create();
-    let module_translator = ModuleTranslator::new(&context);
-    module.visit(&module_translator).unwrap();
+    let mut module_translator = ModuleTranslator::new(&context);
+    module.visit(&mut module_translator).unwrap();
     module_translator.run_test();
 }

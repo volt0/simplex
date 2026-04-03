@@ -19,7 +19,7 @@ impl Definition {
         }
     }
 
-    pub fn visit(&self, visitor: &dyn ModuleVisitor) -> CompilationResult<()> {
+    pub fn visit(&self, visitor: &mut dyn ModuleVisitor) -> CompilationResult<()> {
         match &self.value {
             DefinitionValue::Function(func) => {
                 visitor.visit_function(Some(self.name.as_str()), func)

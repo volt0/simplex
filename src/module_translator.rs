@@ -8,10 +8,10 @@ use inkwell::OptimizationLevel;
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::float_type::FloatType;
-use crate::function::{Function, FunctionArgument, FunctionSignature};
+use crate::function::Function;
 use crate::function_translator::FunctionTranslator;
 use crate::function_value::FunctionValue;
-use crate::integer_type::{IntegerType, IntegerTypeSize};
+use crate::integer_type::IntegerTypeSize;
 use crate::module::ModuleVisitor;
 use crate::types::Type;
 use crate::value::Value;
@@ -25,7 +25,7 @@ pub struct ModuleTranslator<'ctx> {
 }
 
 impl<'ctx> ModuleVisitor for ModuleTranslator<'ctx> {
-    fn visit_function(&self, name: Option<&str>, function: &Function) -> CompilationResult<()> {
+    fn visit_function(&mut self, name: Option<&str>, function: &Function) -> CompilationResult<()> {
         let function_signature = function.signature();
 
         let mut arg_type_irs = Vec::<BasicMetadataTypeEnum>::new();
@@ -39,6 +39,13 @@ impl<'ctx> ModuleVisitor for ModuleTranslator<'ctx> {
             .module_ir
             .add_function(name.unwrap_or(""), function_type_ir, None);
 
+        if let Some(name) = name {
+            self.globals.insert(
+                name.to_string(),
+                FunctionValue::from_ir(function_ir, function_signature).into(),
+            );
+        }
+
         let function_translator = FunctionTranslator::new(function_ir, function_signature, self)?;
         function.visit(&function_translator)?;
 
@@ -51,47 +58,10 @@ impl<'ctx> ModuleTranslator<'ctx> {
         let module_ir = context.create_module("test_module");
         module_ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
 
-        let globals = HashMap::from([(
-            String::from("foo"),
-            Value::Function(FunctionValue {
-                ir: {
-                    let function_ir = module_ir.add_function(
-                        "foo",
-                        context
-                            .i32_type()
-                            .fn_type(&[context.i32_type().into()], false),
-                        None,
-                    );
-
-                    let callee_block = context.append_basic_block(function_ir.clone(), "entry");
-                    let builder = context.create_builder();
-                    builder.position_at_end(callee_block);
-
-                    let arg_ir = function_ir.get_nth_param(0).unwrap();
-                    builder.build_return(Some(&arg_ir)).unwrap();
-
-                    function_ir
-                },
-                signature: FunctionSignature {
-                    args: vec![FunctionArgument {
-                        name: String::from("arg"),
-                        value_type: Type::Integer(IntegerType {
-                            is_signed: true,
-                            width: IntegerTypeSize::I32,
-                        }),
-                    }],
-                    return_type: Type::Integer(IntegerType {
-                        is_signed: true,
-                        width: IntegerTypeSize::I32,
-                    }),
-                },
-            }),
-        )]);
-
         ModuleTranslator {
             context,
             module_ir,
-            globals,
+            globals: HashMap::new(),
         }
     }
 
