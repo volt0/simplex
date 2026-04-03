@@ -22,7 +22,20 @@ impl<'ctx> Into<Value<'ctx>> for IntegerValue<'ctx> {
     }
 }
 
+impl<'ctx> Into<IntValue<'ctx>> for IntegerValue<'ctx> {
+    fn into(self) -> IntValue<'ctx> {
+        self.ir
+    }
+}
+
 impl<'ctx> IntegerValue<'ctx> {
+    pub fn new(ir: AnyValueEnum<'ctx>, is_signed: bool) -> Self {
+        match ir {
+            AnyValueEnum::IntValue(ir) => IntegerValue { ir, is_signed },
+            _ => panic!("Expected IntValue, got {:?}", ir),
+        }
+    }
+
     pub fn from_value(
         value: &Value<'ctx>,
         expr_type: &IntegerType,
@@ -44,17 +57,6 @@ impl<'ctx> IntegerValue<'ctx> {
             ir: context.i32_type().const_int(value as u64, true),
             is_signed: true,
         }
-    }
-
-    pub fn from_ir(ir: AnyValueEnum<'ctx>, is_signed: bool) -> Self {
-        match ir {
-            AnyValueEnum::IntValue(ir) => IntegerValue { ir, is_signed },
-            _ => panic!("Expected IntValue, got {:?}", ir),
-        }
-    }
-
-    pub fn into_ir(self) -> AnyValueEnum<'ctx> {
-        AnyValueEnum::IntValue(self.ir)
     }
 
     pub fn to_bool(

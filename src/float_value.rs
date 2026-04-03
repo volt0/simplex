@@ -20,7 +20,20 @@ impl<'ctx> Into<Value<'ctx>> for FloatValue<'ctx> {
     }
 }
 
+impl<'ctx> Into<FloatValueIR<'ctx>> for FloatValue<'ctx> {
+    fn into(self) -> FloatValueIR<'ctx> {
+        self.ir
+    }
+}
+
 impl<'ctx> FloatValue<'ctx> {
+    pub fn new(ir: AnyValueEnum<'ctx>) -> Self {
+        if let AnyValueEnum::FloatValue(ir) = ir {
+            return FloatValue { ir };
+        }
+        panic!("Expected FloatValue, got {:?}", ir);
+    }
+
     pub fn from_value(
         value: &Value<'ctx>,
         expr_type: &FloatType,
@@ -31,17 +44,6 @@ impl<'ctx> FloatValue<'ctx> {
             Value::Integer(value) => value.to_float(expr_translator)?,
             _ => return Err(CompilationError::TypeMismatch),
         })
-    }
-
-    pub fn from_ir(ir: AnyValueEnum<'ctx>, _: &FloatType) -> Self {
-        if let AnyValueEnum::FloatValue(ir) = ir {
-            return FloatValue { ir };
-        }
-        panic!("Expected FloatValue, got {:?}", ir);
-    }
-
-    pub fn into_ir(self) -> AnyValueEnum<'ctx> {
-        AnyValueEnum::FloatValue(self.ir)
     }
 
     pub fn value_type(&self) -> FloatType {

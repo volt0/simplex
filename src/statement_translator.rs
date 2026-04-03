@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::ops::Deref;
 
+use inkwell::values::BasicValueEnum;
+
 use crate::basic_block::BasicBlock;
 use crate::errors::CompilationResult;
 use crate::expression::Expression;
@@ -30,9 +32,9 @@ impl<'ctx, 'm, 'f> StatementVisitor for StatementTranslator<'ctx, 'm, 'f> {
     fn add_return_statement(&self, expr: &Expression) -> CompilationResult<()> {
         let func_signature = self.function_signature();
         let expr_translator = ExpressionTranslator::new(self);
-        let expr_ir = expr_translator
+        let expr_ir: BasicValueEnum<'ctx> = expr_translator
             .translate_expression(expr, Some(&func_signature.return_type))?
-            .into_basic_value_ir()?;
+            .try_into()?;
 
         self.builder().build_return(Some(&expr_ir))?;
         Ok(())

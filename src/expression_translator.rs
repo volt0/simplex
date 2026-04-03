@@ -93,17 +93,16 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
 
         let mut args_ir = Vec::with_capacity(expr.args.len());
         for (arg, arg_signature) in expr.args.iter().zip(callee.signature.args.iter()) {
-            args_ir.push(
-                self.translate_expression(arg, Some(&arg_signature.value_type))?
-                    .into_basic_value_ir()?
-                    .into(),
-            );
+            let ir = self
+                .translate_expression(arg, Some(&arg_signature.value_type))?
+                .try_into()?;
+            args_ir.push(ir);
         }
 
         let builder = self.builder();
-        let callee_ir = callee.clone().into_ir();
+        let callee_ir = callee.clone().into();
         let result_ir = builder.build_call(callee_ir, args_ir.as_slice(), "")?;
-        Ok(Value::from_ir(
+        Ok(Value::new(
             result_ir.as_any_value_enum(),
             &callee.signature.return_type,
         )?)

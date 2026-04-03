@@ -18,16 +18,18 @@ impl<'ctx> Into<Value<'ctx>> for BoolValue<'ctx> {
     }
 }
 
+impl<'ctx> Into<IntValue<'ctx>> for BoolValue<'ctx> {
+    fn into(self) -> IntValue<'ctx> {
+        self.ir
+    }
+}
+
 impl<'ctx> BoolValue<'ctx> {
-    pub fn from_ir(ir: AnyValueEnum<'ctx>) -> Self {
+    pub fn new(ir: AnyValueEnum<'ctx>) -> Self {
         if let AnyValueEnum::IntValue(ir) = ir {
             return BoolValue { ir };
         }
         panic!("Expected BoolValue, got {:?}", ir);
-    }
-
-    pub fn into_ir(self) -> AnyValueEnum<'ctx> {
-        AnyValueEnum::IntValue(self.ir)
     }
 
     pub fn to_integer(

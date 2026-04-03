@@ -52,7 +52,7 @@ impl<'ctx> ModuleVisitor for ModuleTranslator<'ctx> {
         if let Some(name) = name {
             self.globals.insert(
                 name.to_string(),
-                FunctionValue::from_ir(func_ir, func_signature).into(),
+                FunctionValue::new(func_ir, func_signature).into(),
             );
         }
 

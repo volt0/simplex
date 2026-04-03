@@ -1,4 +1,4 @@
-use inkwell::values::{AnyValue, AnyValueEnum, BasicValueEnum};
+use inkwell::values::{AnyValueEnum, BasicMetadataValueEnum, BasicValueEnum};
 
 use crate::bool_value::BoolValue;
 use crate::errors::{CompilationError, CompilationResult};
@@ -18,28 +18,12 @@ pub enum Value<'ctx> {
 }
 
 impl<'ctx> Value<'ctx> {
-    pub fn from_ir(ir: AnyValueEnum<'ctx>, value_type: &Type) -> CompilationResult<Self> {
+    pub fn new(ir: AnyValueEnum<'ctx>, value_type: &Type) -> CompilationResult<Self> {
         Ok(match value_type {
-            Type::Integer(value_type) => IntegerValue::from_ir(ir, value_type.is_signed).into(),
-            Type::Float(value_type) => FloatValue::from_ir(ir, value_type).into(),
-            Type::Bool => BoolValue::from_ir(ir).into(),
+            Type::Integer(value_type) => IntegerValue::new(ir, value_type.is_signed).into(),
+            Type::Float(_) => FloatValue::new(ir).into(),
+            Type::Bool => BoolValue::new(ir).into(),
         })
-    }
-
-    pub fn into_ir(self) -> AnyValueEnum<'ctx> {
-        match self {
-            Value::Integer(value) => value.into_ir(),
-            Value::Float(value) => value.into_ir(),
-            Value::Bool(value) => value.into_ir(),
-            Value::Function(value) => value.ir.as_any_value_enum(),
-        }
-    }
-
-    pub fn into_basic_value_ir(self) -> CompilationResult<BasicValueEnum<'ctx>> {
-        match self.into_ir().try_into() {
-            Ok(ir) => Ok(ir),
-            Err(_) => Err(CompilationError::InvalidOperation),
-        }
     }
 
     pub fn value_type(&self) -> Type {
@@ -103,5 +87,37 @@ impl<'ctx> Value<'ctx> {
             Value::Bool(value) => value.unary_operation(op, expr_translator),
             Value::Function(_) => Err(CompilationError::InvalidOperation),
         }
+    }
+}
+
+impl<'ctx> Into<AnyValueEnum<'ctx>> for Value<'ctx> {
+    fn into(self) -> AnyValueEnum<'ctx> {
+        match self {
+            Value::Integer(value) => AnyValueEnum::IntValue(value.into()),
+            Value::Bool(value) => AnyValueEnum::IntValue(value.into()),
+            Value::Float(value) => AnyValueEnum::FloatValue(value.into()),
+            Value::Function(value) => AnyValueEnum::FunctionValue(value.into()),
+        }
+    }
+}
+
+impl<'ctx> TryInto<BasicValueEnum<'ctx>> for Value<'ctx> {
+    type Error = CompilationError;
+
+    fn try_into(self) -> Result<BasicValueEnum<'ctx>, Self::Error> {
+        let ir: AnyValueEnum<'ctx> = self.into();
+        match ir.try_into() {
+            Ok(ir) => Ok(ir),
+            Err(_) => Err(CompilationError::InvalidOperation),
+        }
+    }
+}
+
+impl<'ctx> TryInto<BasicMetadataValueEnum<'ctx>> for Value<'ctx> {
+    type Error = CompilationError;
+
+    fn try_into(self) -> Result<BasicMetadataValueEnum<'ctx>, Self::Error> {
+        let ir: BasicValueEnum<'ctx> = self.try_into()?;
+        Ok(ir.into())
     }
 }
