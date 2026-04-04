@@ -1,5 +1,3 @@
-use inkwell::context::Context;
-use inkwell::types::IntType;
 use inkwell::values::{AnyValueEnum, IntValue};
 use inkwell::IntPredicate;
 
@@ -8,7 +6,7 @@ use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::expression_translator::ExpressionTranslator;
 use crate::float_value::FloatValue;
-use crate::integer_type::{IntegerType, IntegerTypeSize};
+use crate::integer_type::{IntegerType, IntegerTypeWidth};
 use crate::value::Value;
 
 #[derive(Clone)]
@@ -39,7 +37,7 @@ impl<'ctx> IntegerValue<'ctx> {
 
     pub fn from_value(
         value: &Value<'ctx>,
-        expr_type: IntegerValueType<'ctx>,
+        expr_type: IntegerType<'ctx>,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         Ok(match value {
@@ -81,8 +79,8 @@ impl<'ctx> IntegerValue<'ctx> {
     ) -> CompilationResult<FloatValue<'ctx>> {
         let context = expr_translator.context();
         let result_type_ir = match self.type_of().width() {
-            IntegerTypeSize::I8 | IntegerTypeSize::I16 => context.f32_type(),
-            IntegerTypeSize::I32 => context.f64_type(),
+            IntegerTypeWidth::I8 | IntegerTypeWidth::I16 => context.f32_type(),
+            IntegerTypeWidth::I32 => context.f64_type(),
             _ => return Err(CompilationError::TypeMismatch),
         };
 
@@ -97,8 +95,8 @@ impl<'ctx> IntegerValue<'ctx> {
     }
 
     #[inline(always)]
-    pub fn type_of(&self) -> IntegerValueType<'ctx> {
-        IntegerValueType {
+    pub fn type_of(&self) -> IntegerType<'ctx> {
+        IntegerType {
             ir: self.ir.get_type(),
             is_signed: self.is_signed,
         }
@@ -172,7 +170,7 @@ impl<'ctx> IntegerValue<'ctx> {
 
     fn extend_to(
         &self,
-        target_type: IntegerValueType<'ctx>,
+        target_type: IntegerType<'ctx>,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         let self_type = self.type_of();
@@ -199,45 +197,5 @@ impl<'ctx> IntegerValue<'ctx> {
             ir: result_ir,
             is_signed: target_type.is_signed,
         })
-    }
-}
-
-#[derive(Clone)]
-pub struct IntegerValueType<'ctx> {
-    pub ir: IntType<'ctx>,
-    pub is_signed: bool,
-}
-
-impl<'ctx> Into<IntegerType> for IntegerValueType<'ctx> {
-    fn into(self) -> IntegerType {
-        IntegerType {
-            is_signed: self.is_signed,
-            width: self.width(),
-        }
-    }
-}
-
-impl<'ctx> IntegerValueType<'ctx> {
-    pub fn new(type_spec: &IntegerType, context: &'ctx Context) -> Self {
-        IntegerValueType {
-            ir: match type_spec.width {
-                IntegerTypeSize::I8 => context.i8_type(),
-                IntegerTypeSize::I16 => context.i16_type(),
-                IntegerTypeSize::I32 => context.i32_type(),
-                IntegerTypeSize::I64 => context.i64_type(),
-            },
-            is_signed: type_spec.is_signed,
-        }
-    }
-
-    #[inline(always)]
-    pub fn width(&self) -> IntegerTypeSize {
-        match self.ir.get_bit_width() {
-            8 => IntegerTypeSize::I8,
-            16 => IntegerTypeSize::I16,
-            32 => IntegerTypeSize::I32,
-            64 => IntegerTypeSize::I64,
-            width => panic!("Invalid integer type width: {}", width),
-        }
     }
 }

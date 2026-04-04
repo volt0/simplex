@@ -9,7 +9,8 @@ use crate::expression::Expression;
 use crate::expression_translator::ExpressionTranslator;
 use crate::function_translator::FunctionTranslator;
 use crate::statement::StatementVisitor;
-use crate::value::{Value, ValueType};
+use crate::types::Type;
+use crate::value::Value;
 
 pub struct StatementTranslator<'ctx, 'm, 'f> {
     parent: &'f FunctionTranslator<'ctx, 'm>,
@@ -32,7 +33,7 @@ impl<'ctx, 'm, 'f> StatementVisitor for StatementTranslator<'ctx, 'm, 'f> {
     fn add_return_statement(&self, expr: &Expression) -> CompilationResult<()> {
         let func_signature = self.function_signature();
         let expr_translator = ExpressionTranslator::new(self);
-        let expr_type = ValueType::new(&func_signature.return_type, self.context());
+        let expr_type = Type::new(&func_signature.return_type, self.context());
         let expr_ir: BasicValueEnum<'ctx> = expr_translator
             .translate_expression(expr, Some(expr_type))?
             .try_into()?;

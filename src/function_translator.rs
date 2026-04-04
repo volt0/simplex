@@ -9,7 +9,8 @@ use crate::errors::CompilationResult;
 use crate::function::{FunctionSignature, FunctionVisitor};
 use crate::module_translator::ModuleTranslator;
 use crate::statement_translator::StatementTranslator;
-use crate::value::{Value, ValueType};
+use crate::types::Type;
+use crate::value::Value;
 
 pub struct FunctionTranslator<'ctx, 'm> {
     func_signature: FunctionSignature,
@@ -55,7 +56,7 @@ impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
         let mut args_ir = HashMap::with_capacity(func_ir.count_params() as usize);
         for (i, arg) in func_signature.args.iter().enumerate() {
             let arg_ir = func_ir.get_nth_param(i as u32).unwrap().as_any_value_enum();
-            let arg_type = ValueType::new(&arg.value_type, context);
+            let arg_type = Type::new(&arg.value_type, context);
             args_ir.insert(arg.name.clone(), Value::from_any_value(arg_ir, arg_type)?);
         }
 

@@ -132,22 +132,22 @@ Expression: Box<Expression> = {
 
 // Types
 
-TypeAnnotation: Type = {
+TypeAnnotation: TypeSpec = {
     ":" <type_spec:Type> => type_spec
 }
 
-Type: Type = {
-    "i8" => Type::Integer(IntegerType { width: IntegerTypeSize::I8, is_signed: true }),
-    "i16" => Type::Integer(IntegerType { width: IntegerTypeSize::I16, is_signed: true }),
-    "i32" => Type::Integer(IntegerType { width: IntegerTypeSize::I32, is_signed: true }),
-    "i64" => Type::Integer(IntegerType { width: IntegerTypeSize::I64, is_signed: true }),
-    "u8" => Type::Integer(IntegerType { width: IntegerTypeSize::I8, is_signed: false }),
-    "u16" => Type::Integer(IntegerType { width: IntegerTypeSize::I16, is_signed: false }),
-    "u32" => Type::Integer(IntegerType { width: IntegerTypeSize::I32, is_signed: false }),
-    "u64" => Type::Integer(IntegerType { width: IntegerTypeSize::I64, is_signed: false }),
-    "f32" => Type::Float(FloatType::F32),
-    "f64" => Type::Float(FloatType::F64),
-    "bool" => Type::Bool,
+Type: TypeSpec = {
+    "i8" => TypeSpec::Integer(IntegerTypeSpec { width: IntegerTypeWidth::I8, is_signed: true }),
+    "i16" => TypeSpec::Integer(IntegerTypeSpec { width: IntegerTypeWidth::I16, is_signed: true }),
+    "i32" => TypeSpec::Integer(IntegerTypeSpec { width: IntegerTypeWidth::I32, is_signed: true }),
+    "i64" => TypeSpec::Integer(IntegerTypeSpec { width: IntegerTypeWidth::I64, is_signed: true }),
+    "u8" => TypeSpec::Integer(IntegerTypeSpec { width: IntegerTypeWidth::I8, is_signed: false }),
+    "u16" => TypeSpec::Integer(IntegerTypeSpec { width: IntegerTypeWidth::I16, is_signed: false }),
+    "u32" => TypeSpec::Integer(IntegerTypeSpec { width: IntegerTypeWidth::I32, is_signed: false }),
+    "u64" => TypeSpec::Integer(IntegerTypeSpec { width: IntegerTypeWidth::I64, is_signed: false }),
+    "f32" => TypeSpec::Float(FloatTypeSpec::F32),
+    "f64" => TypeSpec::Float(FloatTypeSpec::F64),
+    "bool" => TypeSpec::Bool,
 }
 
 // Syntax base

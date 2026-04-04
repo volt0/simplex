@@ -1,6 +1,6 @@
 use crate::basic_block::BasicBlock;
 use crate::errors::CompilationResult;
-use crate::types::Type;
+use crate::types::TypeSpec;
 
 pub trait FunctionVisitor {
     fn visit_body(&self, body: &BasicBlock) -> CompilationResult<()>;
@@ -9,13 +9,13 @@ pub trait FunctionVisitor {
 #[derive(Clone)]
 pub struct FunctionSignature {
     pub args: Vec<FunctionArgument>,
-    pub return_type: Type,
+    pub return_type: TypeSpec,
 }
 
 #[derive(Clone)]
 pub struct FunctionArgument {
     pub name: String,
-    pub value_type: Type,
+    pub value_type: TypeSpec,
 }
 
 pub struct Function {

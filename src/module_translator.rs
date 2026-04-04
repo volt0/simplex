@@ -8,14 +8,14 @@ use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 use inkwell::OptimizationLevel;
 
 use crate::errors::{CompilationError, CompilationResult};
-use crate::float_type::FloatType;
+use crate::float_type::FloatTypeSpec;
 use crate::function::Function;
 use crate::function_translator::FunctionTranslator;
 use crate::function_value::FunctionValue;
-use crate::integer_type::IntegerTypeSize;
+use crate::integer_type::IntegerTypeWidth;
 use crate::module::ModuleVisitor;
 use crate::translator::Translator;
-use crate::types::Type;
+use crate::types::TypeSpec;
 use crate::value::Value;
 
 type ModuleIR<'ctx> = inkwell::module::Module<'ctx>;
@@ -80,23 +80,23 @@ impl<'ctx> ModuleTranslator<'ctx> {
         self.parent.context()
     }
 
-    pub fn translate_type(&self, type_spec: &Type) -> BasicTypeEnum<'ctx> {
+    pub fn translate_type(&self, type_spec: &TypeSpec) -> BasicTypeEnum<'ctx> {
         let context = self.context();
         match type_spec {
-            Type::Bool => context.bool_type().as_basic_type_enum(),
-            Type::Integer(integer_type) => {
+            TypeSpec::Bool => context.bool_type().as_basic_type_enum(),
+            TypeSpec::Integer(integer_type) => {
                 let type_ir = match integer_type.width {
-                    IntegerTypeSize::I8 => context.i8_type(),
-                    IntegerTypeSize::I16 => context.i16_type(),
-                    IntegerTypeSize::I32 => context.i32_type(),
-                    IntegerTypeSize::I64 => context.i64_type(),
+                    IntegerTypeWidth::I8 => context.i8_type(),
+                    IntegerTypeWidth::I16 => context.i16_type(),
+                    IntegerTypeWidth::I32 => context.i32_type(),
+                    IntegerTypeWidth::I64 => context.i64_type(),
                 };
                 type_ir.as_basic_type_enum()
             }
-            Type::Float(float_type) => {
+            TypeSpec::Float(float_type) => {
                 let type_ir = match float_type {
-                    FloatType::F32 => context.f32_type(),
-                    FloatType::F64 => context.f64_type(),
+                    FloatTypeSpec::F32 => context.f32_type(),
+                    FloatTypeSpec::F64 => context.f64_type(),
                 };
                 type_ir.as_basic_type_enum()
             }

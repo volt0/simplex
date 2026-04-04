@@ -1,4 +1,3 @@
-use inkwell::context::Context;
 use inkwell::values::AnyValueEnum;
 
 use crate::errors::{CompilationError, CompilationResult};
@@ -8,7 +7,6 @@ use crate::float_type::FloatType;
 use crate::value::Value;
 
 type FloatValueIR<'ctx> = inkwell::values::FloatValue<'ctx>;
-type FloatTypeIR<'ctx> = inkwell::types::FloatType<'ctx>;
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -38,7 +36,7 @@ impl<'ctx> FloatValue<'ctx> {
 
     pub fn from_value(
         value: &Value<'ctx>,
-        expr_type: FloatValueType<'ctx>,
+        expr_type: FloatType<'ctx>,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         Ok(match value {
@@ -49,8 +47,8 @@ impl<'ctx> FloatValue<'ctx> {
     }
 
     #[inline(always)]
-    pub fn type_of(&self) -> FloatValueType<'ctx> {
-        FloatValueType {
+    pub fn type_of(&self) -> FloatType<'ctx> {
+        FloatType {
             ir: self.ir.get_type(),
         }
     }
@@ -96,7 +94,7 @@ impl<'ctx> FloatValue<'ctx> {
 
     fn extend_to(
         &self,
-        target_type: FloatValueType<'ctx>,
+        target_type: FloatType<'ctx>,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         let self_width = self.ir.get_type().get_bit_width();
@@ -107,33 +105,6 @@ impl<'ctx> FloatValue<'ctx> {
             Ok(FloatValue { ir: result_ir })
         } else {
             Err(CompilationError::TypeMismatch)
-        }
-    }
-}
-
-#[repr(transparent)]
-#[derive(Clone)]
-pub struct FloatValueType<'ctx> {
-    pub ir: FloatTypeIR<'ctx>,
-}
-
-impl<'ctx> Into<FloatType> for FloatValueType<'ctx> {
-    fn into(self) -> FloatType {
-        match self.ir.get_bit_width() {
-            32 => FloatType::F32,
-            64 => FloatType::F64,
-            width => panic!("Invalid float type width: {}", width),
-        }
-    }
-}
-
-impl<'ctx> FloatValueType<'ctx> {
-    pub fn new(type_spec: &FloatType, context: &'ctx Context) -> Self {
-        FloatValueType {
-            ir: match type_spec {
-                FloatType::F32 => context.f32_type(),
-                FloatType::F64 => context.f64_type(),
-            },
         }
     }
 }
