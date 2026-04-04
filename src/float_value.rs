@@ -7,6 +7,7 @@ use crate::float_type::FloatType;
 use crate::value::Value;
 
 type FloatValueIR<'ctx> = inkwell::values::FloatValue<'ctx>;
+type FloatTypeIR<'ctx> = inkwell::types::FloatType<'ctx>;
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -39,6 +40,7 @@ impl<'ctx> FloatValue<'ctx> {
         expr_type: &FloatType,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
+        let expr_type = FloatValueType::new(expr_type, expr_translator);
         Ok(match value {
             Value::Float(value) => value.extend_to(expr_type, expr_translator)?,
             Value::Integer(value) => value.to_float(expr_translator)?,
@@ -46,12 +48,15 @@ impl<'ctx> FloatValue<'ctx> {
         })
     }
 
-    pub fn value_type(&self) -> FloatType {
-        match self.ir.get_type().get_bit_width() {
-            32 => FloatType::F32,
-            64 => FloatType::F64,
-            bit_width => panic!("Unsupported float bit width: {}", bit_width),
+    #[inline(always)]
+    pub fn type_of(&self) -> FloatValueType<'ctx> {
+        FloatValueType {
+            ir: self.ir.get_type(),
         }
+    }
+
+    pub fn value_type(&self) -> FloatType {
+        self.type_of().into()
     }
 
     pub fn binary_operation(
@@ -95,20 +100,47 @@ impl<'ctx> FloatValue<'ctx> {
 
     fn extend_to(
         &self,
-        target_type: &FloatType,
+        target_type: FloatValueType<'ctx>,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
-        let context = expr_translator.context();
-        if &self.value_type() <= target_type {
-            Ok(FloatValue {
-                ir: expr_translator.builder().build_float_ext(
-                    self.ir,
-                    target_type.to_ir(context),
-                    "",
-                )?,
-            })
+        let self_width = self.ir.get_type().get_bit_width();
+        let target_width = target_type.ir.get_bit_width();
+        if self_width <= target_width {
+            let builder = expr_translator.builder();
+            let result_ir = builder.build_float_ext(self.ir, target_type.ir, "")?;
+            Ok(FloatValue { ir: result_ir })
         } else {
             Err(CompilationError::TypeMismatch)
+        }
+    }
+}
+
+#[repr(transparent)]
+pub struct FloatValueType<'ctx> {
+    pub ir: FloatTypeIR<'ctx>,
+}
+
+impl<'ctx> Into<FloatType> for FloatValueType<'ctx> {
+    fn into(self) -> FloatType {
+        match self.ir.get_bit_width() {
+            32 => FloatType::F32,
+            64 => FloatType::F64,
+            width => panic!("Invalid float type width: {}", width),
+        }
+    }
+}
+
+impl<'ctx> FloatValueType<'ctx> {
+    pub fn new(
+        type_spec: &FloatType,
+        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+    ) -> Self {
+        let context = expr_translator.context();
+        FloatValueType {
+            ir: match type_spec {
+                FloatType::F32 => context.f32_type(),
+                FloatType::F64 => context.f64_type(),
+            },
         }
     }
 }

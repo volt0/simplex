@@ -102,9 +102,6 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         let builder = self.builder();
         let callee_ir = callee.clone().into();
         let result_ir = builder.build_call(callee_ir, args_ir.as_slice(), "")?;
-        Ok(Value::new(
-            result_ir.as_any_value_enum(),
-            &callee.signature.return_type,
-        )?)
+        Value::from_any_value(result_ir.as_any_value_enum(), &callee.signature.return_type)
     }
 }

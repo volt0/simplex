@@ -1,3 +1,4 @@
+use inkwell::types::IntType;
 use inkwell::values::{AnyValueEnum, IntValue};
 use inkwell::IntPredicate;
 
@@ -5,9 +6,9 @@ use crate::bool_value::BoolValue;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::expression_translator::ExpressionTranslator;
-use crate::float_type::FloatType;
 use crate::float_value::FloatValue;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
+use crate::types::Type;
 use crate::value::Value;
 
 #[derive(Clone)]
@@ -43,7 +44,7 @@ impl<'ctx> IntegerValue<'ctx> {
     ) -> CompilationResult<Self> {
         Ok(match value {
             Value::Integer(value) => value.extend_to(expr_type, expr_translator)?,
-            Value::Bool(value) => value.to_integer(Some(expr_type), expr_translator)?,
+            Value::Bool(value) => value.to_integer(expr_type, expr_translator)?,
             _ => return Err(CompilationError::TypeMismatch),
         })
     }
@@ -64,11 +65,12 @@ impl<'ctx> IntegerValue<'ctx> {
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<BoolValue<'ctx>> {
         let builder = expr_translator.builder();
+        let type_ir = self.ir.get_type();
         Ok(BoolValue {
             ir: builder.build_int_compare(
                 IntPredicate::NE,
                 self.ir,
-                self.ir.get_type().const_int(0, false),
+                type_ir.const_int(0, false),
                 "",
             )?,
         })
@@ -78,34 +80,36 @@ impl<'ctx> IntegerValue<'ctx> {
         &self,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<FloatValue<'ctx>> {
-        let result_type = match self.value_type().width {
-            IntegerTypeSize::I8 | IntegerTypeSize::I16 => FloatType::F32,
-            IntegerTypeSize::I32 => FloatType::F64,
+        let context = expr_translator.context();
+        let result_type_ir = match self.type_of().width() {
+            IntegerTypeSize::I8 | IntegerTypeSize::I16 => context.f32_type(),
+            IntegerTypeSize::I32 => context.f64_type(),
             _ => return Err(CompilationError::TypeMismatch),
         };
 
         let builder = expr_translator.builder();
-        let context = expr_translator.context();
         let result_ir = if self.is_signed {
-            builder.build_signed_int_to_float(self.ir, result_type.to_ir(context), "")?
+            builder.build_signed_int_to_float(self.ir, result_type_ir, "")?
         } else {
-            builder.build_unsigned_int_to_float(self.ir, result_type.to_ir(context), "")?
+            builder.build_unsigned_int_to_float(self.ir, result_type_ir, "")?
         };
 
         Ok(FloatValue { ir: result_ir }.into())
     }
 
-    pub fn value_type(&self) -> IntegerType {
-        let value_type_ir = self.ir.get_type();
-        IntegerType {
-            width: match value_type_ir.get_bit_width() {
-                8 => IntegerTypeSize::I8,
-                16 => IntegerTypeSize::I16,
-                32 => IntegerTypeSize::I32,
-                64 => IntegerTypeSize::I64,
-                width => panic!("Invalid integer type width: {}", width),
-            },
+    #[inline(always)]
+    pub fn type_of(&self) -> IntegerValueType<'ctx> {
+        IntegerValueType {
+            ir: self.ir.get_type(),
             is_signed: self.is_signed,
+        }
+    }
+
+    pub fn value_type(&self) -> IntegerType {
+        let value_type = self.type_of();
+        IntegerType {
+            is_signed: self.is_signed,
+            width: value_type.width(),
         }
     }
 
@@ -180,11 +184,13 @@ impl<'ctx> IntegerValue<'ctx> {
         target_type: &IntegerType,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
-        let value_type = self.value_type();
-        let is_compatible = if value_type.is_signed == target_type.is_signed {
-            value_type.width <= target_type.width
-        } else if target_type.is_signed && !value_type.is_signed {
-            value_type.width < target_type.width
+        let self_type = self.type_of();
+        let target_type = IntegerValueType::new(target_type, expr_translator);
+
+        let is_compatible = if self_type.is_signed == target_type.is_signed {
+            self_type.width() <= target_type.width()
+        } else if target_type.is_signed && !self_type.is_signed {
+            self_type.width() < target_type.width()
         } else {
             false
         };
@@ -194,16 +200,58 @@ impl<'ctx> IntegerValue<'ctx> {
         }
 
         let builder = expr_translator.builder();
-        let context = expr_translator.context();
         let result_ir = if target_type.is_signed {
-            builder.build_int_s_extend(self.ir, target_type.to_ir(context), "")?
+            builder.build_int_s_extend(self.ir, target_type.ir, "")?
         } else {
-            builder.build_int_z_extend(self.ir, target_type.to_ir(context), "")?
+            builder.build_int_z_extend(self.ir, target_type.ir, "")?
         };
 
         Ok(IntegerValue {
             ir: result_ir,
             is_signed: target_type.is_signed,
         })
+    }
+}
+
+pub struct IntegerValueType<'ctx> {
+    pub ir: IntType<'ctx>,
+    pub is_signed: bool,
+}
+
+impl<'ctx> Into<Type> for IntegerValueType<'ctx> {
+    fn into(self) -> Type {
+        Type::Integer(IntegerType {
+            is_signed: self.is_signed,
+            width: self.width(),
+        })
+    }
+}
+
+impl<'ctx> IntegerValueType<'ctx> {
+    pub fn new(
+        type_spec: &IntegerType,
+        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+    ) -> Self {
+        let context = expr_translator.context();
+        IntegerValueType {
+            ir: match type_spec.width {
+                IntegerTypeSize::I8 => context.i8_type(),
+                IntegerTypeSize::I16 => context.i16_type(),
+                IntegerTypeSize::I32 => context.i32_type(),
+                IntegerTypeSize::I64 => context.i64_type(),
+            },
+            is_signed: type_spec.is_signed,
+        }
+    }
+
+    #[inline(always)]
+    pub fn width(&self) -> IntegerTypeSize {
+        match self.ir.get_bit_width() {
+            8 => IntegerTypeSize::I8,
+            16 => IntegerTypeSize::I16,
+            32 => IntegerTypeSize::I32,
+            64 => IntegerTypeSize::I64,
+            width => panic!("Invalid integer type width: {}", width),
+        }
     }
 }

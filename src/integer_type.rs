@@ -1,6 +1,3 @@
-use inkwell::context::Context;
-use inkwell::types::IntType;
-
 use crate::errors::{CompilationError, CompilationResult};
 use crate::types::Type;
 
@@ -45,14 +42,5 @@ impl IntegerType {
             Type::Bool => self.clone(),
             _ => return Err(CompilationError::TypeMismatch),
         })
-    }
-
-    pub fn to_ir<'ctx>(&self, context: &'ctx Context) -> IntType<'ctx> {
-        match self.width {
-            IntegerTypeSize::I8 => context.i8_type(),
-            IntegerTypeSize::I16 => context.i16_type(),
-            IntegerTypeSize::I32 => context.i32_type(),
-            IntegerTypeSize::I64 => context.i64_type(),
-        }
     }
 }

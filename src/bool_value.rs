@@ -3,8 +3,8 @@ use inkwell::values::{AnyValueEnum, IntValue};
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::expression_translator::ExpressionTranslator;
-use crate::integer_type::{IntegerType, IntegerTypeSize};
-use crate::integer_value::IntegerValue;
+use crate::integer_type::IntegerType;
+use crate::integer_value::{IntegerValue, IntegerValueType};
 use crate::value::Value;
 
 #[derive(Clone)]
@@ -34,21 +34,13 @@ impl<'ctx> BoolValue<'ctx> {
 
     pub fn to_integer(
         &self,
-        value_type: Option<&IntegerType>,
+        value_type: &IntegerType,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<IntegerValue<'ctx>> {
-        let value_type = match value_type {
-            None => IntegerType {
-                is_signed: false,
-                width: IntegerTypeSize::I8,
-            },
-            Some(value_type) => value_type.clone(),
-        };
-
+        let value_type = IntegerValueType::new(value_type, expr_translator);
         let builder = expr_translator.builder();
-        let context = expr_translator.context();
         Ok(IntegerValue {
-            ir: builder.build_int_z_extend(self.ir, value_type.to_ir(context), "")?,
+            ir: builder.build_int_z_extend(self.ir, value_type.ir, "")?,
             is_signed: value_type.is_signed,
         })
     }

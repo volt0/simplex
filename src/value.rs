@@ -18,11 +18,14 @@ pub enum Value<'ctx> {
 }
 
 impl<'ctx> Value<'ctx> {
-    pub fn new(ir: AnyValueEnum<'ctx>, value_type: &Type) -> CompilationResult<Self> {
+    pub fn from_any_value(
+        value_ir: AnyValueEnum<'ctx>,
+        value_type: &Type,
+    ) -> CompilationResult<Self> {
         Ok(match value_type {
-            Type::Integer(value_type) => IntegerValue::new(ir, value_type.is_signed).into(),
-            Type::Float(_) => FloatValue::new(ir).into(),
-            Type::Bool => BoolValue::new(ir).into(),
+            Type::Integer(value_type) => IntegerValue::new(value_ir, value_type.is_signed).into(),
+            Type::Float(_) => FloatValue::new(value_ir).into(),
+            Type::Bool => BoolValue::new(value_ir).into(),
         })
     }
 

@@ -1,9 +1,5 @@
-use inkwell::context::Context;
-
 use crate::errors::{CompilationError, CompilationResult};
 use crate::types::Type;
-
-type FloatTypeIR<'ctx> = inkwell::types::FloatType<'ctx>;
 
 #[derive(Clone, PartialEq, PartialOrd)]
 pub enum FloatType {
@@ -28,13 +24,6 @@ impl FloatType {
                 }
             }
             _ => Err(CompilationError::TypeMismatch),
-        }
-    }
-
-    pub fn to_ir<'ctx>(&self, context: &'ctx Context) -> FloatTypeIR<'ctx> {
-        match self {
-            FloatType::F32 => context.f32_type(),
-            FloatType::F64 => context.f64_type(),
         }
     }
 }
