@@ -1,13 +1,4 @@
-use crate::basic_block::BasicBlock;
-use crate::constant::Constant;
-use crate::definition::Definition;
-use crate::expression::Expression;
-use crate::float_type::FloatType;
-use crate::function::{Function, FunctionArgument, FunctionSignature};
-use crate::integer_type::{IntegerType, IntegerTypeSize};
-use crate::module::Module;
-use crate::statement::Statement;
-use crate::types::Type;
+use crate::ast::*;
 
 grammar;
 

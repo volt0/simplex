@@ -1,6 +1,7 @@
 use crate::parser::grammar::ModuleParser;
 use crate::translator::Translator;
 
+mod ast;
 mod basic_block;
 mod bool_value;
 mod constant;
