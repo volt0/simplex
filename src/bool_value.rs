@@ -3,7 +3,6 @@ use inkwell::values::{AnyValueEnum, IntValue};
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::expression_translator::ExpressionTranslator;
-use crate::integer_type::IntegerType;
 use crate::integer_value::{IntegerValue, IntegerValueType};
 use crate::value::Value;
 
@@ -34,10 +33,9 @@ impl<'ctx> BoolValue<'ctx> {
 
     pub fn to_integer(
         &self,
-        value_type: &IntegerType,
+        value_type: IntegerValueType<'ctx>,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<IntegerValue<'ctx>> {
-        let value_type = IntegerValueType::new(value_type, expr_translator);
         let builder = expr_translator.builder();
         Ok(IntegerValue {
             ir: builder.build_int_z_extend(self.ir, value_type.ir, "")?,

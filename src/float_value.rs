@@ -1,3 +1,4 @@
+use inkwell::context::Context;
 use inkwell::values::AnyValueEnum;
 
 use crate::errors::{CompilationError, CompilationResult};
@@ -37,10 +38,9 @@ impl<'ctx> FloatValue<'ctx> {
 
     pub fn from_value(
         value: &Value<'ctx>,
-        expr_type: &FloatType,
+        expr_type: FloatValueType<'ctx>,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
-        let expr_type = FloatValueType::new(expr_type, expr_translator);
         Ok(match value {
             Value::Float(value) => value.extend_to(expr_type, expr_translator)?,
             Value::Integer(value) => value.to_float(expr_translator)?,
@@ -53,10 +53,6 @@ impl<'ctx> FloatValue<'ctx> {
         FloatValueType {
             ir: self.ir.get_type(),
         }
-    }
-
-    pub fn value_type(&self) -> FloatType {
-        self.type_of().into()
     }
 
     pub fn binary_operation(
@@ -116,6 +112,7 @@ impl<'ctx> FloatValue<'ctx> {
 }
 
 #[repr(transparent)]
+#[derive(Clone)]
 pub struct FloatValueType<'ctx> {
     pub ir: FloatTypeIR<'ctx>,
 }
@@ -131,11 +128,7 @@ impl<'ctx> Into<FloatType> for FloatValueType<'ctx> {
 }
 
 impl<'ctx> FloatValueType<'ctx> {
-    pub fn new(
-        type_spec: &FloatType,
-        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
-    ) -> Self {
-        let context = expr_translator.context();
+    pub fn new(type_spec: &FloatType, context: &'ctx Context) -> Self {
         FloatValueType {
             ir: match type_spec {
                 FloatType::F32 => context.f32_type(),

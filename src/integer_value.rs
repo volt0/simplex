@@ -1,3 +1,4 @@
+use inkwell::context::Context;
 use inkwell::types::IntType;
 use inkwell::values::{AnyValueEnum, IntValue};
 use inkwell::IntPredicate;
@@ -8,7 +9,6 @@ use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::expression_translator::ExpressionTranslator;
 use crate::float_value::FloatValue;
 use crate::integer_type::{IntegerType, IntegerTypeSize};
-use crate::types::Type;
 use crate::value::Value;
 
 #[derive(Clone)]
@@ -39,7 +39,7 @@ impl<'ctx> IntegerValue<'ctx> {
 
     pub fn from_value(
         value: &Value<'ctx>,
-        expr_type: &IntegerType,
+        expr_type: IntegerValueType<'ctx>,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         Ok(match value {
@@ -66,14 +66,13 @@ impl<'ctx> IntegerValue<'ctx> {
     ) -> CompilationResult<BoolValue<'ctx>> {
         let builder = expr_translator.builder();
         let type_ir = self.ir.get_type();
-        Ok(BoolValue {
-            ir: builder.build_int_compare(
-                IntPredicate::NE,
-                self.ir,
-                type_ir.const_int(0, false),
-                "",
-            )?,
-        })
+        let result_ir = builder.build_int_compare(
+            IntPredicate::NE,
+            self.ir,
+            type_ir.const_int(0, false),
+            "",
+        )?;
+        Ok(BoolValue { ir: result_ir })
     }
 
     pub fn to_float(
@@ -94,7 +93,7 @@ impl<'ctx> IntegerValue<'ctx> {
             builder.build_unsigned_int_to_float(self.ir, result_type_ir, "")?
         };
 
-        Ok(FloatValue { ir: result_ir }.into())
+        Ok(FloatValue { ir: result_ir })
     }
 
     #[inline(always)]
@@ -102,14 +101,6 @@ impl<'ctx> IntegerValue<'ctx> {
         IntegerValueType {
             ir: self.ir.get_type(),
             is_signed: self.is_signed,
-        }
-    }
-
-    pub fn value_type(&self) -> IntegerType {
-        let value_type = self.type_of();
-        IntegerType {
-            is_signed: self.is_signed,
-            width: value_type.width(),
         }
     }
 
@@ -181,12 +172,10 @@ impl<'ctx> IntegerValue<'ctx> {
 
     fn extend_to(
         &self,
-        target_type: &IntegerType,
+        target_type: IntegerValueType<'ctx>,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         let self_type = self.type_of();
-        let target_type = IntegerValueType::new(target_type, expr_translator);
-
         let is_compatible = if self_type.is_signed == target_type.is_signed {
             self_type.width() <= target_type.width()
         } else if target_type.is_signed && !self_type.is_signed {
@@ -213,26 +202,23 @@ impl<'ctx> IntegerValue<'ctx> {
     }
 }
 
+#[derive(Clone)]
 pub struct IntegerValueType<'ctx> {
     pub ir: IntType<'ctx>,
     pub is_signed: bool,
 }
 
-impl<'ctx> Into<Type> for IntegerValueType<'ctx> {
-    fn into(self) -> Type {
-        Type::Integer(IntegerType {
+impl<'ctx> Into<IntegerType> for IntegerValueType<'ctx> {
+    fn into(self) -> IntegerType {
+        IntegerType {
             is_signed: self.is_signed,
             width: self.width(),
-        })
+        }
     }
 }
 
 impl<'ctx> IntegerValueType<'ctx> {
-    pub fn new(
-        type_spec: &IntegerType,
-        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
-    ) -> Self {
-        let context = expr_translator.context();
+    pub fn new(type_spec: &IntegerType, context: &'ctx Context) -> Self {
         IntegerValueType {
             ir: match type_spec.width {
                 IntegerTypeSize::I8 => context.i8_type(),
