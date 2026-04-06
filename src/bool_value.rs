@@ -4,7 +4,7 @@ use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::expression_translator::ExpressionTranslator;
 use crate::integer_type::IntegerType;
-use crate::integer_value::IntegerValue;
+use crate::integer_value::{integer_type_to_ir, IntegerValue};
 use crate::value::Value;
 
 #[derive(Clone)]
@@ -34,12 +34,13 @@ impl<'ctx> BoolValue<'ctx> {
 
     pub fn to_integer(
         &self,
-        value_type: IntegerType<'ctx>,
+        value_type: &IntegerType,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<IntegerValue<'ctx>> {
+        let value_type_ir = integer_type_to_ir(value_type, expr_translator.context());
         let builder = expr_translator.builder();
         Ok(IntegerValue {
-            ir: builder.build_int_z_extend(self.ir, value_type.ir, "")?,
+            ir: builder.build_int_z_extend(self.ir, value_type_ir, "")?,
             is_signed: value_type.is_signed,
         })
     }

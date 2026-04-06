@@ -36,7 +36,7 @@ impl<'ctx> FloatValue<'ctx> {
 
     pub fn from_value(
         value: &Value<'ctx>,
-        expr_type: FloatType<'ctx>,
+        expr_type: &FloatType,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         Ok(match value {
@@ -47,9 +47,12 @@ impl<'ctx> FloatValue<'ctx> {
     }
 
     #[inline(always)]
-    pub fn type_of(&self) -> FloatType<'ctx> {
-        FloatType {
-            ir: self.ir.get_type(),
+    fn type_of(&self) -> FloatType {
+        let type_ir = self.ir.get_type();
+        match type_ir.get_bit_width() {
+            32 => FloatType::F32,
+            64 => FloatType::F64,
+            width => panic!("Invalid float type width: {}", width),
         }
     }
 
@@ -94,14 +97,20 @@ impl<'ctx> FloatValue<'ctx> {
 
     fn extend_to(
         &self,
-        target_type: FloatType<'ctx>,
+        target_type: &FloatType,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
-        let self_width = self.ir.get_type().get_bit_width();
-        let target_width = target_type.ir.get_bit_width();
+        let context = expr_translator.context();
+        let target_type_ir = match target_type {
+            FloatType::F32 => context.f32_type(),
+            FloatType::F64 => context.f64_type(),
+        };
+
+        let self_width = self.type_of();
+        let target_width = target_type.clone();
         if self_width <= target_width {
             let builder = expr_translator.builder();
-            let result_ir = builder.build_float_ext(self.ir, target_type.ir, "")?;
+            let result_ir = builder.build_float_ext(self.ir, target_type_ir, "")?;
             Ok(FloatValue { ir: result_ir })
         } else {
             Err(CompilationError::TypeMismatch)

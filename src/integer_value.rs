@@ -1,3 +1,5 @@
+use inkwell::context::Context;
+use inkwell::types::IntType;
 use inkwell::values::{AnyValueEnum, IntValue};
 use inkwell::IntPredicate;
 
@@ -37,7 +39,7 @@ impl<'ctx> IntegerValue<'ctx> {
 
     pub fn from_value(
         value: &Value<'ctx>,
-        expr_type: IntegerType<'ctx>,
+        expr_type: &IntegerType,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
         Ok(match value {
@@ -78,7 +80,7 @@ impl<'ctx> IntegerValue<'ctx> {
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<FloatValue<'ctx>> {
         let context = expr_translator.context();
-        let result_type_ir = match self.type_of().width() {
+        let result_type_ir = match self.bit_width() {
             IntegerTypeWidth::I8 | IntegerTypeWidth::I16 => context.f32_type(),
             IntegerTypeWidth::I32 => context.f64_type(),
             _ => return Err(CompilationError::TypeMismatch),
@@ -95,10 +97,14 @@ impl<'ctx> IntegerValue<'ctx> {
     }
 
     #[inline(always)]
-    pub fn type_of(&self) -> IntegerType<'ctx> {
-        IntegerType {
-            ir: self.ir.get_type(),
-            is_signed: self.is_signed,
+    fn bit_width(&self) -> IntegerTypeWidth {
+        let type_ir = self.ir.get_type();
+        match type_ir.get_bit_width() {
+            8 => IntegerTypeWidth::I8,
+            16 => IntegerTypeWidth::I16,
+            32 => IntegerTypeWidth::I32,
+            64 => IntegerTypeWidth::I64,
+            width => panic!("Invalid integer type width: {}", width),
         }
     }
 
@@ -170,14 +176,13 @@ impl<'ctx> IntegerValue<'ctx> {
 
     fn extend_to(
         &self,
-        target_type: IntegerType<'ctx>,
+        target_type: &IntegerType,
         expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
     ) -> CompilationResult<Self> {
-        let self_type = self.type_of();
-        let is_compatible = if self_type.is_signed == target_type.is_signed {
-            self_type.width() <= target_type.width()
-        } else if target_type.is_signed && !self_type.is_signed {
-            self_type.width() < target_type.width()
+        let is_compatible = if self.is_signed == target_type.is_signed {
+            self.bit_width() <= target_type.width
+        } else if target_type.is_signed && !self.is_signed {
+            self.bit_width() < target_type.width
         } else {
             false
         };
@@ -186,16 +191,31 @@ impl<'ctx> IntegerValue<'ctx> {
             return Err(CompilationError::TypeMismatch);
         }
 
+        let context = expr_translator.context();
+        let tage_type_ir = integer_type_to_ir(target_type, context);
+
         let builder = expr_translator.builder();
         let result_ir = if target_type.is_signed {
-            builder.build_int_s_extend(self.ir, target_type.ir, "")?
+            builder.build_int_s_extend(self.ir, tage_type_ir, "")?
         } else {
-            builder.build_int_z_extend(self.ir, target_type.ir, "")?
+            builder.build_int_z_extend(self.ir, tage_type_ir, "")?
         };
 
         Ok(IntegerValue {
             ir: result_ir,
             is_signed: target_type.is_signed,
         })
+    }
+}
+
+pub fn integer_type_to_ir<'ctx>(
+    target_type: &IntegerType,
+    context: &'ctx Context,
+) -> IntType<'ctx> {
+    match target_type.width {
+        IntegerTypeWidth::I8 => context.i8_type(),
+        IntegerTypeWidth::I16 => context.i16_type(),
+        IntegerTypeWidth::I32 => context.i32_type(),
+        IntegerTypeWidth::I64 => context.i64_type(),
     }
 }
