@@ -57,9 +57,9 @@ impl<'ctx> IntegerValue<'ctx> {
         builder: &Builder<'ctx>,
         context: &'ctx Context,
     ) -> CompilationResult<FloatValue<'ctx>> {
-        let result_type_ir = match self.bit_width() {
-            IntegerTypeWidth::I8 | IntegerTypeWidth::I16 => context.f32_type(),
-            IntegerTypeWidth::I32 => context.f64_type(),
+        let result_type_ir = match self.ir.get_type().get_bit_width() {
+            8 | 16 => context.f32_type(),
+            32 => context.f64_type(),
             _ => return Err(CompilationError::TypeMismatch),
         };
 
@@ -70,18 +70,6 @@ impl<'ctx> IntegerValue<'ctx> {
         };
 
         Ok(FloatValue::new(result_ir))
-    }
-
-    #[inline(always)]
-    fn bit_width(&self) -> IntegerTypeWidth {
-        let type_ir = self.ir.get_type();
-        match type_ir.get_bit_width() {
-            8 => IntegerTypeWidth::I8,
-            16 => IntegerTypeWidth::I16,
-            32 => IntegerTypeWidth::I32,
-            64 => IntegerTypeWidth::I64,
-            width => panic!("Invalid integer type width: {}", width),
-        }
     }
 
     pub fn binary_operation(
@@ -154,10 +142,19 @@ impl<'ctx> IntegerValue<'ctx> {
         builder: &Builder<'ctx>,
         context: &'ctx Context,
     ) -> CompilationResult<Self> {
+        let current_type_ir = self.ir.get_type();
+        let current_type_width = match current_type_ir.get_bit_width() {
+            8 => IntegerTypeWidth::I8,
+            16 => IntegerTypeWidth::I16,
+            32 => IntegerTypeWidth::I32,
+            64 => IntegerTypeWidth::I64,
+            width => panic!("Invalid integer type width: {}", width),
+        };
+
         let is_compatible = if self.is_signed == target_type.is_signed {
-            self.bit_width() <= target_type.width
+            current_type_width <= target_type.width
         } else if target_type.is_signed && !self.is_signed {
-            self.bit_width() < target_type.width
+            current_type_width < target_type.width
         } else {
             false
         };
