@@ -54,7 +54,7 @@ impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
         for (i, arg) in func_signature.args.iter().enumerate() {
             let arg_ir = func_ir.get_nth_param(i as u32).unwrap().as_any_value_enum();
             let arg_type = &arg.value_type;
-            args_ir.insert(arg.name.clone(), Value::from_any_value(arg_ir, arg_type)?);
+            args_ir.insert(arg.name.clone(), Value::from_ir(arg_ir, arg_type)?);
         }
 
         Ok(Self {

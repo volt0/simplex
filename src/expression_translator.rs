@@ -4,9 +4,7 @@ use inkwell::values::{AnyValue, BasicMetadataValueEnum, BasicValueEnum};
 
 use crate::constant::Constant;
 use crate::errors::{CompilationError, CompilationResult};
-use crate::expression::{
-    BinaryOperationExpression, CallExpression, Expression, UnaryOperationExpression,
-};
+use crate::expression::{BinaryOperation, CallExpression, Expression, UnaryOperation};
 use crate::integer_value::IntegerValue;
 use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
@@ -40,43 +38,87 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         let value = match expr {
             Expression::LoadConstant(constant) => self.translate_constant(constant),
             Expression::LoadValue(name) => self.load_value(name),
-            Expression::BinaryOperation(expr) => self.translate_binary_operation(expr, expr_type),
-            Expression::UnaryOperation(expr) => self.translate_unary_operation(expr, expr_type),
+            Expression::BinaryOperation(expr) => {
+                let lhs = self.translate_expression(&expr.lhs, expr_type)?;
+                let rhs = self.translate_expression(&expr.rhs, expr_type)?;
+                self.translate_binary_operation(expr.op, &lhs, &rhs)
+            }
+            Expression::UnaryOperation(expr) => {
+                let value = self.translate_expression(&expr.arg, expr_type)?;
+                self.translate_unary_operation(expr.op, &value)
+            }
             Expression::Call(expr) => self.translate_call(expr),
         };
 
         if let Some(expr_type) = expr_type {
-            value?.validate_type(expr_type, self)
+            self.type_check(&value?, expr_type)
         } else {
             value
         }
     }
 
+    pub fn type_check(
+        &self,
+        value: &Value<'ctx>,
+        value_type: &Type,
+    ) -> CompilationResult<Value<'ctx>> {
+        let builder = self.builder();
+        let context = self.context();
+        Ok(match value_type {
+            Type::Integer(value_type) => match value {
+                Value::Integer(value) => value.extend(value_type, builder, context)?.into(),
+                Value::Bool(value) => value.to_integer(value_type, builder, context)?.into(),
+                _ => return Err(CompilationError::TypeMismatch),
+            },
+            Type::Float(value_type) => match value {
+                Value::Float(value) => value.extend(value_type, builder, context)?.into(),
+                Value::Integer(value) => value.to_float(builder, context)?.into(),
+                _ => return Err(CompilationError::TypeMismatch),
+            },
+            Type::Bool => match value {
+                Value::Integer(value) => value.to_bool(builder)?.into(),
+                Value::Bool(value) => Value::Bool(value.clone()),
+                _ => return Err(CompilationError::TypeMismatch),
+            },
+        })
+    }
+
     fn translate_constant(&self, constant: &Constant) -> CompilationResult<Value<'ctx>> {
-        match constant {
+        let context = self.context();
+        Ok(match constant {
             Constant::Integer(value) => {
-                Ok(Value::Integer(IntegerValue::from_constant(*value, self)))
+                Value::Integer(IntegerValue::from_constant(*value, context))
             }
-        }
+        })
     }
 
     fn translate_binary_operation(
         &self,
-        expr: &BinaryOperationExpression,
-        expr_type: Option<&Type>,
+        op: BinaryOperation,
+        lhs: &Value<'ctx>,
+        rhs: &Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
-        let lhs = self.translate_expression(&expr.lhs, expr_type)?;
-        let rhs = self.translate_expression(&expr.rhs, expr_type)?;
-        lhs.binary_operation(expr.op, &rhs, self)
+        let builder = self.builder();
+        match lhs {
+            Value::Integer(value) => value.binary_operation(op, rhs, builder),
+            Value::Float(value) => value.binary_operation(op, rhs, builder),
+            Value::Bool(value) => value.binary_operation(op, rhs, builder),
+            _ => Err(CompilationError::InvalidOperation),
+        }
     }
 
     fn translate_unary_operation(
         &self,
-        expr: &UnaryOperationExpression,
-        expr_type: Option<&Type>,
+        op: UnaryOperation,
+        value: &Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
-        let arg = self.translate_expression(&expr.arg, expr_type)?;
-        arg.unary_operation(expr.op, self)
+        let builder = self.builder();
+        match value {
+            Value::Integer(value) => value.unary_operation(op, builder),
+            Value::Float(value) => value.unary_operation(op, builder),
+            Value::Bool(value) => value.unary_operation(op, builder),
+            _ => Err(CompilationError::InvalidOperation),
+        }
     }
 
     fn translate_call(&self, expr: &CallExpression) -> CompilationResult<Value<'ctx>> {
@@ -97,6 +139,6 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         let builder = self.builder();
         let callee_ir = callee.clone().into();
         let result_ir = builder.build_call(callee_ir, args_ir.as_slice(), "")?;
-        Value::from_any_value(result_ir.as_any_value_enum(), &callee.signature.return_type)
+        Value::from_ir(result_ir.as_any_value_enum(), &callee.signature.return_type)
     }
 }

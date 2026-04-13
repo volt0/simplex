@@ -1,15 +1,16 @@
-use inkwell::values::{AnyValueEnum, IntValue};
+use inkwell::builder::Builder;
+use inkwell::context::Context;
+use inkwell::values::IntValue;
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
-use crate::expression_translator::ExpressionTranslator;
 use crate::integer_type::IntegerType;
 use crate::integer_value::{integer_type_to_ir, IntegerValue};
 use crate::value::Value;
 
 #[derive(Clone)]
 pub struct BoolValue<'ctx> {
-    pub ir: IntValue<'ctx>,
+    ir: IntValue<'ctx>,
 }
 
 impl<'ctx> Into<Value<'ctx>> for BoolValue<'ctx> {
@@ -25,31 +26,28 @@ impl<'ctx> Into<IntValue<'ctx>> for BoolValue<'ctx> {
 }
 
 impl<'ctx> BoolValue<'ctx> {
-    pub fn new(ir: AnyValueEnum<'ctx>) -> Self {
-        if let AnyValueEnum::IntValue(ir) = ir {
-            return BoolValue { ir };
-        }
-        panic!("Expected BoolValue, got {:?}", ir);
+    pub fn new(ir: IntValue<'ctx>) -> Self {
+        BoolValue { ir }
     }
 
     pub fn to_integer(
         &self,
         value_type: &IntegerType,
-        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        builder: &Builder<'ctx>,
+        context: &'ctx Context,
     ) -> CompilationResult<IntegerValue<'ctx>> {
-        let value_type_ir = integer_type_to_ir(value_type, expr_translator.context());
-        let builder = expr_translator.builder();
-        Ok(IntegerValue {
-            ir: builder.build_int_z_extend(self.ir, value_type_ir, "")?,
-            is_signed: value_type.is_signed,
-        })
+        let value_type_ir = integer_type_to_ir(value_type, context);
+        Ok(IntegerValue::new(
+            builder.build_int_z_extend(self.ir, value_type_ir, "")?,
+            value_type.is_signed,
+        ))
     }
 
     pub fn binary_operation(
         &self,
         op: BinaryOperation,
         other: &Value<'ctx>,
-        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        builder: &Builder<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let lhs_ir = self.ir;
         let rhs_ir = match other {
@@ -57,7 +55,6 @@ impl<'ctx> BoolValue<'ctx> {
             _ => return Err(CompilationError::TypeMismatch),
         };
 
-        let builder = expr_translator.builder();
         Ok(BoolValue {
             ir: match op {
                 BinaryOperation::BitAnd => builder.build_and(lhs_ir, rhs_ir, "")?,
@@ -72,9 +69,8 @@ impl<'ctx> BoolValue<'ctx> {
     pub fn unary_operation(
         &self,
         op: UnaryOperation,
-        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        builder: &Builder<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
-        let builder = expr_translator.builder();
         Ok(BoolValue {
             ir: match op {
                 UnaryOperation::BitNot => builder.build_not(self.ir, "")?,
