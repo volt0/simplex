@@ -32,9 +32,9 @@ impl<'ctx> FloatValue<'ctx> {
 
     pub fn binary_operation(
         self,
+        builder: &Builder<'ctx>,
         op: BinaryOperation,
         other: FloatValue<'ctx>,
-        builder: &Builder<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let lhs_ir = self.ir;
         let rhs_ir = other.ir;
@@ -50,8 +50,8 @@ impl<'ctx> FloatValue<'ctx> {
 
     pub fn unary_operation(
         self,
-        op: UnaryOperation,
         builder: &Builder<'ctx>,
+        op: UnaryOperation,
     ) -> CompilationResult<Value<'ctx>> {
         let result_ir = match op {
             UnaryOperation::Plus => self.ir.clone(),
@@ -63,8 +63,8 @@ impl<'ctx> FloatValue<'ctx> {
 
     pub fn extend(
         self,
-        target_type: &FloatType<'ctx>,
         builder: &Builder<'ctx>,
+        target_type: &FloatType<'ctx>,
     ) -> CompilationResult<Self> {
         let self_type_ir = self.ir.get_type();
         if self_type_ir.get_bit_width() > target_type.bit_width() {

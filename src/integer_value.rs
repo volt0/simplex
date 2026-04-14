@@ -34,7 +34,7 @@ impl<'ctx> IntegerValue<'ctx> {
         IntegerValue { ir, is_signed }
     }
 
-    pub fn from_constant(value: i32, context: &'ctx Context) -> Self {
+    pub fn from_constant(context: &'ctx Context, value: i32) -> Self {
         IntegerValue {
             ir: context.i32_type().const_int(value as u64, true),
             is_signed: true,
@@ -58,8 +58,8 @@ impl<'ctx> IntegerValue<'ctx> {
 
     pub fn to_float(
         self,
-        value_type: &FloatType<'ctx>,
         builder: &Builder<'ctx>,
+        value_type: &FloatType<'ctx>,
     ) -> CompilationResult<FloatValue<'ctx>> {
         let result_type_ir = value_type.ir();
         let result_ir = if self.is_signed {
@@ -73,9 +73,9 @@ impl<'ctx> IntegerValue<'ctx> {
 
     pub fn binary_operation(
         self,
+        builder: &Builder<'ctx>,
         op: BinaryOperation,
         other: IntegerValue<'ctx>,
-        builder: &Builder<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let lhs_ir = self.ir;
         let rhs_ir = other.ir;
@@ -115,8 +115,8 @@ impl<'ctx> IntegerValue<'ctx> {
 
     pub fn unary_operation(
         self,
-        op: UnaryOperation,
         builder: &Builder<'ctx>,
+        op: UnaryOperation,
     ) -> CompilationResult<Value<'ctx>> {
         let result_ir = match op {
             UnaryOperation::Plus => self.ir,
@@ -133,8 +133,8 @@ impl<'ctx> IntegerValue<'ctx> {
 
     pub fn extend(
         self,
-        target_type: &IntegerType<'ctx>,
         builder: &Builder<'ctx>,
+        target_type: &IntegerType<'ctx>,
     ) -> CompilationResult<Self> {
         if !self.get_type().is_compatible(target_type) {
             return Err(CompilationError::TypeMismatch);

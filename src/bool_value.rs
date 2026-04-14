@@ -31,8 +31,8 @@ impl<'ctx> BoolValue<'ctx> {
 
     pub fn to_integer(
         self,
-        value_type: &IntegerType<'ctx>,
         builder: &Builder<'ctx>,
+        value_type: &IntegerType<'ctx>,
     ) -> CompilationResult<IntegerValue<'ctx>> {
         let value_type_ir = value_type.ir().clone();
         let value_ir = builder.build_int_z_extend(self.ir, value_type_ir, "")?;
@@ -41,9 +41,9 @@ impl<'ctx> BoolValue<'ctx> {
 
     pub fn binary_operation(
         self,
+        builder: &Builder<'ctx>,
         op: BinaryOperation,
         other: BoolValue<'ctx>,
-        builder: &Builder<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let lhs_ir = self.ir;
         let rhs_ir = other.ir;
@@ -58,8 +58,8 @@ impl<'ctx> BoolValue<'ctx> {
 
     pub fn unary_operation(
         self,
-        op: UnaryOperation,
         builder: &Builder<'ctx>,
+        op: UnaryOperation,
     ) -> CompilationResult<Value<'ctx>> {
         let result_ir = match op {
             UnaryOperation::BitNot => builder.build_not(self.ir, "")?,
