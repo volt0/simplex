@@ -31,17 +31,13 @@ impl<'ctx> FloatValue<'ctx> {
     }
 
     pub fn binary_operation(
-        &self,
+        self,
         op: BinaryOperation,
-        other: &Value<'ctx>,
+        other: FloatValue<'ctx>,
         builder: &Builder<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let lhs_ir = self.ir;
-        let rhs_ir = match other {
-            Value::Float(other) => other.ir,
-            _ => return Err(CompilationError::TypeMismatch),
-        };
-
+        let rhs_ir = other.ir;
         let result_ir = match op {
             BinaryOperation::Add => builder.build_float_add(lhs_ir, rhs_ir, "")?,
             BinaryOperation::Sub => builder.build_float_sub(lhs_ir, rhs_ir, "")?,
@@ -49,12 +45,11 @@ impl<'ctx> FloatValue<'ctx> {
             BinaryOperation::Div => builder.build_float_div(lhs_ir, rhs_ir, "")?,
             _ => return Err(CompilationError::InvalidOperation),
         };
-
-        Ok(Value::Float(FloatValue { ir: result_ir }))
+        Ok(Self { ir: result_ir }.into())
     }
 
     pub fn unary_operation(
-        &self,
+        self,
         op: UnaryOperation,
         builder: &Builder<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
@@ -63,22 +58,21 @@ impl<'ctx> FloatValue<'ctx> {
             UnaryOperation::Minus => builder.build_float_neg(self.ir, "")?,
             _ => return Err(CompilationError::InvalidOperation),
         };
-
-        Ok(Value::Float(FloatValue { ir: result_ir }))
+        Ok(Self { ir: result_ir }.into())
     }
 
     pub fn extend(
-        &self,
+        self,
         target_type: &FloatType<'ctx>,
         builder: &Builder<'ctx>,
     ) -> CompilationResult<Self> {
         let self_type_ir = self.ir.get_type();
-        if self_type_ir.get_bit_width() <= target_type.bit_width() {
-            let result_type_ir = target_type.ir();
-            let result_ir = builder.build_float_ext(self.ir, result_type_ir.clone(), "")?;
-            Ok(FloatValue { ir: result_ir })
-        } else {
-            Err(CompilationError::TypeMismatch)
+        if self_type_ir.get_bit_width() > target_type.bit_width() {
+            return Err(CompilationError::TypeMismatch);
         }
+
+        let result_type_ir = target_type.ir();
+        let result_ir = builder.build_float_ext(self.ir, result_type_ir.clone(), "")?;
+        Ok(Self { ir: result_ir })
     }
 }

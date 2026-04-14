@@ -41,17 +41,17 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
             Expression::BinaryOperation(expr) => {
                 let lhs = self.translate_expression(&expr.lhs, expr_type)?;
                 let rhs = self.translate_expression(&expr.rhs, expr_type)?;
-                self.translate_binary_operation(expr.op, &lhs, &rhs)
+                self.translate_binary_operation(expr.op, lhs, rhs)
             }
             Expression::UnaryOperation(expr) => {
                 let value = self.translate_expression(&expr.arg, expr_type)?;
-                self.translate_unary_operation(expr.op, &value)
+                self.translate_unary_operation(expr.op, value)
             }
             Expression::Call(expr) => self.translate_call(expr),
         };
 
         if let Some(expr_type) = expr_type {
-            self.type_check(&value?, expr_type)
+            self.type_check(value?, expr_type)
         } else {
             value
         }
@@ -59,11 +59,10 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
 
     pub fn type_check(
         &self,
-        value: &Value<'ctx>,
+        value: Value<'ctx>,
         value_type: &Type<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let builder = self.builder();
-        let context = self.context();
         Ok(match value_type {
             Type::Integer(value_type) => match value {
                 Value::Integer(value) => value.extend(value_type, builder)?.into(),
@@ -72,12 +71,12 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
             },
             Type::Float(value_type) => match value {
                 Value::Float(value) => value.extend(value_type, builder)?.into(),
-                Value::Integer(value) => value.to_float(builder, context)?.into(),
+                Value::Integer(value) => value.to_float(value_type, builder)?.into(),
                 _ => return Err(CompilationError::TypeMismatch),
             },
             Type::Bool => match value {
-                Value::Integer(value) => value.to_bool(builder)?.into(),
                 Value::Bool(value) => Value::Bool(value.clone()),
+                Value::Integer(value) => value.to_bool(builder)?.into(),
                 _ => return Err(CompilationError::TypeMismatch),
             },
         })
@@ -95,14 +94,14 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
     fn translate_binary_operation(
         &self,
         op: BinaryOperation,
-        lhs: &Value<'ctx>,
-        rhs: &Value<'ctx>,
+        lhs: Value<'ctx>,
+        rhs: Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let builder = self.builder();
         match lhs {
-            Value::Integer(value) => value.binary_operation(op, rhs, builder),
-            Value::Float(value) => value.binary_operation(op, rhs, builder),
-            Value::Bool(value) => value.binary_operation(op, rhs, builder),
+            Value::Integer(value) => value.binary_operation(op, rhs.into_integer(), builder),
+            Value::Float(value) => value.binary_operation(op, rhs.into_float(), builder),
+            Value::Bool(value) => value.binary_operation(op, rhs.into_bool(), builder),
             _ => Err(CompilationError::InvalidOperation),
         }
     }
@@ -110,7 +109,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
     fn translate_unary_operation(
         &self,
         op: UnaryOperation,
-        value: &Value<'ctx>,
+        value: Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let builder = self.builder();
         match value {

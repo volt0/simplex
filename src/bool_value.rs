@@ -30,7 +30,7 @@ impl<'ctx> BoolValue<'ctx> {
     }
 
     pub fn to_integer(
-        &self,
+        self,
         value_type: &IntegerType<'ctx>,
         builder: &Builder<'ctx>,
     ) -> CompilationResult<IntegerValue<'ctx>> {
@@ -40,39 +40,31 @@ impl<'ctx> BoolValue<'ctx> {
     }
 
     pub fn binary_operation(
-        &self,
+        self,
         op: BinaryOperation,
-        other: &Value<'ctx>,
+        other: BoolValue<'ctx>,
         builder: &Builder<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let lhs_ir = self.ir;
-        let rhs_ir = match other {
-            Value::Bool(other) => other.ir,
-            _ => return Err(CompilationError::TypeMismatch),
+        let rhs_ir = other.ir;
+        let result_ir = match op {
+            BinaryOperation::BitAnd => builder.build_and(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::BitXor => builder.build_xor(lhs_ir, rhs_ir, "")?,
+            BinaryOperation::BitOr => builder.build_or(lhs_ir, rhs_ir, "")?,
+            _ => return Err(CompilationError::InvalidOperation),
         };
-
-        Ok(BoolValue {
-            ir: match op {
-                BinaryOperation::BitAnd => builder.build_and(lhs_ir, rhs_ir, "")?,
-                BinaryOperation::BitXor => builder.build_xor(lhs_ir, rhs_ir, "")?,
-                BinaryOperation::BitOr => builder.build_or(lhs_ir, rhs_ir, "")?,
-                _ => return Err(CompilationError::InvalidOperation),
-            },
-        }
-        .into())
+        Ok(Self { ir: result_ir }.into())
     }
 
     pub fn unary_operation(
-        &self,
+        self,
         op: UnaryOperation,
         builder: &Builder<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
-        Ok(BoolValue {
-            ir: match op {
-                UnaryOperation::BitNot => builder.build_not(self.ir, "")?,
-                _ => return Err(CompilationError::InvalidOperation),
-            },
-        }
-        .into())
+        let result_ir = match op {
+            UnaryOperation::BitNot => builder.build_not(self.ir, "")?,
+            _ => return Err(CompilationError::InvalidOperation),
+        };
+        Ok(Self { ir: result_ir }.into())
     }
 }

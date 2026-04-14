@@ -6,6 +6,7 @@ use inkwell::IntPredicate;
 use crate::bool_value::BoolValue;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::float_type::FloatType;
 use crate::float_value::FloatValue;
 use crate::integer_type::IntegerType;
 use crate::value::Value;
@@ -44,7 +45,7 @@ impl<'ctx> IntegerValue<'ctx> {
         IntegerType::new(self.ir.get_type(), self.is_signed)
     }
 
-    pub fn to_bool(&self, builder: &Builder<'ctx>) -> CompilationResult<BoolValue<'ctx>> {
+    pub fn to_bool(self, builder: &Builder<'ctx>) -> CompilationResult<BoolValue<'ctx>> {
         let type_ir = self.ir.get_type();
         let result_ir = builder.build_int_compare(
             IntPredicate::NE,
@@ -56,37 +57,28 @@ impl<'ctx> IntegerValue<'ctx> {
     }
 
     pub fn to_float(
-        &self,
+        self,
+        value_type: &FloatType<'ctx>,
         builder: &Builder<'ctx>,
-        context: &'ctx Context,
     ) -> CompilationResult<FloatValue<'ctx>> {
-        let result_type_ir = match self.ir.get_type().get_bit_width() {
-            8 | 16 => context.f32_type(),
-            32 => context.f64_type(),
-            _ => return Err(CompilationError::TypeMismatch),
-        };
-
+        let result_type_ir = value_type.ir();
         let result_ir = if self.is_signed {
-            builder.build_signed_int_to_float(self.ir, result_type_ir, "")?
+            builder.build_signed_int_to_float(self.ir, result_type_ir.clone(), "")?
         } else {
-            builder.build_unsigned_int_to_float(self.ir, result_type_ir, "")?
+            builder.build_unsigned_int_to_float(self.ir, result_type_ir.clone(), "")?
         };
 
         Ok(FloatValue::new(result_ir))
     }
 
     pub fn binary_operation(
-        &self,
+        self,
         op: BinaryOperation,
-        other: &Value<'ctx>,
+        other: IntegerValue<'ctx>,
         builder: &Builder<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let lhs_ir = self.ir;
-        let rhs_ir = match other {
-            Value::Integer(other) => other.ir,
-            _ => return Err(CompilationError::TypeMismatch),
-        };
-
+        let rhs_ir = other.ir;
         let result_ir = match op {
             BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, ""),
             BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, ""),
@@ -114,7 +106,7 @@ impl<'ctx> IntegerValue<'ctx> {
             }
         };
 
-        Ok(IntegerValue {
+        Ok(Self {
             ir: result_ir?,
             is_signed: self.is_signed,
         }
@@ -122,7 +114,7 @@ impl<'ctx> IntegerValue<'ctx> {
     }
 
     pub fn unary_operation(
-        &self,
+        self,
         op: UnaryOperation,
         builder: &Builder<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
@@ -132,7 +124,7 @@ impl<'ctx> IntegerValue<'ctx> {
             UnaryOperation::BitNot => builder.build_not(self.ir, "")?,
         };
 
-        Ok(IntegerValue {
+        Ok(Self {
             ir: result_ir,
             is_signed: self.is_signed,
         }
@@ -140,7 +132,7 @@ impl<'ctx> IntegerValue<'ctx> {
     }
 
     pub fn extend(
-        &self,
+        self,
         target_type: &IntegerType<'ctx>,
         builder: &Builder<'ctx>,
     ) -> CompilationResult<Self> {

@@ -25,6 +25,30 @@ impl<'ctx> Value<'ctx> {
             Type::Bool => BoolValue::new(value_ir.into_int_value()).into(),
         })
     }
+
+    #[inline]
+    pub fn into_integer(self) -> IntegerValue<'ctx> {
+        match self {
+            Value::Integer(value) => value,
+            _ => panic!("Attempted to convert non-integer value to integer"),
+        }
+    }
+
+    #[inline]
+    pub fn into_float(self) -> FloatValue<'ctx> {
+        match self {
+            Value::Float(value) => value,
+            _ => panic!("Attempted to convert non-float value to float"),
+        }
+    }
+
+    #[inline]
+    pub fn into_bool(self) -> BoolValue<'ctx> {
+        match self {
+            Value::Bool(value) => value,
+            _ => panic!("Attempted to convert non-bool value to bool"),
+        }
+    }
 }
 
 impl<'ctx> TryInto<BasicValueEnum<'ctx>> for Value<'ctx> {
