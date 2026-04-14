@@ -1,11 +1,10 @@
 use inkwell::builder::Builder;
-use inkwell::context::Context;
 use inkwell::values::IntValue;
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::integer_type::IntegerType;
-use crate::integer_value::{integer_type_to_ir, IntegerValue};
+use crate::integer_value::IntegerValue;
 use crate::value::Value;
 
 #[derive(Clone)]
@@ -32,15 +31,12 @@ impl<'ctx> BoolValue<'ctx> {
 
     pub fn to_integer(
         &self,
-        value_type: &IntegerType,
+        value_type: &IntegerType<'ctx>,
         builder: &Builder<'ctx>,
-        context: &'ctx Context,
     ) -> CompilationResult<IntegerValue<'ctx>> {
-        let value_type_ir = integer_type_to_ir(value_type, context);
-        Ok(IntegerValue::new(
-            builder.build_int_z_extend(self.ir, value_type_ir, "")?,
-            value_type.is_signed,
-        ))
+        let value_type_ir = value_type.ir().clone();
+        let value_ir = builder.build_int_z_extend(self.ir, value_type_ir, "")?;
+        Ok(IntegerValue::new(value_ir, value_type.is_signed()))
     }
 
     pub fn binary_operation(

@@ -19,7 +19,7 @@ impl<'ctx> Value<'ctx> {
     pub fn from_ir(value_ir: AnyValueEnum<'ctx>, value_type: &Type) -> CompilationResult<Self> {
         Ok(match value_type {
             Type::Integer(value_type) => {
-                IntegerValue::new(value_ir.into_int_value(), value_type.is_signed).into()
+                IntegerValue::new(value_ir.into_int_value(), value_type.is_signed()).into()
             }
             Type::Float(_) => FloatValue::new(value_ir.into_float_value()).into(),
             Type::Bool => BoolValue::new(value_ir.into_int_value()).into(),

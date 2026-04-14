@@ -9,6 +9,7 @@ use crate::errors::CompilationResult;
 use crate::function::{FunctionSignature, FunctionVisitor};
 use crate::module_translator::ModuleTranslator;
 use crate::statement_translator::StatementTranslator;
+use crate::types::Type;
 use crate::value::Value;
 
 pub struct FunctionTranslator<'ctx, 'm> {
@@ -49,14 +50,14 @@ impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
         func_signature: &FunctionSignature,
         parent: &'m mut ModuleTranslator<'ctx>,
     ) -> CompilationResult<Self> {
-        let builder = parent.context().create_builder();
         let mut args_ir = HashMap::with_capacity(func_ir.count_params() as usize);
         for (i, arg) in func_signature.args.iter().enumerate() {
             let arg_ir = func_ir.get_nth_param(i as u32).unwrap().as_any_value_enum();
-            let arg_type = &arg.value_type;
-            args_ir.insert(arg.name.clone(), Value::from_ir(arg_ir, arg_type)?);
+            let arg_type = Type::new(parent.context(), arg.value_type.clone());
+            args_ir.insert(arg.name.clone(), Value::from_ir(arg_ir, &arg_type)?);
         }
 
+        let builder = parent.context().create_builder();
         Ok(Self {
             func_signature: func_signature.clone(),
             func_ir,

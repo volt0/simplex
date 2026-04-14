@@ -1,5 +1,4 @@
 use inkwell::builder::Builder;
-use inkwell::context::Context;
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
@@ -29,16 +28,6 @@ impl<'ctx> Into<FloatValueIR<'ctx>> for FloatValue<'ctx> {
 impl<'ctx> FloatValue<'ctx> {
     pub fn new(ir: FloatValueIR<'ctx>) -> Self {
         FloatValue { ir }
-    }
-
-    #[inline(always)]
-    fn type_of(&self) -> FloatType {
-        let type_ir = self.ir.get_type();
-        match type_ir.get_bit_width() {
-            32 => FloatType::F32,
-            64 => FloatType::F64,
-            width => panic!("Invalid float type width: {}", width),
-        }
     }
 
     pub fn binary_operation(
@@ -80,19 +69,13 @@ impl<'ctx> FloatValue<'ctx> {
 
     pub fn extend(
         &self,
-        target_type: &FloatType,
+        target_type: &FloatType<'ctx>,
         builder: &Builder<'ctx>,
-        context: &'ctx Context,
     ) -> CompilationResult<Self> {
-        let target_type_ir = match target_type {
-            FloatType::F32 => context.f32_type(),
-            FloatType::F64 => context.f64_type(),
-        };
-
-        let self_width = self.type_of();
-        let target_width = target_type.clone();
-        if self_width <= target_width {
-            let result_ir = builder.build_float_ext(self.ir, target_type_ir, "")?;
+        let self_type_ir = self.ir.get_type();
+        if self_type_ir.get_bit_width() <= target_type.bit_width() {
+            let result_type_ir = target_type.ir();
+            let result_ir = builder.build_float_ext(self.ir, result_type_ir.clone(), "")?;
             Ok(FloatValue { ir: result_ir })
         } else {
             Err(CompilationError::TypeMismatch)

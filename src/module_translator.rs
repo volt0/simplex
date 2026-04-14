@@ -8,7 +8,7 @@ use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 use inkwell::OptimizationLevel;
 
 use crate::errors::{CompilationError, CompilationResult};
-use crate::float_type::FloatType;
+use crate::float_type::FloatTypeWidth;
 use crate::function::Function;
 use crate::function_translator::FunctionTranslator;
 use crate::function_value::FunctionValue;
@@ -84,8 +84,8 @@ impl<'ctx> ModuleTranslator<'ctx> {
         let context = self.context();
         match type_spec {
             TypeSpec::Bool => context.bool_type().as_basic_type_enum(),
-            TypeSpec::Integer(integer_type) => {
-                let type_ir = match integer_type.width {
+            TypeSpec::Integer { width, .. } => {
+                let type_ir = match width {
                     IntegerTypeWidth::I8 => context.i8_type(),
                     IntegerTypeWidth::I16 => context.i16_type(),
                     IntegerTypeWidth::I32 => context.i32_type(),
@@ -93,10 +93,10 @@ impl<'ctx> ModuleTranslator<'ctx> {
                 };
                 type_ir.as_basic_type_enum()
             }
-            TypeSpec::Float(float_type) => {
-                let type_ir = match float_type {
-                    FloatType::F32 => context.f32_type(),
-                    FloatType::F64 => context.f64_type(),
+            TypeSpec::Float { width } => {
+                let type_ir = match width {
+                    FloatTypeWidth::F32 => context.f32_type(),
+                    FloatTypeWidth::F64 => context.f64_type(),
                 };
                 type_ir.as_basic_type_enum()
             }

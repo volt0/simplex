@@ -1,6 +1,5 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
-use inkwell::types::IntType;
 use inkwell::values::IntValue;
 use inkwell::IntPredicate;
 
@@ -8,7 +7,7 @@ use crate::bool_value::BoolValue;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::float_value::FloatValue;
-use crate::integer_type::{IntegerType, IntegerTypeWidth};
+use crate::integer_type::IntegerType;
 use crate::value::Value;
 
 #[derive(Clone)]
@@ -39,6 +38,10 @@ impl<'ctx> IntegerValue<'ctx> {
             ir: context.i32_type().const_int(value as u64, true),
             is_signed: true,
         }
+    }
+
+    pub fn get_type(&self) -> IntegerType<'ctx> {
+        IntegerType::new(self.ir.get_type(), self.is_signed)
     }
 
     pub fn to_bool(&self, builder: &Builder<'ctx>) -> CompilationResult<BoolValue<'ctx>> {
@@ -138,53 +141,23 @@ impl<'ctx> IntegerValue<'ctx> {
 
     pub fn extend(
         &self,
-        target_type: &IntegerType,
+        target_type: &IntegerType<'ctx>,
         builder: &Builder<'ctx>,
-        context: &'ctx Context,
     ) -> CompilationResult<Self> {
-        let current_type_ir = self.ir.get_type();
-        let current_type_width = match current_type_ir.get_bit_width() {
-            8 => IntegerTypeWidth::I8,
-            16 => IntegerTypeWidth::I16,
-            32 => IntegerTypeWidth::I32,
-            64 => IntegerTypeWidth::I64,
-            width => panic!("Invalid integer type width: {}", width),
-        };
-
-        let is_compatible = if self.is_signed == target_type.is_signed {
-            current_type_width <= target_type.width
-        } else if target_type.is_signed && !self.is_signed {
-            current_type_width < target_type.width
-        } else {
-            false
-        };
-
-        if !is_compatible {
+        if !self.get_type().is_compatible(target_type) {
             return Err(CompilationError::TypeMismatch);
         }
 
-        let target_type_ir = integer_type_to_ir(target_type, context);
-        let result_ir = if target_type.is_signed {
-            builder.build_int_s_extend(self.ir, target_type_ir, "")?
+        let target_type_ir = target_type.ir();
+        let result_ir = if target_type.is_signed() {
+            builder.build_int_s_extend(self.ir, target_type_ir.clone(), "")?
         } else {
-            builder.build_int_z_extend(self.ir, target_type_ir, "")?
+            builder.build_int_z_extend(self.ir, target_type_ir.clone(), "")?
         };
 
         Ok(IntegerValue {
             ir: result_ir,
-            is_signed: target_type.is_signed,
+            is_signed: target_type.is_signed(),
         })
-    }
-}
-
-pub fn integer_type_to_ir<'ctx>(
-    target_type: &IntegerType,
-    context: &'ctx Context,
-) -> IntType<'ctx> {
-    match target_type.width {
-        IntegerTypeWidth::I8 => context.i8_type(),
-        IntegerTypeWidth::I16 => context.i16_type(),
-        IntegerTypeWidth::I32 => context.i32_type(),
-        IntegerTypeWidth::I64 => context.i64_type(),
     }
 }

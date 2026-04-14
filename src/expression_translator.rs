@@ -33,7 +33,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
     pub fn translate_expression(
         &self,
         expr: &Expression,
-        expr_type: Option<&Type>,
+        expr_type: Option<&Type<'ctx>>,
     ) -> CompilationResult<Value<'ctx>> {
         let value = match expr {
             Expression::LoadConstant(constant) => self.translate_constant(constant),
@@ -60,18 +60,18 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
     pub fn type_check(
         &self,
         value: &Value<'ctx>,
-        value_type: &Type,
+        value_type: &Type<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let builder = self.builder();
         let context = self.context();
         Ok(match value_type {
             Type::Integer(value_type) => match value {
-                Value::Integer(value) => value.extend(value_type, builder, context)?.into(),
-                Value::Bool(value) => value.to_integer(value_type, builder, context)?.into(),
+                Value::Integer(value) => value.extend(value_type, builder)?.into(),
+                Value::Bool(value) => value.to_integer(value_type, builder)?.into(),
                 _ => return Err(CompilationError::TypeMismatch),
             },
             Type::Float(value_type) => match value {
-                Value::Float(value) => value.extend(value_type, builder, context)?.into(),
+                Value::Float(value) => value.extend(value_type, builder)?.into(),
                 Value::Integer(value) => value.to_float(builder, context)?.into(),
                 _ => return Err(CompilationError::TypeMismatch),
             },
@@ -129,9 +129,10 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
 
         let mut args_ir = Vec::with_capacity(expr.args.len());
         for (arg, arg_signature) in expr.args.iter().zip(callee.signature.args.iter()) {
-            let arg_type = &arg_signature.value_type;
-            let arg_ir: BasicValueEnum<'ctx> =
-                self.translate_expression(arg, Some(arg_type))?.try_into()?;
+            let arg_type = Type::new(self.context(), arg_signature.value_type.clone());
+            let arg_ir: BasicValueEnum<'ctx> = self
+                .translate_expression(arg, Some(&arg_type))?
+                .try_into()?;
 
             args_ir.push(BasicMetadataValueEnum::<'ctx>::from(arg_ir));
         }
@@ -139,6 +140,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         let builder = self.builder();
         let callee_ir = callee.clone().into();
         let result_ir = builder.build_call(callee_ir, args_ir.as_slice(), "")?;
-        Value::from_ir(result_ir.as_any_value_enum(), &callee.signature.return_type)
+        let return_type = Type::new(self.context(), callee.signature.return_type.clone());
+        Value::from_ir(result_ir.as_any_value_enum(), &return_type)
     }
 }
