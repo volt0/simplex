@@ -1,5 +1,10 @@
+use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::types::IntType;
+
+use crate::errors::{CompilationError, CompilationResult};
+use crate::integer_value::IntegerValue;
+use crate::value::Value;
 
 #[derive(Clone, PartialEq, PartialOrd)]
 pub enum IntegerTypeWidth {
@@ -9,7 +14,7 @@ pub enum IntegerTypeWidth {
     I64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct IntegerType<'ctx> {
     ir: IntType<'ctx>,
     is_signed: bool,
@@ -53,6 +58,18 @@ impl<'ctx> IntegerType<'ctx> {
             self.bit_width() < other_type.bit_width()
         } else {
             false
+        }
+    }
+
+    pub fn validate_value(
+        &self,
+        builder: &Builder<'ctx>,
+        value: Value<'ctx>,
+    ) -> CompilationResult<IntegerValue<'ctx>> {
+        match value {
+            Value::Integer(value) => value.extend(builder, self),
+            Value::Bool(value) => value.to_integer(builder, self),
+            _ => Err(CompilationError::TypeMismatch),
         }
     }
 

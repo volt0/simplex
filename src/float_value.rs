@@ -30,12 +30,22 @@ impl<'ctx> FloatValue<'ctx> {
         FloatValue { ir }
     }
 
+    pub fn get_type(&self) -> FloatType<'ctx> {
+        FloatType::new(self.ir.get_type())
+    }
+
     pub fn binary_operation(
         self,
         builder: &Builder<'ctx>,
         op: BinaryOperation,
-        other: FloatValue<'ctx>,
+        other: Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
+        let other = match other {
+            Value::Float(other) => other,
+            Value::Integer(other) => other.to_float(builder, &self.get_type())?,
+            _ => return Err(CompilationError::TypeMismatch),
+        };
+
         let lhs_ir = self.ir;
         let rhs_ir = other.ir;
         let result_ir = match op {

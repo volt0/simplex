@@ -59,9 +59,18 @@ impl<'ctx> IntegerValue<'ctx> {
     pub fn to_float(
         self,
         builder: &Builder<'ctx>,
-        value_type: &FloatType<'ctx>,
+        required_type: &FloatType<'ctx>,
     ) -> CompilationResult<FloatValue<'ctx>> {
-        let result_type_ir = value_type.ir();
+        let value_bit_width = self.ir.get_type().get_bit_width();
+        if match required_type.bit_width() {
+            32 => value_bit_width > 23,
+            64 => value_bit_width > 52,
+            _ => unimplemented!(),
+        } {
+            return Err(CompilationError::TypeMismatch);
+        }
+
+        let result_type_ir = required_type.ir();
         let result_ir = if self.is_signed {
             builder.build_signed_int_to_float(self.ir, result_type_ir.clone(), "")?
         } else {
@@ -75,8 +84,13 @@ impl<'ctx> IntegerValue<'ctx> {
         self,
         builder: &Builder<'ctx>,
         op: BinaryOperation,
-        other: IntegerValue<'ctx>,
+        other: Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
+        let other = match other {
+            Value::Integer(other) => other,
+            _ => return Err(CompilationError::TypeMismatch),
+        };
+
         let lhs_ir = self.ir;
         let rhs_ir = other.ir;
         let result_ir = match op {

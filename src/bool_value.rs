@@ -32,19 +32,24 @@ impl<'ctx> BoolValue<'ctx> {
     pub fn to_integer(
         self,
         builder: &Builder<'ctx>,
-        value_type: &IntegerType<'ctx>,
+        required_type: &IntegerType<'ctx>,
     ) -> CompilationResult<IntegerValue<'ctx>> {
-        let value_type_ir = value_type.ir().clone();
+        let value_type_ir = required_type.ir().clone();
         let value_ir = builder.build_int_z_extend(self.ir, value_type_ir, "")?;
-        Ok(IntegerValue::new(value_ir, value_type.is_signed()))
+        Ok(IntegerValue::new(value_ir, required_type.is_signed()))
     }
 
     pub fn binary_operation(
         self,
         builder: &Builder<'ctx>,
         op: BinaryOperation,
-        other: BoolValue<'ctx>,
+        other: Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
+        let other = match other {
+            Value::Bool(other) => other,
+            _ => return Err(CompilationError::TypeMismatch),
+        };
+
         let lhs_ir = self.ir;
         let rhs_ir = other.ir;
         let result_ir = match op {

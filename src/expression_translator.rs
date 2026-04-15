@@ -39,47 +39,19 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
             Expression::LoadConstant(constant) => self.translate_constant(constant),
             Expression::LoadValue(name) => self.load_value(name),
             Expression::BinaryOperation(expr) => {
-                let lhs = self.translate_expression(&expr.lhs, expr_type)?;
-                let rhs = self.translate_expression(&expr.rhs, expr_type)?;
-                self.translate_binary_operation(expr.op, lhs, rhs)
+                self.translate_binary_operation(expr.op, &expr.lhs, &expr.rhs, expr_type)
             }
             Expression::UnaryOperation(expr) => {
-                let value = self.translate_expression(&expr.arg, expr_type)?;
-                self.translate_unary_operation(expr.op, value)
+                self.translate_unary_operation(expr.op, &expr.arg, expr_type)
             }
             Expression::Call(expr) => self.translate_call(expr),
         };
 
         if let Some(expr_type) = expr_type {
-            self.type_check(value?, expr_type)
+            value?.validate_type(self.builder(), expr_type.clone())
         } else {
             value
         }
-    }
-
-    pub fn type_check(
-        &self,
-        value: Value<'ctx>,
-        value_type: &Type<'ctx>,
-    ) -> CompilationResult<Value<'ctx>> {
-        let builder = self.builder();
-        Ok(match value_type {
-            Type::Integer(value_type) => match value {
-                Value::Integer(value) => value.extend(builder, value_type)?.into(),
-                Value::Bool(value) => value.to_integer(builder, value_type)?.into(),
-                _ => return Err(CompilationError::TypeMismatch),
-            },
-            Type::Float(value_type) => match value {
-                Value::Float(value) => value.extend(builder, value_type)?.into(),
-                Value::Integer(value) => value.to_float(builder, value_type)?.into(),
-                _ => return Err(CompilationError::TypeMismatch),
-            },
-            Type::Bool => match value {
-                Value::Bool(value) => Value::Bool(value.clone()),
-                Value::Integer(value) => value.to_bool(builder)?.into(),
-                _ => return Err(CompilationError::TypeMismatch),
-            },
-        })
     }
 
     fn translate_constant(&self, constant: &Constant) -> CompilationResult<Value<'ctx>> {
@@ -94,30 +66,23 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
     fn translate_binary_operation(
         &self,
         op: BinaryOperation,
-        lhs: Value<'ctx>,
-        rhs: Value<'ctx>,
+        lhs_expr: &Expression,
+        rhs_expr: &Expression,
+        expr_type: Option<&Type<'ctx>>,
     ) -> CompilationResult<Value<'ctx>> {
-        let builder = self.builder();
-        match lhs {
-            Value::Integer(value) => value.binary_operation(builder, op, rhs.into_integer()),
-            Value::Float(value) => value.binary_operation(builder, op, rhs.into_float()),
-            Value::Bool(value) => value.binary_operation(builder, op, rhs.into_bool()),
-            _ => Err(CompilationError::InvalidOperation),
-        }
+        let lhs = self.translate_expression(&lhs_expr, expr_type)?;
+        let rhs = self.translate_expression(&rhs_expr, expr_type)?;
+        lhs.binary_operation(self.builder(), op, rhs)
     }
 
     fn translate_unary_operation(
         &self,
         op: UnaryOperation,
-        value: Value<'ctx>,
+        arg_expr: &Expression,
+        expr_type: Option<&Type<'ctx>>,
     ) -> CompilationResult<Value<'ctx>> {
-        let builder = self.builder();
-        match value {
-            Value::Integer(value) => value.unary_operation(builder, op),
-            Value::Float(value) => value.unary_operation(builder, op),
-            Value::Bool(value) => value.unary_operation(builder, op),
-            _ => Err(CompilationError::InvalidOperation),
-        }
+        let arg = self.translate_expression(arg_expr, expr_type)?;
+        arg.unary_operation(self.builder(), op)
     }
 
     fn translate_call(&self, expr: &CallExpression) -> CompilationResult<Value<'ctx>> {
