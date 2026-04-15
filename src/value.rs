@@ -18,13 +18,19 @@ pub enum Value<'ctx> {
 }
 
 impl<'ctx> Value<'ctx> {
-    pub fn from_ir(value_ir: AnyValueEnum<'ctx>, value_type: &Type) -> CompilationResult<Self> {
+    pub fn from_ir(
+        value_ir: AnyValueEnum<'ctx>,
+        value_type: &Type<'ctx>,
+    ) -> CompilationResult<Self> {
         Ok(match value_type {
             Type::Integer(value_type) => {
                 IntegerValue::new(value_ir.into_int_value(), value_type.is_signed()).into()
             }
             Type::Float(_) => FloatValue::new(value_ir.into_float_value()).into(),
             Type::Bool(_) => BoolValue::new(value_ir.into_int_value()).into(),
+            Type::Function(value_type) => {
+                FunctionValue::new(value_ir.into_function_value(), value_type.clone()).into()
+            }
         })
     }
 
@@ -68,6 +74,7 @@ impl<'ctx> Value<'ctx> {
                 Value::Integer(value) => value.to_bool(builder)?.into(),
                 _ => return Err(CompilationError::TypeMismatch),
             },
+            Type::Function(required_type) => required_type.validate_value(self)?.into(),
         })
     }
 }

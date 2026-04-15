@@ -13,7 +13,7 @@ pub enum FloatTypeWidth {
 
 pub type FloatTypeIR<'ctx> = inkwell::types::FloatType<'ctx>;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct FloatType<'ctx> {
     ir: FloatTypeIR<'ctx>,
 }

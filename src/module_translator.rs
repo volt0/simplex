@@ -4,16 +4,15 @@ use std::ops::Deref;
 use inkwell::context::Context;
 use inkwell::execution_engine::JitFunction;
 use inkwell::targets::TargetTriple;
-use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 use inkwell::OptimizationLevel;
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::function::Function;
 use crate::function_translator::FunctionTranslator;
+use crate::function_type::FunctionType;
 use crate::function_value::FunctionValue;
 use crate::module::ModuleVisitor;
 use crate::translator::Translator;
-use crate::types::Type;
 use crate::value::Value;
 
 type ModuleIR<'ctx> = inkwell::module::Module<'ctx>;
@@ -35,17 +34,8 @@ impl<'ctx> Deref for ModuleTranslator<'ctx> {
 impl<'ctx> ModuleVisitor for ModuleTranslator<'ctx> {
     fn visit_function(&mut self, name: Option<&str>, func: &Function) -> CompilationResult<()> {
         let func_signature = func.signature();
-
-        let mut arg_types_ir = Vec::<BasicMetadataTypeEnum>::new();
-        for arg in &func_signature.args {
-            let arg_type = Type::from_spec(self.context(), arg.value_type.clone());
-            let arg_type_ir: BasicTypeEnum = arg_type.try_into()?;
-            arg_types_ir.push(arg_type_ir.into());
-        }
-
-        let return_type = Type::from_spec(self.context(), func_signature.return_type.clone());
-        let return_type_ir: BasicTypeEnum = return_type.try_into()?;
-        let func_type_ir = return_type_ir.fn_type(&arg_types_ir, false);
+        let func_type = FunctionType::from_ast(self.context(), func_signature)?;
+        let func_type_ir = func_type.ir().clone();
         let func_ir = self
             .module_ir
             .add_function(name.unwrap_or(""), func_type_ir, None);
@@ -53,7 +43,7 @@ impl<'ctx> ModuleVisitor for ModuleTranslator<'ctx> {
         if let Some(name) = name {
             self.globals.insert(
                 name.to_string(),
-                FunctionValue::new(func_ir, func_signature).into(),
+                FunctionValue::new(func_ir, func_type).into(),
             );
         }
 

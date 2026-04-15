@@ -4,6 +4,7 @@ use inkwell::types::BasicTypeEnum;
 use crate::ast::IntegerTypeWidth;
 use crate::errors::CompilationError;
 use crate::float_type::{FloatType, FloatTypeWidth};
+use crate::function_type::FunctionType;
 use crate::integer_type::IntegerType;
 
 #[derive(Clone)]
@@ -20,11 +21,12 @@ pub enum TypeSpec {
 
 pub type BoolTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Type<'ctx> {
     Integer(IntegerType<'ctx>),
     Float(FloatType<'ctx>),
     Bool(BoolTypeIR<'ctx>),
+    Function(FunctionType<'ctx>),
 }
 
 impl<'ctx> Type<'ctx> {
@@ -47,6 +49,7 @@ impl<'ctx> TryInto<BasicTypeEnum<'ctx>> for Type<'ctx> {
             Type::Integer(int_type) => BasicTypeEnum::IntType(int_type.into()),
             Type::Float(float_type) => BasicTypeEnum::FloatType(float_type.into()),
             Type::Bool(ir) => BasicTypeEnum::IntType(ir),
+            _ => return Err(CompilationError::InvalidOperation),
         })
     }
 }

@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use inkwell::values::{AnyValue, BasicMetadataValueEnum, BasicValueEnum};
+use inkwell::values::{AnyValue, BasicValueEnum};
 
 use crate::constant::Constant;
 use crate::errors::{CompilationError, CompilationResult};
@@ -91,20 +91,20 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
             _ => return Err(CompilationError::InvalidOperation),
         };
 
-        let mut args_ir = Vec::with_capacity(expr.args.len());
-        for (arg, arg_signature) in expr.args.iter().zip(callee.signature.args.iter()) {
-            let arg_type = Type::from_spec(self.context(), arg_signature.value_type.clone());
-            let arg_ir: BasicValueEnum<'ctx> = self
-                .translate_expression(arg, Some(&arg_type))?
-                .try_into()?;
+        let callee_type = callee.get_type();
+        let callee_ir = callee.clone().into();
 
-            args_ir.push(BasicMetadataValueEnum::<'ctx>::from(arg_ir));
+        let mut args_ir = Vec::with_capacity(expr.args.len());
+        for (arg_expr, arg_type) in expr.args.iter().zip(callee_type.arg_types().iter()) {
+            let arg_ir: BasicValueEnum = self
+                .translate_expression(arg_expr, Some(arg_type))?
+                .try_into()?;
+            args_ir.push(arg_ir.into());
         }
 
         let builder = self.builder();
-        let callee_ir = callee.clone().into();
         let result_ir = builder.build_call(callee_ir, args_ir.as_slice(), "")?;
-        let return_type = Type::from_spec(self.context(), callee.signature.return_type.clone());
-        Value::from_ir(result_ir.as_any_value_enum(), &return_type)
+        let return_type = callee_type.return_type();
+        Value::from_ir(result_ir.as_any_value_enum(), return_type)
     }
 }
