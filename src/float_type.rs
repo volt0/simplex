@@ -54,16 +54,11 @@ impl<'ctx> FloatType<'ctx> {
         }
     }
 
-    // pub fn combine_with(&self, other_type: Type<'ctx>) -> CompilationResult<Self> {
-    //     match other_type {
-    //         Type::Float(other_type) => {
-    //             if self.width() > other_type.width() {
-    //                 Ok(self.clone())
-    //             } else {
-    //                 Ok(other_type.clone())
-    //             }
-    //         }
-    //         _ => Err(CompilationError::TypeMismatch),
-    //     }
-    // }
+    pub fn combine_with(self, other: Self) -> CompilationResult<Self> {
+        if self.bit_width() > other.bit_width() {
+            Ok(self)
+        } else {
+            Ok(other)
+        }
+    }
 }

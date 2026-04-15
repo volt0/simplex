@@ -91,21 +91,23 @@ impl<'ctx> IntegerValue<'ctx> {
             _ => return Err(CompilationError::TypeMismatch),
         };
 
-        let lhs_ir = self.ir;
-        let rhs_ir = other.ir;
+        let is_signed = self.is_signed;
+        let result_type = self.get_type().combine_with(other.get_type())?;
+        let lhs_ir = self.extend(builder, &result_type)?.ir;
+        let rhs_ir = other.extend(builder, &result_type)?.ir;
         let result_ir = match op {
             BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, ""),
             BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, ""),
             BinaryOperation::Mul => builder.build_int_mul(lhs_ir, rhs_ir, ""),
             BinaryOperation::Div => {
-                if self.is_signed {
+                if is_signed {
                     builder.build_int_signed_div(lhs_ir, rhs_ir, "")
                 } else {
                     builder.build_int_unsigned_div(lhs_ir, rhs_ir, "")
                 }
             }
             BinaryOperation::Mod => {
-                if self.is_signed {
+                if is_signed {
                     builder.build_int_signed_rem(lhs_ir, rhs_ir, "")
                 } else {
                     builder.build_int_unsigned_rem(lhs_ir, rhs_ir, "")
@@ -115,14 +117,12 @@ impl<'ctx> IntegerValue<'ctx> {
             BinaryOperation::BitXor => builder.build_xor(lhs_ir, rhs_ir, ""),
             BinaryOperation::BitOr => builder.build_or(lhs_ir, rhs_ir, ""),
             BinaryOperation::ShiftLeft => builder.build_left_shift(lhs_ir, rhs_ir, ""),
-            BinaryOperation::ShiftRight => {
-                builder.build_right_shift(lhs_ir, rhs_ir, self.is_signed, "")
-            }
+            BinaryOperation::ShiftRight => builder.build_right_shift(lhs_ir, rhs_ir, is_signed, ""),
         };
 
         Ok(Self {
             ir: result_ir?,
-            is_signed: self.is_signed,
+            is_signed,
         }
         .into())
     }

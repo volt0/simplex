@@ -46,8 +46,9 @@ impl<'ctx> FloatValue<'ctx> {
             _ => return Err(CompilationError::TypeMismatch),
         };
 
-        let lhs_ir = self.ir;
-        let rhs_ir = other.ir;
+        let result_type = self.get_type().combine_with(other.get_type())?;
+        let lhs_ir = self.extend(builder, &result_type)?.ir;
+        let rhs_ir = other.extend(builder, &result_type)?.ir;
         let result_ir = match op {
             BinaryOperation::Add => builder.build_float_add(lhs_ir, rhs_ir, "")?,
             BinaryOperation::Sub => builder.build_float_sub(lhs_ir, rhs_ir, "")?,

@@ -73,25 +73,19 @@ impl<'ctx> IntegerType<'ctx> {
         }
     }
 
-    // pub fn combine_with(&self, other_type: Type<'ctx>) -> CompilationResult<Self> {
-    //     Ok(match other_type {
-    //         Type::Integer(other_type) => {
-    //             if self.is_signed == other_type.is_signed {
-    //                 if other_type.width() > self.width() {
-    //                     other_type.clone()
-    //                 } else {
-    //                     self.clone()
-    //                 }
-    //             } else if other_type.is_signed && other_type.width() > self.width() {
-    //                 other_type.clone()
-    //             } else if self.is_signed && self.width() > other_type.width() {
-    //                 self.clone()
-    //             } else {
-    //                 return Err(CompilationError::TypeMismatch);
-    //             }
-    //         }
-    //         Type::Bool => self.clone(),
-    //         _ => return Err(CompilationError::TypeMismatch),
-    //     })
-    // }
+    pub fn combine_with(self, other: Self) -> CompilationResult<Self> {
+        if self.is_signed == other.is_signed {
+            if other.bit_width() > self.bit_width() {
+                Ok(other)
+            } else {
+                Ok(self)
+            }
+        } else if other.is_signed && other.bit_width() > self.bit_width() {
+            Ok(other)
+        } else if self.is_signed && self.bit_width() > other.bit_width() {
+            Ok(self)
+        } else {
+            Err(CompilationError::TypeMismatch)
+        }
+    }
 }
