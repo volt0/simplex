@@ -8,14 +8,12 @@ use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 use inkwell::OptimizationLevel;
 
 use crate::errors::{CompilationError, CompilationResult};
-use crate::float_type::FloatTypeWidth;
 use crate::function::Function;
 use crate::function_translator::FunctionTranslator;
 use crate::function_value::FunctionValue;
-use crate::integer_type::IntegerTypeWidth;
 use crate::module::ModuleVisitor;
 use crate::translator::Translator;
-use crate::types::TypeSpec;
+use crate::types::Type;
 use crate::value::Value;
 
 type ModuleIR<'ctx> = inkwell::module::Module<'ctx>;
@@ -40,10 +38,13 @@ impl<'ctx> ModuleVisitor for ModuleTranslator<'ctx> {
 
         let mut arg_types_ir = Vec::<BasicMetadataTypeEnum>::new();
         for arg in &func_signature.args {
-            arg_types_ir.push(self.translate_type(&arg.value_type).into());
+            let arg_type = Type::from_spec(self.context(), arg.value_type.clone());
+            let arg_type_ir: BasicTypeEnum = arg_type.try_into()?;
+            arg_types_ir.push(arg_type_ir.into());
         }
 
-        let return_type_ir = self.translate_type(&func_signature.return_type);
+        let return_type = Type::from_spec(self.context(), func_signature.return_type.clone());
+        let return_type_ir: BasicTypeEnum = return_type.try_into()?;
         let func_type_ir = return_type_ir.fn_type(&arg_types_ir, false);
         let func_ir = self
             .module_ir
@@ -78,29 +79,6 @@ impl<'ctx> ModuleTranslator<'ctx> {
     #[inline(always)]
     pub fn context(&self) -> &'ctx Context {
         self.parent.context()
-    }
-
-    pub fn translate_type(&self, type_spec: &TypeSpec) -> BasicTypeEnum<'ctx> {
-        let context = self.context();
-        match type_spec {
-            TypeSpec::Bool => context.bool_type().as_basic_type_enum(),
-            TypeSpec::Integer { width, .. } => {
-                let type_ir = match width {
-                    IntegerTypeWidth::I8 => context.i8_type(),
-                    IntegerTypeWidth::I16 => context.i16_type(),
-                    IntegerTypeWidth::I32 => context.i32_type(),
-                    IntegerTypeWidth::I64 => context.i64_type(),
-                };
-                type_ir.as_basic_type_enum()
-            }
-            TypeSpec::Float { width } => {
-                let type_ir = match width {
-                    FloatTypeWidth::F32 => context.f32_type(),
-                    FloatTypeWidth::F64 => context.f64_type(),
-                };
-                type_ir.as_basic_type_enum()
-            }
-        }
     }
 
     pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {

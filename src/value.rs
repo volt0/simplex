@@ -24,7 +24,7 @@ impl<'ctx> Value<'ctx> {
                 IntegerValue::new(value_ir.into_int_value(), value_type.is_signed()).into()
             }
             Type::Float(_) => FloatValue::new(value_ir.into_float_value()).into(),
-            Type::Bool => BoolValue::new(value_ir.into_int_value()).into(),
+            Type::Bool(_) => BoolValue::new(value_ir.into_int_value()).into(),
         })
     }
 
@@ -63,7 +63,7 @@ impl<'ctx> Value<'ctx> {
         Ok(match required_type {
             Type::Integer(required_type) => required_type.validate_value(builder, self)?.into(),
             Type::Float(required_type) => required_type.validate_value(builder, self)?.into(),
-            Type::Bool => match self {
+            Type::Bool(_) => match self {
                 Value::Bool(value) => Value::Bool(value.clone()),
                 Value::Integer(value) => value.to_bool(builder)?.into(),
                 _ => return Err(CompilationError::TypeMismatch),

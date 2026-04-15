@@ -1,6 +1,5 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
-use inkwell::types::IntType;
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::integer_value::IntegerValue;
@@ -14,15 +13,23 @@ pub enum IntegerTypeWidth {
     I64,
 }
 
+pub type IntegerTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
+
 #[derive(Clone, PartialEq)]
 pub struct IntegerType<'ctx> {
-    ir: IntType<'ctx>,
+    ir: IntegerTypeIR<'ctx>,
     is_signed: bool,
+}
+
+impl<'ctx> Into<IntegerTypeIR<'ctx>> for IntegerType<'ctx> {
+    fn into(self) -> IntegerTypeIR<'ctx> {
+        self.ir
+    }
 }
 
 impl<'ctx> IntegerType<'ctx> {
     #[inline]
-    pub fn new(ir: IntType<'ctx>, is_signed: bool) -> Self {
+    pub fn new(ir: IntegerTypeIR<'ctx>, is_signed: bool) -> Self {
         Self { ir, is_signed }
     }
 
@@ -42,7 +49,7 @@ impl<'ctx> IntegerType<'ctx> {
     }
 
     #[inline]
-    pub fn ir(&self) -> &IntType<'ctx> {
+    pub fn ir(&self) -> &IntegerTypeIR<'ctx> {
         &self.ir
     }
 

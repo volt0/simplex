@@ -93,7 +93,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
 
         let mut args_ir = Vec::with_capacity(expr.args.len());
         for (arg, arg_signature) in expr.args.iter().zip(callee.signature.args.iter()) {
-            let arg_type = Type::new(self.context(), arg_signature.value_type.clone());
+            let arg_type = Type::from_spec(self.context(), arg_signature.value_type.clone());
             let arg_ir: BasicValueEnum<'ctx> = self
                 .translate_expression(arg, Some(&arg_type))?
                 .try_into()?;
@@ -104,7 +104,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         let builder = self.builder();
         let callee_ir = callee.clone().into();
         let result_ir = builder.build_call(callee_ir, args_ir.as_slice(), "")?;
-        let return_type = Type::new(self.context(), callee.signature.return_type.clone());
+        let return_type = Type::from_spec(self.context(), callee.signature.return_type.clone());
         Value::from_ir(result_ir.as_any_value_enum(), &return_type)
     }
 }

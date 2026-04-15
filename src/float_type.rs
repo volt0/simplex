@@ -18,6 +18,12 @@ pub struct FloatType<'ctx> {
     ir: FloatTypeIR<'ctx>,
 }
 
+impl<'ctx> Into<FloatTypeIR<'ctx>> for FloatType<'ctx> {
+    fn into(self) -> FloatTypeIR<'ctx> {
+        self.ir
+    }
+}
+
 impl<'ctx> FloatType<'ctx> {
     pub fn new(ir: FloatTypeIR<'ctx>) -> Self {
         Self { ir }

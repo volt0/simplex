@@ -53,7 +53,7 @@ impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
         let mut args_ir = HashMap::with_capacity(func_ir.count_params() as usize);
         for (i, arg) in func_signature.args.iter().enumerate() {
             let arg_ir = func_ir.get_nth_param(i as u32).unwrap().as_any_value_enum();
-            let arg_type = Type::new(parent.context(), arg.value_type.clone());
+            let arg_type = Type::from_spec(parent.context(), arg.value_type.clone());
             args_ir.insert(arg.name.clone(), Value::from_ir(arg_ir, &arg_type)?);
         }
 
