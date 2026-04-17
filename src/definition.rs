@@ -1,3 +1,4 @@
+use crate::ast;
 use crate::errors::CompilationResult;
 use crate::function::Function;
 use crate::module::ModuleVisitor;
@@ -12,10 +13,12 @@ pub enum DefinitionValue {
 }
 
 impl Definition {
-    pub fn define_function(name: String, function: Function) -> Self {
-        Definition {
-            name,
-            value: DefinitionValue::Function(function),
+    pub fn from_ast(def_ast: ast::Definition) -> CompilationResult<Self> {
+        match def_ast.value {
+            ast::DefinitionValue::Function(func) => Ok(Definition {
+                name: def_ast.name,
+                value: DefinitionValue::Function(Function::from_ast(func)?),
+            }),
         }
     }
 

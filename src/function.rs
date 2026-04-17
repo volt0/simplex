@@ -1,3 +1,4 @@
+use crate::ast;
 use crate::basic_block::BasicBlock;
 use crate::errors::CompilationResult;
 use crate::types::TypeSpec;
@@ -24,6 +25,23 @@ pub struct Function {
 }
 
 impl Function {
+    pub fn from_ast(func_ast: ast::Function) -> CompilationResult<Self> {
+        let signature_ast = &func_ast.signature;
+        let signature = FunctionSignature {
+            args: signature_ast
+                .args
+                .iter()
+                .map(|arg| FunctionArgument {
+                    name: arg.name.clone(),
+                    value_type: arg.value_type.clone(),
+                })
+                .collect(),
+            return_type: signature_ast.return_type.clone(),
+        };
+
+        Ok(Self::new(signature, BasicBlock::from_ast(func_ast.body)?))
+    }
+
     pub fn new(signature: FunctionSignature, body: BasicBlock) -> Self {
         Function { signature, body }
     }

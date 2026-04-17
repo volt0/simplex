@@ -1,3 +1,4 @@
+use crate::module::Module;
 use crate::parser::grammar::ModuleParser;
 use crate::translator::Translator;
 
@@ -42,8 +43,8 @@ proc test(x: i32, y: i32, z: i32, w: bool): i64 {
 
 fn main() {
     let parser = ModuleParser::new();
-    let module = parser.parse(SRC).unwrap();
+    let module_ast = parser.parse(SRC).unwrap();
 
     let translator = Translator::new();
-    translator.translate_module(&module);
+    let module = Module::from_ast(&translator, module_ast).unwrap();
 }
