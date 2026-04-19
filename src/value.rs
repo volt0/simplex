@@ -5,7 +5,7 @@ use crate::bool_value::BoolValue;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::float_value::FloatValue;
-use crate::function_value::FunctionValue;
+use crate::function::Function;
 use crate::integer_value::IntegerValue;
 use crate::types::Type;
 
@@ -14,7 +14,7 @@ pub enum Value<'ctx> {
     Integer(IntegerValue<'ctx>),
     Float(FloatValue<'ctx>),
     Bool(BoolValue<'ctx>),
-    Function(FunctionValue<'ctx>),
+    Function(Function<'ctx>),
 }
 
 impl<'ctx> Value<'ctx> {
@@ -29,7 +29,7 @@ impl<'ctx> Value<'ctx> {
             Type::Float(_) => FloatValue::new(value_ir.into_float_value()).into(),
             Type::Bool(_) => BoolValue::new(value_ir.into_int_value()).into(),
             Type::Function(value_type) => {
-                FunctionValue::new(value_ir.into_function_value(), value_type.clone()).into()
+                Function::new(value_ir.into_function_value(), value_type.clone()).into()
             }
         })
     }

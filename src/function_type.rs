@@ -3,7 +3,7 @@ use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 
 use crate::ast;
 use crate::errors::{CompilationError, CompilationResult};
-use crate::function_value::FunctionValue;
+use crate::function::Function;
 use crate::types::Type;
 use crate::value::Value;
 
@@ -62,7 +62,7 @@ impl<'ctx> FunctionType<'ctx> {
         &self.ir
     }
 
-    pub fn validate_value(self, value: Value<'ctx>) -> CompilationResult<FunctionValue<'ctx>> {
+    pub fn validate_value(self, value: Value<'ctx>) -> CompilationResult<Function<'ctx>> {
         match value {
             Value::Function(value) if value.get_type() == &self => Ok(value),
             _ => Err(CompilationError::TypeMismatch),

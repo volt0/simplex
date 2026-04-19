@@ -7,7 +7,6 @@ use crate::errors::{CompilationError, CompilationResult};
 use crate::function::Function;
 use crate::function_builder::FunctionBuilder;
 use crate::function_type::FunctionType;
-use crate::function_value::FunctionValue;
 use crate::module::Module;
 use crate::value::Value;
 
@@ -52,7 +51,7 @@ impl<'ctx> ModuleBuilder<'ctx> {
                         .module_ir
                         .add_function(def_ast.name.as_str(), func_type_ir, None);
 
-                let func = Function::from_ast(FunctionValue::new(func_ir.clone(), func_type))?;
+                let func = Function::new(func_ir.clone(), func_type);
                 let func_builder = FunctionBuilder::new(func, func_ir, func_signature, self)?;
                 func_builder.attach_body(func_ast.body)?;
                 Definition::Function(func_builder.build())
@@ -67,7 +66,7 @@ impl<'ctx> ModuleBuilder<'ctx> {
     pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
         match self.module.defs.get(name) {
             Some(def) => Ok(match def {
-                Definition::Function(func) => func.inner.clone().into(),
+                Definition::Function(func) => func.clone().into(),
             }),
             None => Err(CompilationError::UnresolvedName(name.to_string())),
         }

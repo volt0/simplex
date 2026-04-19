@@ -1,16 +1,32 @@
-use crate::errors::CompilationResult;
-use crate::function_value::FunctionValue;
+use crate::function_type::FunctionType;
+use crate::value::Value;
 
+pub type FunctionIR<'ctx> = inkwell::values::FunctionValue<'ctx>;
+
+#[derive(Clone)]
 pub struct Function<'ctx> {
-    pub inner: FunctionValue<'ctx>,
+    ir: FunctionIR<'ctx>,
+    func_type: FunctionType<'ctx>,
 }
 
 impl<'ctx> Function<'ctx> {
-    pub fn from_ast(inner: FunctionValue<'ctx>) -> CompilationResult<Self> {
-        Ok(Self::new(inner))
+    pub fn new(ir: FunctionIR<'ctx>, func_type: FunctionType<'ctx>) -> Self {
+        Self { ir, func_type }
     }
 
-    pub fn new(inner: FunctionValue<'ctx>) -> Self {
-        Self { inner }
+    pub fn get_type(&self) -> &FunctionType<'ctx> {
+        &self.func_type
+    }
+}
+
+impl<'ctx> Into<FunctionIR<'ctx>> for Function<'ctx> {
+    fn into(self) -> FunctionIR<'ctx> {
+        self.ir
+    }
+}
+
+impl<'ctx> Into<Value<'ctx>> for Function<'ctx> {
+    fn into(self) -> Value<'ctx> {
+        Value::Function(self)
     }
 }

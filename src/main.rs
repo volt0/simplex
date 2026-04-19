@@ -16,7 +16,6 @@ mod float_value;
 mod function;
 mod function_builder;
 mod function_type;
-mod function_value;
 mod integer_type;
 mod integer_value;
 mod module;
