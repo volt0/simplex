@@ -1,8 +1,8 @@
 use inkwell::context::Context;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 
+use crate::ast;
 use crate::errors::{CompilationError, CompilationResult};
-use crate::function::FunctionSignature;
 use crate::function_value::FunctionValue;
 use crate::types::Type;
 use crate::value::Value;
@@ -25,7 +25,7 @@ impl<'ctx> Into<Type<'ctx>> for FunctionType<'ctx> {
 impl<'ctx> FunctionType<'ctx> {
     pub fn from_ast(
         context: &'ctx Context,
-        signature: &FunctionSignature,
+        signature: &ast::FunctionSignature,
     ) -> CompilationResult<Self> {
         let mut arg_types = Vec::with_capacity(signature.args.len());
         let mut arg_types_ir = Vec::<BasicMetadataTypeEnum>::new();

@@ -4,24 +4,25 @@ use std::ops::{Deref, DerefMut};
 use inkwell::builder::Builder;
 use inkwell::values::{AnyValue, FunctionValue};
 
+use crate::ast;
 use crate::basic_block::BasicBlock;
 use crate::errors::CompilationResult;
-use crate::function::{FunctionSignature, FunctionVisitor};
-use crate::module_translator::ModuleTranslator;
+use crate::function::FunctionVisitor;
+use crate::module_builder::ModuleBuilder;
 use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
 use crate::value::Value;
 
 pub struct FunctionTranslator<'ctx, 'm> {
-    func_signature: FunctionSignature,
+    func_signature: ast::FunctionSignature,
     func_ir: FunctionValue<'ctx>,
     args_ir: HashMap<String, Value<'ctx>>,
-    parent: &'m mut ModuleTranslator<'ctx>,
+    parent: &'m mut ModuleBuilder<'ctx>,
     builder: Builder<'ctx>,
 }
 
 impl<'ctx, 'm> Deref for FunctionTranslator<'ctx, 'm> {
-    type Target = ModuleTranslator<'ctx>;
+    type Target = ModuleBuilder<'ctx>;
 
     fn deref(&self) -> &Self::Target {
         self.parent
@@ -47,8 +48,8 @@ impl<'ctx, 'm> FunctionVisitor for FunctionTranslator<'ctx, 'm> {
 impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
     pub fn new(
         func_ir: FunctionValue<'ctx>,
-        func_signature: &FunctionSignature,
-        parent: &'m mut ModuleTranslator<'ctx>,
+        func_signature: &ast::FunctionSignature,
+        parent: &'m mut ModuleBuilder<'ctx>,
     ) -> CompilationResult<Self> {
         let mut args_ir = HashMap::with_capacity(func_ir.count_params() as usize);
         for (i, arg) in func_signature.args.iter().enumerate() {
@@ -73,7 +74,7 @@ impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
     }
 
     #[inline(always)]
-    pub fn function_signature(&self) -> &FunctionSignature {
+    pub fn function_signature(&self) -> &ast::FunctionSignature {
         &self.func_signature
     }
 

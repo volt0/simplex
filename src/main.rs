@@ -1,6 +1,7 @@
-use crate::module::Module;
+use inkwell::context::Context;
+
+use crate::module_builder::ModuleBuilder;
 use crate::parser::grammar::ModuleParser;
-use crate::translator::Translator;
 
 mod ast;
 mod basic_block;
@@ -19,11 +20,10 @@ mod function_value;
 mod integer_type;
 mod integer_value;
 mod module;
-mod module_translator;
+mod module_builder;
 mod parser;
 mod statement;
 mod statement_translator;
-mod translator;
 mod types;
 mod value;
 
@@ -45,6 +45,8 @@ fn main() {
     let parser = ModuleParser::new();
     let module_ast = parser.parse(SRC).unwrap();
 
-    let translator = Translator::new();
-    let module = Module::from_ast(&translator, module_ast).unwrap();
+    let context = Context::create();
+    let module_builder = ModuleBuilder::new(&context, module_ast).unwrap();
+    let module = module_builder.build();
+    module.run_test();
 }
