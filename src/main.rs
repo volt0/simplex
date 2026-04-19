@@ -45,7 +45,7 @@ fn main() {
     let module_ast = parser.parse(SRC).unwrap();
 
     let context = Context::create();
-    let module_builder = ModuleBuilder::new(&context, module_ast).unwrap();
+    let module_builder = ModuleBuilder::from_ast(&context, module_ast).unwrap();
     let module = module_builder.build();
     module.run_test();
 }
