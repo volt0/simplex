@@ -64,7 +64,8 @@ impl<'ctx> ModuleBuilder<'ctx> {
         let func_type_ir = func_type.ir().clone();
         let func_ir = self.module.module_ir.add_function(name, func_type_ir, None);
 
-        let func_builder = FunctionBuilder::new(func_type, func_ir, func_signature, self)?;
+        let func = Function::new(func_ir.clone(), func_type);
+        let func_builder = FunctionBuilder::new(func, func_signature, self)?;
         func_builder.attach_body(func_body)?;
         Ok(func_builder.build())
     }

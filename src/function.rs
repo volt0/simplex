@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use crate::function_type::FunctionType;
+use crate::types::Type;
 use crate::value::Value;
 
 pub type FunctionIR<'ctx> = inkwell::values::FunctionValue<'ctx>;
@@ -9,20 +8,19 @@ pub type FunctionIR<'ctx> = inkwell::values::FunctionValue<'ctx>;
 pub struct Function<'ctx> {
     ir: FunctionIR<'ctx>,
     func_type: FunctionType<'ctx>,
-    pub args: HashMap<String, Value<'ctx>>,
 }
 
 impl<'ctx> Function<'ctx> {
     pub fn new(ir: FunctionIR<'ctx>, func_type: FunctionType<'ctx>) -> Self {
-        Self {
-            ir,
-            func_type,
-            args: HashMap::new(),
-        }
+        Self { ir, func_type }
     }
 
     pub fn get_type(&self) -> &FunctionType<'ctx> {
         &self.func_type
+    }
+
+    pub fn get_return_type(&self) -> &Type<'ctx> {
+        self.func_type.return_type()
     }
 
     #[inline(always)]
