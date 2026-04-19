@@ -7,18 +7,18 @@ use crate::basic_block::BasicBlock;
 use crate::errors::CompilationResult;
 use crate::expression::Expression;
 use crate::expression_translator::ExpressionTranslator;
-use crate::function_translator::FunctionTranslator;
+use crate::function_builder::FunctionBuilder;
 use crate::statement::StatementVisitor;
 use crate::types::Type;
 use crate::value::Value;
 
 pub struct StatementTranslator<'ctx, 'm, 'f> {
-    parent: &'f FunctionTranslator<'ctx, 'm>,
+    parent: &'f FunctionBuilder<'ctx, 'm>,
     values: HashMap<String, Value<'ctx>>,
 }
 
 impl<'ctx, 'm, 'f> Deref for StatementTranslator<'ctx, 'm, 'f> {
-    type Target = FunctionTranslator<'ctx, 'm>;
+    type Target = FunctionBuilder<'ctx, 'm>;
 
     fn deref(&self) -> &Self::Target {
         self.parent
@@ -44,7 +44,7 @@ impl<'ctx, 'm, 'f> StatementVisitor for StatementTranslator<'ctx, 'm, 'f> {
 }
 
 impl<'ctx, 'm, 'f> StatementTranslator<'ctx, 'm, 'f> {
-    pub fn new(parent: &'f FunctionTranslator<'ctx, 'm>) -> Self {
+    pub fn new(parent: &'f FunctionBuilder<'ctx, 'm>) -> Self {
         Self {
             parent,
             values: HashMap::new(),

@@ -14,7 +14,7 @@ mod expression_translator;
 mod float_type;
 mod float_value;
 mod function;
-mod function_translator;
+mod function_builder;
 mod function_type;
 mod function_value;
 mod integer_type;

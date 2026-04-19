@@ -5,7 +5,7 @@ use crate::ast;
 use crate::definition::Definition;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::function::Function;
-use crate::function_translator::FunctionTranslator;
+use crate::function_builder::FunctionBuilder;
 use crate::function_type::FunctionType;
 use crate::function_value::FunctionValue;
 use crate::module::Module;
@@ -52,11 +52,10 @@ impl<'ctx> ModuleBuilder<'ctx> {
                         .module_ir
                         .add_function(def_ast.name.as_str(), func_type_ir, None);
 
-                let func_translator = FunctionTranslator::new(func_ir, func_signature, self)?;
-                let func = Function::from_ast(func_ast, FunctionValue::new(func_ir, func_type))?;
-                func.visit(&func_translator)?;
-
-                Definition::Function(func)
+                let func = Function::from_ast(FunctionValue::new(func_ir.clone(), func_type))?;
+                let func_builder = FunctionBuilder::new(func, func_ir, func_signature, self)?;
+                func_builder.attach_body(func_ast.body)?;
+                Definition::Function(func_builder.build())
             }
         };
 

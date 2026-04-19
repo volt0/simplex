@@ -7,13 +7,14 @@ use inkwell::values::{AnyValue, FunctionValue};
 use crate::ast;
 use crate::basic_block::BasicBlock;
 use crate::errors::CompilationResult;
-use crate::function::FunctionVisitor;
+use crate::function::Function;
 use crate::module_builder::ModuleBuilder;
 use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
 use crate::value::Value;
 
-pub struct FunctionTranslator<'ctx, 'm> {
+pub struct FunctionBuilder<'ctx, 'm> {
+    func: Function<'ctx>,
     func_signature: ast::FunctionSignature,
     func_ir: FunctionValue<'ctx>,
     args_ir: HashMap<String, Value<'ctx>>,
@@ -21,7 +22,7 @@ pub struct FunctionTranslator<'ctx, 'm> {
     builder: Builder<'ctx>,
 }
 
-impl<'ctx, 'm> Deref for FunctionTranslator<'ctx, 'm> {
+impl<'ctx, 'm> Deref for FunctionBuilder<'ctx, 'm> {
     type Target = ModuleBuilder<'ctx>;
 
     fn deref(&self) -> &Self::Target {
@@ -29,24 +30,15 @@ impl<'ctx, 'm> Deref for FunctionTranslator<'ctx, 'm> {
     }
 }
 
-impl<'ctx, 'm> DerefMut for FunctionTranslator<'ctx, 'm> {
+impl<'ctx, 'm> DerefMut for FunctionBuilder<'ctx, 'm> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.parent
     }
 }
 
-impl<'ctx, 'm> FunctionVisitor for FunctionTranslator<'ctx, 'm> {
-    fn visit_body(&self, body: &BasicBlock) -> CompilationResult<()> {
-        let body_ir = self.context().append_basic_block(self.func_ir.clone(), "");
-        self.builder().position_at_end(body_ir);
-
-        let stmt_translator = StatementTranslator::new(self);
-        body.visit(&stmt_translator)
-    }
-}
-
-impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
+impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
     pub fn new(
+        func: Function<'ctx>,
         func_ir: FunctionValue<'ctx>,
         func_signature: &ast::FunctionSignature,
         parent: &'m mut ModuleBuilder<'ctx>,
@@ -59,13 +51,24 @@ impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
         }
 
         let builder = parent.context().create_builder();
-        Ok(Self {
+        let func_builder = Self {
+            func,
             func_signature: func_signature.clone(),
             func_ir,
             args_ir,
             parent,
             builder,
-        })
+        };
+
+        Ok(func_builder)
+    }
+
+    pub fn attach_body(&self, body: BasicBlock) -> CompilationResult<()> {
+        let body_ir = self.context().append_basic_block(self.func_ir.clone(), "");
+        self.builder().position_at_end(body_ir);
+
+        let stmt_translator = StatementTranslator::new(self);
+        body.visit(&stmt_translator)
     }
 
     #[inline(always)]
@@ -83,5 +86,9 @@ impl<'ctx, 'm> FunctionTranslator<'ctx, 'm> {
             Some(value) => Ok(value.clone()),
             None => self.parent.load_value(name),
         }
+    }
+
+    pub fn build(self) -> Function<'ctx> {
+        self.func
     }
 }
