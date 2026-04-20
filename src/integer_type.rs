@@ -13,7 +13,7 @@ pub enum IntegerTypeWidth {
     I64,
 }
 
-pub type IntegerTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
+type IntegerTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
 
 #[derive(Clone, PartialEq)]
 pub struct IntegerType<'ctx> {

@@ -2,7 +2,7 @@ use crate::function_type::FunctionType;
 use crate::types::Type;
 use crate::value::Value;
 
-pub type FunctionIR<'ctx> = inkwell::values::FunctionValue<'ctx>;
+type FunctionIR<'ctx> = inkwell::values::FunctionValue<'ctx>;
 
 #[derive(Clone)]
 pub struct Function<'ctx> {

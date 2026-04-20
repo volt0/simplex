@@ -1,6 +1,5 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
-use inkwell::values::IntValue;
 use inkwell::IntPredicate;
 
 use crate::bool_value::BoolValue;
@@ -11,9 +10,11 @@ use crate::float_value::FloatValue;
 use crate::integer_type::IntegerType;
 use crate::value::Value;
 
+type IntegerValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
+
 #[derive(Clone)]
 pub struct IntegerValue<'ctx> {
-    ir: IntValue<'ctx>,
+    ir: IntegerValueIR<'ctx>,
     is_signed: bool,
 }
 
@@ -23,14 +24,14 @@ impl<'ctx> Into<Value<'ctx>> for IntegerValue<'ctx> {
     }
 }
 
-impl<'ctx> Into<IntValue<'ctx>> for IntegerValue<'ctx> {
-    fn into(self) -> IntValue<'ctx> {
+impl<'ctx> Into<IntegerValueIR<'ctx>> for IntegerValue<'ctx> {
+    fn into(self) -> IntegerValueIR<'ctx> {
         self.ir
     }
 }
 
 impl<'ctx> IntegerValue<'ctx> {
-    pub fn new(ir: IntValue<'ctx>, is_signed: bool) -> Self {
+    pub fn new(ir: IntegerValueIR<'ctx>, is_signed: bool) -> Self {
         IntegerValue { ir, is_signed }
     }
 

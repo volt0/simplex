@@ -1,5 +1,5 @@
 use inkwell::context::Context;
-use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
+use inkwell::types::{BasicType, BasicTypeEnum};
 
 use crate::ast;
 use crate::errors::{CompilationError, CompilationResult};
@@ -7,7 +7,7 @@ use crate::function::Function;
 use crate::types::Type;
 use crate::value::Value;
 
-pub type FunctionTypeIR<'ctx> = inkwell::types::FunctionType<'ctx>;
+type FunctionTypeIR<'ctx> = inkwell::types::FunctionType<'ctx>;
 
 #[derive(Clone, PartialEq)]
 pub struct FunctionType<'ctx> {
@@ -27,8 +27,9 @@ impl<'ctx> FunctionType<'ctx> {
         context: &'ctx Context,
         signature: &ast::FunctionSignature,
     ) -> CompilationResult<Self> {
-        let mut arg_types = Vec::with_capacity(signature.args.len());
-        let mut arg_types_ir = Vec::<BasicMetadataTypeEnum>::new();
+        let args_count = signature.args.len();
+        let mut arg_types = Vec::with_capacity(args_count);
+        let mut arg_types_ir = Vec::with_capacity(args_count);
         for arg_type in signature.args.iter() {
             let arg_type = Type::from_spec(context, arg_type.value_type.clone());
             arg_types.push(arg_type.clone());

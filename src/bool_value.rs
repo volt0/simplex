@@ -1,5 +1,4 @@
 use inkwell::builder::Builder;
-use inkwell::values::IntValue;
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
@@ -7,9 +6,11 @@ use crate::integer_type::IntegerType;
 use crate::integer_value::IntegerValue;
 use crate::value::Value;
 
+type BoolValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
+
 #[derive(Clone)]
 pub struct BoolValue<'ctx> {
-    ir: IntValue<'ctx>,
+    ir: BoolValueIR<'ctx>,
 }
 
 impl<'ctx> Into<Value<'ctx>> for BoolValue<'ctx> {
@@ -18,14 +19,14 @@ impl<'ctx> Into<Value<'ctx>> for BoolValue<'ctx> {
     }
 }
 
-impl<'ctx> Into<IntValue<'ctx>> for BoolValue<'ctx> {
-    fn into(self) -> IntValue<'ctx> {
+impl<'ctx> Into<BoolValueIR<'ctx>> for BoolValue<'ctx> {
+    fn into(self) -> BoolValueIR<'ctx> {
         self.ir
     }
 }
 
 impl<'ctx> BoolValue<'ctx> {
-    pub fn new(ir: IntValue<'ctx>) -> Self {
+    pub fn new(ir: BoolValueIR<'ctx>) -> Self {
         BoolValue { ir }
     }
 

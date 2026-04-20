@@ -5,7 +5,7 @@ use inkwell::OptimizationLevel;
 
 use crate::definition::Definition;
 
-pub type ModuleIR<'ctx> = inkwell::module::Module<'ctx>;
+type ModuleIR<'ctx> = inkwell::module::Module<'ctx>;
 
 pub struct Module<'ctx> {
     pub(crate) module_ir: ModuleIR<'ctx>,
