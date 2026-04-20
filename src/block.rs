@@ -1,11 +1,11 @@
 use crate::errors::CompilationResult;
 use crate::statement::{Statement, StatementVisitor};
 
-pub struct BasicBlock {
+pub struct Block {
     statements: Vec<Statement>,
 }
 
-impl BasicBlock {
+impl Block {
     pub fn new(statements: Vec<Statement>) -> Self {
         Self { statements }
     }

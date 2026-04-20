@@ -4,7 +4,7 @@ use crate::module_builder::ModuleBuilder;
 use crate::parser::grammar::ModuleParser;
 
 mod ast;
-mod basic_block;
+mod block;
 mod bool_value;
 mod constant;
 mod definition;

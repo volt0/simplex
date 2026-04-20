@@ -15,7 +15,7 @@ Definition: Definition = {
 // Functions
 
 pub FunctionDefinition: Definition = {
-    "proc" <name:Identifier> <signature:FunctionSignature> <body:BasicBlock> => Definition::define_function(
+    "proc" <name:Identifier> <signature:FunctionSignature> <body:Block> => Definition::define_function(
         name,
         Function::new(signature, body)
     ),
@@ -34,12 +34,12 @@ FunctionArgument: FunctionArgument = {
 
 // Statements
 
-BasicBlock: BasicBlock = {
-    "{" <statements:(<Statement>)*> "}" => BasicBlock::new(statements)
+Block: Block = {
+    "{" <statements:(<Statement>)*> "}" => Block::new(statements)
 }
 
 Statement: Statement = {
-    <basic_block:BasicBlock> => Statement::new_basic_block(basic_block),
+    <block:Block> => Statement::new_block(block),
     "return" <expression:Expression> ";" => Statement::new_return(expression),
 }
 

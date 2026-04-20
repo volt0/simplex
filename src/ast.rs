@@ -1,4 +1,4 @@
-pub use crate::basic_block::BasicBlock;
+pub use crate::block::Block;
 pub use crate::constant::Constant;
 pub use crate::expression::Expression;
 pub use crate::statement::Statement;
@@ -46,11 +46,11 @@ pub struct FunctionArgument {
 
 pub struct Function {
     pub signature: FunctionSignature,
-    pub body: BasicBlock,
+    pub body: Block,
 }
 
 impl Function {
-    pub fn new(signature: FunctionSignature, body: BasicBlock) -> Self {
+    pub fn new(signature: FunctionSignature, body: Block) -> Self {
         Function { signature, body }
     }
 }

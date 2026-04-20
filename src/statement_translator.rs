@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use inkwell::values::BasicValueEnum;
 
-use crate::basic_block::BasicBlock;
+use crate::block::Block;
 use crate::errors::CompilationResult;
 use crate::expression::Expression;
 use crate::expression_translator::ExpressionTranslator;
@@ -25,7 +25,7 @@ impl<'ctx, 'm, 'f> Deref for StatementTranslator<'ctx, 'm, 'f> {
 }
 
 impl<'ctx, 'm, 'f> StatementVisitor for StatementTranslator<'ctx, 'm, 'f> {
-    fn visit_basic_block(&self, block: &BasicBlock) -> CompilationResult<()> {
+    fn visit_block(&self, block: &Block) -> CompilationResult<()> {
         block.visit(self)
     }
 

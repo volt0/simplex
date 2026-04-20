@@ -5,7 +5,7 @@ use inkwell::builder::Builder;
 use inkwell::values::{AnyValue, FunctionValue};
 
 use crate::ast;
-use crate::basic_block::BasicBlock;
+use crate::block::Block;
 use crate::errors::CompilationResult;
 use crate::function::Function;
 use crate::module_builder::ModuleBuilder;
@@ -69,7 +69,7 @@ impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
         Ok(())
     }
 
-    pub fn attach_body(&self, body: BasicBlock) -> CompilationResult<()> {
+    pub fn attach_body(&self, body: Block) -> CompilationResult<()> {
         let body_ir = self
             .context()
             .append_basic_block(self.function_ir().clone(), "");

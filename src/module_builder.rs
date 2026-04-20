@@ -4,7 +4,7 @@ use inkwell::context::Context;
 use inkwell::targets::TargetTriple;
 
 use crate::ast;
-use crate::basic_block::BasicBlock;
+use crate::block::Block;
 use crate::definition::Definition;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::function::Function;
@@ -76,7 +76,7 @@ impl<'ctx> ModuleBuilder<'ctx> {
         &mut self,
         name: &str,
         func_signature: ast::FunctionSignature,
-        func_body: BasicBlock,
+        func_body: Block,
     ) -> CompilationResult<Function<'ctx>> {
         let func_type = FunctionType::from_ast(self, &func_signature)?;
         let func_type_ir = func_type.ir().clone();
