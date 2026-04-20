@@ -1,7 +1,7 @@
 use inkwell::context::Context;
 
-use crate::module_builder::ModuleBuilder;
 use crate::parser::grammar::ModuleParser;
+use crate::target_builder::TargetBuilder;
 
 mod ast;
 mod block;
@@ -23,6 +23,7 @@ mod module_builder;
 mod parser;
 mod statement;
 mod statement_translator;
+mod target_builder;
 mod types;
 mod value;
 
@@ -45,7 +46,9 @@ fn main() {
     let module_ast = parser.parse(SRC).unwrap();
 
     let context = Context::create();
-    let module_builder = ModuleBuilder::from_ast(&context, module_ast).unwrap();
-    let module = module_builder.build();
+    let target_builder = TargetBuilder::new(&context);
+    let module = target_builder
+        .create_module("test_module", module_ast)
+        .unwrap();
     module.run_test();
 }
