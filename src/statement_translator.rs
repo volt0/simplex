@@ -4,11 +4,11 @@ use std::ops::Deref;
 use inkwell::values::BasicValueEnum;
 
 use crate::block::Block;
+use crate::block::BlockVisitor;
 use crate::errors::CompilationResult;
 use crate::expression::Expression;
 use crate::expression_translator::ExpressionTranslator;
 use crate::function_builder::FunctionBuilder;
-use crate::statement::StatementVisitor;
 use crate::value::Value;
 
 pub struct StatementTranslator<'ctx, 'm, 'f> {
@@ -24,7 +24,7 @@ impl<'ctx, 'm, 'f> Deref for StatementTranslator<'ctx, 'm, 'f> {
     }
 }
 
-impl<'ctx, 'm, 'f> StatementVisitor for StatementTranslator<'ctx, 'm, 'f> {
+impl<'ctx, 'm, 'f> BlockVisitor for StatementTranslator<'ctx, 'm, 'f> {
     fn enter_block(&self, block: &Block) -> CompilationResult<()> {
         block.visit(self)
     }

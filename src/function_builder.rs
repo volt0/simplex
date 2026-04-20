@@ -6,10 +6,10 @@ use inkwell::values::{AnyValue, FunctionValue};
 
 use crate::ast;
 use crate::block::Block;
+use crate::block::BlockVisitor;
 use crate::errors::CompilationResult;
 use crate::function::Function;
 use crate::module_builder::ModuleBuilder;
-use crate::statement::StatementVisitor;
 use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
 use crate::value::Value;

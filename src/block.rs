@@ -1,5 +1,11 @@
+use crate::ast::Expression;
 use crate::errors::CompilationResult;
-use crate::statement::{Statement, StatementVisitor};
+use crate::statement::Statement;
+
+pub trait BlockVisitor {
+    fn enter_block(&self, block: &Block) -> CompilationResult<()>;
+    fn add_return_statement(&self, expr: &Expression) -> CompilationResult<()>;
+}
 
 pub struct Block {
     statements: Vec<Statement>,
@@ -10,9 +16,12 @@ impl Block {
         Self { statements }
     }
 
-    pub fn visit(&self, visitor: &dyn StatementVisitor) -> CompilationResult<()> {
+    pub fn visit(&self, visitor: &dyn BlockVisitor) -> CompilationResult<()> {
         for stmt in self.statements.iter() {
-            stmt.visit(visitor)?;
+            match stmt {
+                Statement::Block(block) => visitor.enter_block(block)?,
+                Statement::Return(expr) => visitor.add_return_statement(expr)?,
+            }
         }
         Ok(())
     }
