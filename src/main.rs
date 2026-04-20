@@ -35,7 +35,7 @@ proc foo(x: i32): i32 {
     return x;
 }
 
-proc test(x: i32, y: i32, z: i32, w: bool): i64 {
+proc test(x: u8, y: i16, z: i32, w: bool): i64 {
     return foo(x);
 }
 "#;

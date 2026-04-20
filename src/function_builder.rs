@@ -62,7 +62,7 @@ impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
         let func_ir = self.function_ir();
         let arg_id = self.func_args.len() as u32;
         let arg_ir = func_ir.get_nth_param(arg_id).unwrap().as_any_value_enum();
-        let arg_type = Type::from_spec(self.context(), arg_ast.value_type);
+        let arg_type = Type::from_spec(self, arg_ast.value_type)?;
         self.func_args
             .insert(name, Value::from_ir(arg_ir, &arg_type)?);
 

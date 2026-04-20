@@ -137,17 +137,7 @@ TypeAnnotation: TypeSpec = {
 }
 
 Type: TypeSpec = {
-    "i8" => TypeSpec::Integer{ width: IntegerTypeWidth::I8, is_signed: true },
-    "i16" => TypeSpec::Integer{ width: IntegerTypeWidth::I16, is_signed: true },
-    "i32" => TypeSpec::Integer{ width: IntegerTypeWidth::I32, is_signed: true },
-    "i64" => TypeSpec::Integer{ width: IntegerTypeWidth::I64, is_signed: true },
-    "u8" => TypeSpec::Integer{ width: IntegerTypeWidth::I8, is_signed: false },
-    "u16" => TypeSpec::Integer{ width: IntegerTypeWidth::I16, is_signed: false },
-    "u32" => TypeSpec::Integer{ width: IntegerTypeWidth::I32, is_signed: false },
-    "u64" => TypeSpec::Integer{ width: IntegerTypeWidth::I64, is_signed: false },
-    "f32" => TypeSpec::Float { width: FloatTypeWidth::F32 },
-    "f64" => TypeSpec::Float { width: FloatTypeWidth::F64 },
-    "bool" => TypeSpec::Bool,
+    <name:Identifier> => TypeSpec::Reference(name),
 }
 
 // Syntax base

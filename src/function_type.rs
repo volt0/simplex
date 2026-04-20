@@ -1,9 +1,9 @@
-use inkwell::context::Context;
 use inkwell::types::{BasicType, BasicTypeEnum};
 
 use crate::ast;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::function::Function;
+use crate::module_builder::ModuleBuilder;
 use crate::types::Type;
 use crate::value::Value;
 
@@ -24,20 +24,20 @@ impl<'ctx> Into<Type<'ctx>> for FunctionType<'ctx> {
 
 impl<'ctx> FunctionType<'ctx> {
     pub fn from_ast(
-        context: &'ctx Context,
+        module_builder: &ModuleBuilder<'ctx>,
         signature: &ast::FunctionSignature,
     ) -> CompilationResult<Self> {
         let args_count = signature.args.len();
         let mut arg_types = Vec::with_capacity(args_count);
         let mut arg_types_ir = Vec::with_capacity(args_count);
         for arg_type in signature.args.iter() {
-            let arg_type = Type::from_spec(context, arg_type.value_type.clone());
+            let arg_type = Type::from_spec(module_builder, arg_type.value_type.clone())?;
             arg_types.push(arg_type.clone());
             let arg_type_ir: BasicTypeEnum = arg_type.try_into()?;
             arg_types_ir.push(arg_type_ir.into());
         }
 
-        let return_type = Type::from_spec(context, signature.return_type.clone());
+        let return_type = Type::from_spec(module_builder, signature.return_type.clone())?;
         let return_type_ir: BasicTypeEnum = return_type.clone().try_into()?;
         let func_type_ir = return_type_ir.fn_type(&arg_types_ir, false);
 

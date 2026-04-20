@@ -1,8 +1,6 @@
 pub use crate::basic_block::BasicBlock;
 pub use crate::constant::Constant;
 pub use crate::expression::Expression;
-pub use crate::float_type::FloatTypeWidth;
-pub use crate::integer_type::IntegerTypeWidth;
 pub use crate::statement::Statement;
 pub use crate::types::TypeSpec;
 

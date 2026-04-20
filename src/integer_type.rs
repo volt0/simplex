@@ -5,14 +5,6 @@ use crate::errors::{CompilationError, CompilationResult};
 use crate::integer_value::IntegerValue;
 use crate::value::Value;
 
-#[derive(Clone, PartialEq, PartialOrd)]
-pub enum IntegerTypeWidth {
-    I8,
-    I16,
-    I32,
-    I64,
-}
-
 type IntegerTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
 
 #[derive(Clone, PartialEq)]
@@ -31,6 +23,26 @@ impl<'ctx> IntegerType<'ctx> {
     #[inline]
     pub fn new(ir: IntegerTypeIR<'ctx>, is_signed: bool) -> Self {
         Self { ir, is_signed }
+    }
+
+    #[inline]
+    pub fn new_i8(context: &'ctx Context, is_signed: bool) -> Self {
+        Self::from_spec(context, IntegerTypeWidth::I8, is_signed)
+    }
+
+    #[inline]
+    pub fn new_i16(context: &'ctx Context, is_signed: bool) -> Self {
+        Self::from_spec(context, IntegerTypeWidth::I16, is_signed)
+    }
+
+    #[inline]
+    pub fn new_i32(context: &'ctx Context, is_signed: bool) -> Self {
+        Self::from_spec(context, IntegerTypeWidth::I32, is_signed)
+    }
+
+    #[inline]
+    pub fn new_i64(context: &'ctx Context, is_signed: bool) -> Self {
+        Self::from_spec(context, IntegerTypeWidth::I64, is_signed)
     }
 
     pub fn from_spec(context: &'ctx Context, width: IntegerTypeWidth, is_signed: bool) -> Self {
@@ -95,4 +107,12 @@ impl<'ctx> IntegerType<'ctx> {
             Err(CompilationError::TypeMismatch)
         }
     }
+}
+
+#[derive(Clone, PartialEq, PartialOrd)]
+pub enum IntegerTypeWidth {
+    I8,
+    I16,
+    I32,
+    I64,
 }

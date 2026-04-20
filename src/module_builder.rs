@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use inkwell::context::Context;
 use inkwell::targets::TargetTriple;
 
@@ -9,16 +11,36 @@ use crate::function::Function;
 use crate::function_builder::FunctionBuilder;
 use crate::function_type::FunctionType;
 use crate::module::Module;
+use crate::types::Type;
 use crate::value::Value;
 
 pub struct ModuleBuilder<'ctx> {
     context: &'ctx Context,
     module: Module<'ctx>,
+    builtin_types: HashMap<String, Type<'ctx>>,
 }
 
 impl<'ctx> ModuleBuilder<'ctx> {
     fn new(context: &'ctx Context, module: Module<'ctx>) -> Self {
-        Self { context, module }
+        let builtin_types = HashMap::from_iter([
+            ("i8".to_string(), Type::new_i8(context, true)),
+            ("i16".to_string(), Type::new_i16(context, true)),
+            ("i32".to_string(), Type::new_i32(context, true)),
+            ("i64".to_string(), Type::new_i64(context, true)),
+            ("u8".to_string(), Type::new_i8(context, false)),
+            ("u16".to_string(), Type::new_i16(context, false)),
+            ("u32".to_string(), Type::new_i32(context, false)),
+            ("u64".to_string(), Type::new_i64(context, false)),
+            ("f32".to_string(), Type::new_f32(context)),
+            ("f64".to_string(), Type::new_f64(context)),
+            ("bool".to_string(), Type::new_bool(context)),
+        ]);
+
+        Self {
+            builtin_types,
+            context,
+            module,
+        }
     }
 
     pub fn from_ast(context: &'ctx Context, module_ast: ast::Module) -> CompilationResult<Self> {
@@ -56,7 +78,7 @@ impl<'ctx> ModuleBuilder<'ctx> {
         func_signature: ast::FunctionSignature,
         func_body: BasicBlock,
     ) -> CompilationResult<Function<'ctx>> {
-        let func_type = FunctionType::from_ast(self.context, &func_signature)?;
+        let func_type = FunctionType::from_ast(self, &func_signature)?;
         let func_type_ir = func_type.ir().clone();
         let func_ir = self.module.module_ir.add_function(name, func_type_ir, None);
         let func = Function::new(func_ir, func_type);
@@ -71,6 +93,13 @@ impl<'ctx> ModuleBuilder<'ctx> {
             Some(def) => Ok(match def {
                 Definition::Function(func) => func.clone().into(),
             }),
+            None => Err(CompilationError::UnresolvedName(name.to_string())),
+        }
+    }
+
+    pub fn load_type(&self, name: &str) -> CompilationResult<Type<'ctx>> {
+        match self.builtin_types.get(name) {
+            Some(value_type) => Ok(value_type.clone()),
             None => Err(CompilationError::UnresolvedName(name.to_string())),
         }
     }

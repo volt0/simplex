@@ -5,12 +5,6 @@ use crate::errors::{CompilationError, CompilationResult};
 use crate::float_value::FloatValue;
 use crate::value::Value;
 
-#[derive(Clone, PartialEq, PartialOrd)]
-pub enum FloatTypeWidth {
-    F32,
-    F64,
-}
-
 type FloatTypeIR<'ctx> = inkwell::types::FloatType<'ctx>;
 
 #[derive(Clone, PartialEq)]
@@ -27,6 +21,16 @@ impl<'ctx> Into<FloatTypeIR<'ctx>> for FloatType<'ctx> {
 impl<'ctx> FloatType<'ctx> {
     pub fn new(ir: FloatTypeIR<'ctx>) -> Self {
         Self { ir }
+    }
+
+    #[inline]
+    pub fn new_f32(context: &'ctx Context) -> Self {
+        Self::from_spec(context, FloatTypeWidth::F32)
+    }
+
+    #[inline]
+    pub fn new_f64(context: &'ctx Context) -> Self {
+        Self::from_spec(context, FloatTypeWidth::F64)
     }
 
     pub fn from_spec(context: &'ctx Context, width: FloatTypeWidth) -> Self {
@@ -67,4 +71,10 @@ impl<'ctx> FloatType<'ctx> {
             Ok(other)
         }
     }
+}
+
+#[derive(Clone, PartialEq, PartialOrd)]
+pub enum FloatTypeWidth {
+    F32,
+    F64,
 }

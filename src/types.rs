@@ -1,22 +1,15 @@
 use inkwell::context::Context;
 use inkwell::types::BasicTypeEnum;
 
-use crate::ast::IntegerTypeWidth;
-use crate::errors::CompilationError;
-use crate::float_type::{FloatType, FloatTypeWidth};
+use crate::errors::{CompilationError, CompilationResult};
+use crate::float_type::FloatType;
 use crate::function_type::FunctionType;
 use crate::integer_type::IntegerType;
+use crate::module_builder::ModuleBuilder;
 
 #[derive(Clone)]
 pub enum TypeSpec {
-    Integer {
-        width: IntegerTypeWidth,
-        is_signed: bool,
-    },
-    Float {
-        width: FloatTypeWidth,
-    },
-    Bool,
+    Reference(String),
 }
 
 pub type BoolTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
@@ -30,14 +23,48 @@ pub enum Type<'ctx> {
 }
 
 impl<'ctx> Type<'ctx> {
-    pub fn from_spec(context: &'ctx Context, type_spec: TypeSpec) -> Self {
-        match type_spec {
-            TypeSpec::Integer { width, is_signed } => {
-                Type::Integer(IntegerType::from_spec(context, width, is_signed))
-            }
-            TypeSpec::Float { width } => Type::Float(FloatType::from_spec(context, width)),
-            TypeSpec::Bool => Type::Bool(context.bool_type()),
-        }
+    pub fn from_spec(
+        module_builder: &ModuleBuilder<'ctx>,
+        type_spec: TypeSpec,
+    ) -> CompilationResult<Self> {
+        Ok(match type_spec {
+            TypeSpec::Reference(name) => module_builder.load_type(&name)?,
+        })
+    }
+
+    #[inline]
+    pub fn new_i8(context: &'ctx Context, is_signed: bool) -> Self {
+        Self::Integer(IntegerType::new_i8(context, is_signed))
+    }
+
+    #[inline]
+    pub fn new_i16(context: &'ctx Context, is_signed: bool) -> Self {
+        Self::Integer(IntegerType::new_i16(context, is_signed))
+    }
+
+    #[inline]
+    pub fn new_i32(context: &'ctx Context, is_signed: bool) -> Self {
+        Self::Integer(IntegerType::new_i32(context, is_signed))
+    }
+
+    #[inline]
+    pub fn new_i64(context: &'ctx Context, is_signed: bool) -> Self {
+        Self::Integer(IntegerType::new_i64(context, is_signed))
+    }
+
+    #[inline]
+    pub fn new_f32(context: &'ctx Context) -> Self {
+        Type::Float(FloatType::new_f32(context))
+    }
+
+    #[inline]
+    pub fn new_f64(context: &'ctx Context) -> Self {
+        Type::Float(FloatType::new_f64(context))
+    }
+
+    #[inline]
+    pub fn new_bool(context: &'ctx Context) -> Self {
+        Type::Bool(context.bool_type())
     }
 }
 
