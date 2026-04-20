@@ -16,8 +16,8 @@ use crate::value::Value;
 pub struct FunctionBuilder<'ctx, 'm> {
     func: Function<'ctx>,
     func_args: HashMap<String, Value<'ctx>>,
-    parent: &'m mut ModuleBuilder<'ctx>,
     builder: Builder<'ctx>,
+    parent: &'m mut ModuleBuilder<'ctx>,
 }
 
 impl<'ctx, 'm> Deref for FunctionBuilder<'ctx, 'm> {
@@ -37,30 +37,36 @@ impl<'ctx, 'm> DerefMut for FunctionBuilder<'ctx, 'm> {
 impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
     pub fn new(
         func: Function<'ctx>,
-        func_signature: &ast::FunctionSignature,
+        func_signature: ast::FunctionSignature,
         parent: &'m mut ModuleBuilder<'ctx>,
     ) -> CompilationResult<Self> {
-        let context = parent.context();
-        let func_ir = func.ir();
-
-        let mut func_args = HashMap::new();
-        for (i, arg) in func_signature.args.iter().enumerate() {
-            let arg_ir = func_ir.get_nth_param(i as u32).unwrap().as_any_value_enum();
-            let arg_type = Type::from_spec(context, arg.value_type.clone());
-            func_args.insert(arg.name.clone(), Value::from_ir(arg_ir, &arg_type)?);
-        }
-
-        let func = Function::new(func_ir.clone(), func.get_type().clone());
-
-        let builder = parent.context().create_builder();
-        let func_builder = Self {
+        let mut func_builder = Self {
             func,
-            func_args,
+            func_args: HashMap::with_capacity(func_signature.args.len()),
+            builder: parent.context().create_builder(),
             parent,
-            builder,
         };
 
+        for arg_ast in func_signature.args.into_iter() {
+            func_builder.add_argument(arg_ast.name.clone(), arg_ast)?;
+        }
+
         Ok(func_builder)
+    }
+
+    fn add_argument(
+        &mut self,
+        name: String,
+        arg_ast: ast::FunctionArgument,
+    ) -> CompilationResult<()> {
+        let func_ir = self.function_ir();
+        let arg_id = self.func_args.len() as u32;
+        let arg_ir = func_ir.get_nth_param(arg_id).unwrap().as_any_value_enum();
+        let arg_type = Type::from_spec(self.context(), arg_ast.value_type);
+        self.func_args
+            .insert(name, Value::from_ir(arg_ir, &arg_type)?);
+
+        Ok(())
     }
 
     pub fn attach_body(&self, body: BasicBlock) -> CompilationResult<()> {
