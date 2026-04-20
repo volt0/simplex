@@ -9,6 +9,7 @@ use crate::block::Block;
 use crate::errors::CompilationResult;
 use crate::function::Function;
 use crate::module_builder::ModuleBuilder;
+use crate::statement::StatementVisitor;
 use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
 use crate::value::Value;
@@ -75,8 +76,9 @@ impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
             .append_basic_block(self.function_ir().clone(), "");
 
         self.builder().position_at_end(body_ir);
+
         let stmt_translator = StatementTranslator::new(self);
-        body.visit(&stmt_translator)
+        stmt_translator.enter_block(&body)
     }
 
     #[inline(always)]

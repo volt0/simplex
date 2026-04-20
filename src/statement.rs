@@ -3,7 +3,7 @@ use crate::errors::CompilationResult;
 use crate::expression::Expression;
 
 pub trait StatementVisitor {
-    fn visit_block(&self, block: &Block) -> CompilationResult<()>;
+    fn enter_block(&self, block: &Block) -> CompilationResult<()>;
     fn add_return_statement(&self, expr: &Expression) -> CompilationResult<()>;
 }
 
@@ -23,7 +23,7 @@ impl Statement {
 
     pub fn visit(&self, visitor: &dyn StatementVisitor) -> CompilationResult<()> {
         match self {
-            Statement::Block(block) => visitor.visit_block(block),
+            Statement::Block(block) => visitor.enter_block(block),
             Statement::Return(expr) => visitor.add_return_statement(expr),
         }
     }

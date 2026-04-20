@@ -25,7 +25,7 @@ impl<'ctx, 'm, 'f> Deref for StatementTranslator<'ctx, 'm, 'f> {
 }
 
 impl<'ctx, 'm, 'f> StatementVisitor for StatementTranslator<'ctx, 'm, 'f> {
-    fn visit_block(&self, block: &Block) -> CompilationResult<()> {
+    fn enter_block(&self, block: &Block) -> CompilationResult<()> {
         block.visit(self)
     }
 
