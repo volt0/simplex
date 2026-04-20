@@ -13,15 +13,9 @@ use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
 use crate::value::Value;
 
-#[derive(Clone)]
-pub struct FunctionArgument<'ctx> {
-    pub name: String,
-    pub value: Value<'ctx>,
-}
-
 pub struct FunctionBuilder<'ctx, 'm> {
     func: Function<'ctx>,
-    func_args: HashMap<String, FunctionArgument<'ctx>>,
+    func_args: HashMap<String, Value<'ctx>>,
     parent: &'m mut ModuleBuilder<'ctx>,
     builder: Builder<'ctx>,
 }
@@ -46,18 +40,14 @@ impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
         func_signature: &ast::FunctionSignature,
         parent: &'m mut ModuleBuilder<'ctx>,
     ) -> CompilationResult<Self> {
-        let mut func_args = HashMap::new();
+        let context = parent.context();
         let func_ir = func.ir();
+
+        let mut func_args = HashMap::new();
         for (i, arg) in func_signature.args.iter().enumerate() {
             let arg_ir = func_ir.get_nth_param(i as u32).unwrap().as_any_value_enum();
-            let arg_type = Type::from_spec(parent.context(), arg.value_type.clone());
-            func_args.insert(
-                arg.name.clone(),
-                FunctionArgument {
-                    name: arg.name.clone(),
-                    value: Value::from_ir(arg_ir, &arg_type)?,
-                },
-            );
+            let arg_type = Type::from_spec(context, arg.value_type.clone());
+            func_args.insert(arg.name.clone(), Value::from_ir(arg_ir, &arg_type)?);
         }
 
         let func = Function::new(func_ir.clone(), func.get_type().clone());
@@ -100,7 +90,7 @@ impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
 
     pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
         match self.func_args.get(name) {
-            Some(arg) => Ok(arg.value.clone()),
+            Some(arg) => Ok(arg.clone()),
             None => self.parent.load_value(name),
         }
     }
