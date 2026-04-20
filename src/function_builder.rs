@@ -14,10 +14,10 @@ use crate::types::Type;
 use crate::value::Value;
 
 pub struct FunctionBuilder<'ctx, 'm> {
+    parent: &'m mut ModuleBuilder<'ctx>,
+    builder: Builder<'ctx>,
     func: Function<'ctx>,
     func_args: HashMap<String, Value<'ctx>>,
-    builder: Builder<'ctx>,
-    parent: &'m mut ModuleBuilder<'ctx>,
 }
 
 impl<'ctx, 'm> Deref for FunctionBuilder<'ctx, 'm> {

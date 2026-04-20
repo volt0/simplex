@@ -12,8 +12,8 @@ use crate::module::Module;
 use crate::value::Value;
 
 pub struct ModuleBuilder<'ctx> {
-    module: Module<'ctx>,
     context: &'ctx Context,
+    module: Module<'ctx>,
 }
 
 impl<'ctx> ModuleBuilder<'ctx> {
