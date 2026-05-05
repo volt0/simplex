@@ -4,25 +4,13 @@ use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::integer_type::IntegerType;
 use crate::integer_value::IntegerValue;
-use crate::value::Value;
+use crate::value::{Value, ValueOperations};
 
 type BoolValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
 
 #[derive(Clone)]
 pub struct BoolValue<'ctx> {
     ir: BoolValueIR<'ctx>,
-}
-
-impl<'ctx> Into<Value<'ctx>> for BoolValue<'ctx> {
-    fn into(self) -> Value<'ctx> {
-        Value::Bool(self)
-    }
-}
-
-impl<'ctx> Into<BoolValueIR<'ctx>> for BoolValue<'ctx> {
-    fn into(self) -> BoolValueIR<'ctx> {
-        self.ir
-    }
 }
 
 impl<'ctx> BoolValue<'ctx> {
@@ -39,12 +27,14 @@ impl<'ctx> BoolValue<'ctx> {
         let value_ir = builder.build_int_z_extend(self.ir, value_type_ir, "")?;
         Ok(IntegerValue::new(value_ir, required_type.is_signed()))
     }
+}
 
-    pub fn binary_operation(
-        self,
+impl<'ctx> ValueOperations<'ctx> for BoolValue<'ctx> {
+    fn binary_operation(
+        &self,
         builder: &Builder<'ctx>,
         op: BinaryOperation,
-        other: Value<'ctx>,
+        other: &Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let other = match other {
             Value::Bool(other) => other,
@@ -62,8 +52,8 @@ impl<'ctx> BoolValue<'ctx> {
         Ok(Self { ir: result_ir }.into())
     }
 
-    pub fn unary_operation(
-        self,
+    fn unary_operation(
+        &self,
         builder: &Builder<'ctx>,
         op: UnaryOperation,
     ) -> CompilationResult<Value<'ctx>> {
@@ -72,5 +62,17 @@ impl<'ctx> BoolValue<'ctx> {
             _ => return Err(CompilationError::InvalidOperation),
         };
         Ok(Self { ir: result_ir }.into())
+    }
+}
+
+impl<'ctx> Into<Value<'ctx>> for BoolValue<'ctx> {
+    fn into(self) -> Value<'ctx> {
+        Value::Bool(self)
+    }
+}
+
+impl<'ctx> Into<BoolValueIR<'ctx>> for BoolValue<'ctx> {
+    fn into(self) -> BoolValueIR<'ctx> {
+        self.ir
     }
 }

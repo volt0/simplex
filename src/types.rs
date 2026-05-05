@@ -1,3 +1,4 @@
+use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::types::BasicTypeEnum;
 
@@ -6,6 +7,7 @@ use crate::float_type::FloatType;
 use crate::function_type::FunctionType;
 use crate::integer_type::IntegerType;
 use crate::module_builder::ModuleBuilder;
+use crate::value::Value;
 
 #[derive(Clone)]
 pub enum TypeSpec {
@@ -65,6 +67,24 @@ impl<'ctx> Type<'ctx> {
     #[inline]
     pub fn new_bool(context: &'ctx Context) -> Self {
         Type::Bool(context.bool_type())
+    }
+
+    pub fn validate_value(
+        &self,
+        builder: &Builder<'ctx>,
+        value: &Value<'ctx>,
+    ) -> CompilationResult<Value<'ctx>> {
+        let value = value.clone();
+        Ok(match self {
+            Type::Integer(required_type) => required_type.validate_value(builder, value)?.into(),
+            Type::Float(required_type) => required_type.validate_value(builder, value)?.into(),
+            Type::Bool(_) => match value {
+                Value::Bool(value) => Value::Bool(value.clone()),
+                Value::Integer(value) => value.to_bool(builder)?.into(),
+                _ => return Err(CompilationError::TypeMismatch),
+            },
+            Type::Function(required_type) => required_type.validate_value(value)?.into(),
+        })
     }
 }
 

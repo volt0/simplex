@@ -1,6 +1,10 @@
+use inkwell::builder::Builder;
+
+use crate::errors::{CompilationError, CompilationResult};
+use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::function_type::FunctionType;
 use crate::types::Type;
-use crate::value::Value;
+use crate::value::{Value, ValueOperations};
 
 type FunctionIR<'ctx> = inkwell::values::FunctionValue<'ctx>;
 
@@ -8,6 +12,25 @@ type FunctionIR<'ctx> = inkwell::values::FunctionValue<'ctx>;
 pub struct Function<'ctx> {
     ir: FunctionIR<'ctx>,
     func_type: FunctionType<'ctx>,
+}
+
+impl<'ctx> ValueOperations<'ctx> for Function<'ctx> {
+    fn binary_operation(
+        &self,
+        _: &Builder<'ctx>,
+        _: BinaryOperation,
+        _: &Value<'ctx>,
+    ) -> CompilationResult<Value<'ctx>> {
+        Err(CompilationError::InvalidOperation)
+    }
+
+    fn unary_operation(
+        &self,
+        _: &Builder<'ctx>,
+        _: UnaryOperation,
+    ) -> CompilationResult<Value<'ctx>> {
+        Err(CompilationError::InvalidOperation)
+    }
 }
 
 impl<'ctx> Function<'ctx> {

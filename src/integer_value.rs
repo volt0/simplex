@@ -8,7 +8,7 @@ use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::float_type::FloatType;
 use crate::float_value::FloatValue;
 use crate::integer_type::IntegerType;
-use crate::value::Value;
+use crate::value::{Value, ValueOperations};
 
 type IntegerValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
 
@@ -16,18 +16,6 @@ type IntegerValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
 pub struct IntegerValue<'ctx> {
     ir: IntegerValueIR<'ctx>,
     is_signed: bool,
-}
-
-impl<'ctx> Into<Value<'ctx>> for IntegerValue<'ctx> {
-    fn into(self) -> Value<'ctx> {
-        Value::Integer(self)
-    }
-}
-
-impl<'ctx> Into<IntegerValueIR<'ctx>> for IntegerValue<'ctx> {
-    fn into(self) -> IntegerValueIR<'ctx> {
-        self.ir
-    }
 }
 
 impl<'ctx> IntegerValue<'ctx> {
@@ -81,21 +69,45 @@ impl<'ctx> IntegerValue<'ctx> {
         Ok(FloatValue::new(result_ir))
     }
 
-    pub fn binary_operation(
+    pub fn extend(
         self,
         builder: &Builder<'ctx>,
+        target_type: &IntegerType<'ctx>,
+    ) -> CompilationResult<Self> {
+        if !self.get_type().is_compatible(target_type) {
+            return Err(CompilationError::TypeMismatch);
+        }
+
+        let target_type_ir = target_type.ir();
+        let result_ir = if target_type.is_signed() {
+            builder.build_int_s_extend(self.ir, target_type_ir.clone(), "")?
+        } else {
+            builder.build_int_z_extend(self.ir, target_type_ir.clone(), "")?
+        };
+
+        Ok(IntegerValue {
+            ir: result_ir,
+            is_signed: target_type.is_signed(),
+        })
+    }
+}
+
+impl<'ctx> ValueOperations<'ctx> for IntegerValue<'ctx> {
+    fn binary_operation(
+        &self,
+        builder: &Builder<'ctx>,
         op: BinaryOperation,
-        other: Value<'ctx>,
+        other: &Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
-        let other = match other {
+        let other = match other.clone() {
             Value::Integer(other) => other,
             _ => return Err(CompilationError::TypeMismatch),
         };
 
         let is_signed = self.is_signed;
         let result_type = self.get_type().combine_with(other.get_type())?;
-        let lhs_ir = self.extend(builder, &result_type)?.ir;
-        let rhs_ir = other.extend(builder, &result_type)?.ir;
+        let lhs_ir = self.clone().extend(builder, &result_type)?.ir;
+        let rhs_ir = other.clone().extend(builder, &result_type)?.ir;
         let result_ir = match op {
             BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, ""),
             BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, ""),
@@ -128,8 +140,8 @@ impl<'ctx> IntegerValue<'ctx> {
         .into())
     }
 
-    pub fn unary_operation(
-        self,
+    fn unary_operation(
+        &self,
         builder: &Builder<'ctx>,
         op: UnaryOperation,
     ) -> CompilationResult<Value<'ctx>> {
@@ -145,26 +157,16 @@ impl<'ctx> IntegerValue<'ctx> {
         }
         .into())
     }
+}
 
-    pub fn extend(
-        self,
-        builder: &Builder<'ctx>,
-        target_type: &IntegerType<'ctx>,
-    ) -> CompilationResult<Self> {
-        if !self.get_type().is_compatible(target_type) {
-            return Err(CompilationError::TypeMismatch);
-        }
+impl<'ctx> Into<Value<'ctx>> for IntegerValue<'ctx> {
+    fn into(self) -> Value<'ctx> {
+        Value::Integer(self)
+    }
+}
 
-        let target_type_ir = target_type.ir();
-        let result_ir = if target_type.is_signed() {
-            builder.build_int_s_extend(self.ir, target_type_ir.clone(), "")?
-        } else {
-            builder.build_int_z_extend(self.ir, target_type_ir.clone(), "")?
-        };
-
-        Ok(IntegerValue {
-            ir: result_ir,
-            is_signed: target_type.is_signed(),
-        })
+impl<'ctx> Into<IntegerValueIR<'ctx>> for IntegerValue<'ctx> {
+    fn into(self) -> IntegerValueIR<'ctx> {
+        self.ir
     }
 }

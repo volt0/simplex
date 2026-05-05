@@ -48,7 +48,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         };
 
         if let Some(expr_type) = expr_type {
-            value?.validate_type(self.builder(), expr_type.clone())
+            expr_type.validate_value(self.builder(), &value?)
         } else {
             value
         }
@@ -72,7 +72,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
     ) -> CompilationResult<Value<'ctx>> {
         let lhs = self.translate_expression(&lhs_expr, expr_type)?;
         let rhs = self.translate_expression(&rhs_expr, expr_type)?;
-        lhs.binary_operation(self.builder(), op, rhs)
+        lhs.binary_operation(self.builder(), op, &rhs)
     }
 
     fn translate_unary_operation(
