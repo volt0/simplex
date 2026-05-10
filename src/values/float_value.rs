@@ -3,7 +3,9 @@ use inkwell::builder::Builder;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::float_type::FloatType;
-use crate::value::{Value, ValueOperations};
+
+use super::value_operations::ValueOperations;
+use super::Value;
 
 type FloatValueIR<'ctx> = inkwell::values::FloatValue<'ctx>;
 

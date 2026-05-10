@@ -7,7 +7,7 @@ use crate::float_type::FloatType;
 use crate::function_type::FunctionType;
 use crate::integer_type::IntegerType;
 use crate::module_builder::ModuleBuilder;
-use crate::value::Value;
+use crate::values::Value;
 
 #[derive(Clone)]
 pub enum TypeSpec {

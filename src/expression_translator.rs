@@ -5,10 +5,9 @@ use inkwell::values::{AnyValue, BasicValueEnum};
 use crate::constant::Constant;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, CallExpression, Expression, UnaryOperation};
-use crate::integer_value::IntegerValue;
 use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
-use crate::value::Value;
+use crate::values::{IntegerValue, Value};
 
 #[repr(transparent)]
 pub struct ExpressionTranslator<'ctx, 'm, 'f, 's> {

@@ -1,15 +1,21 @@
 use std::ops::Deref;
 
-use inkwell::builder::Builder;
 use inkwell::values::{AnyValueEnum, BasicValueEnum};
 
-use crate::bool_value::BoolValue;
 use crate::errors::{CompilationError, CompilationResult};
-use crate::expression::{BinaryOperation, UnaryOperation};
-use crate::float_value::FloatValue;
 use crate::function::Function;
-use crate::integer_value::IntegerValue;
 use crate::types::Type;
+
+use self::bool_value::BoolValue;
+
+mod bool_value;
+mod float_value;
+mod integer_value;
+mod value_operations;
+
+pub use self::float_value::FloatValue;
+pub use self::integer_value::IntegerValue;
+pub use self::value_operations::ValueOperations;
 
 #[derive(Clone)]
 pub enum Value<'ctx> {
@@ -35,21 +41,6 @@ impl<'ctx> Value<'ctx> {
             }
         })
     }
-}
-
-pub trait ValueOperations<'ctx> {
-    fn binary_operation(
-        &self,
-        builder: &Builder<'ctx>,
-        op: BinaryOperation,
-        other: &Value<'ctx>,
-    ) -> CompilationResult<Value<'ctx>>;
-
-    fn unary_operation(
-        &self,
-        builder: &Builder<'ctx>,
-        op: UnaryOperation,
-    ) -> CompilationResult<Value<'ctx>>;
 }
 
 impl<'ctx> Deref for Value<'ctx> {

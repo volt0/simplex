@@ -2,13 +2,15 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::IntPredicate;
 
-use crate::bool_value::BoolValue;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::float_type::FloatType;
-use crate::float_value::FloatValue;
 use crate::integer_type::IntegerType;
-use crate::value::{Value, ValueOperations};
+
+use super::bool_value::BoolValue;
+use super::float_value::FloatValue;
+use super::value_operations::ValueOperations;
+use super::Value;
 
 type IntegerValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
 

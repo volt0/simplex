@@ -9,7 +9,7 @@ use crate::function_builder::FunctionBuilder;
 use crate::function_type::FunctionType;
 use crate::module::Module;
 use crate::target_builder::TargetBuilder;
-use crate::value::Value;
+use crate::values::Value;
 
 pub struct ModuleBuilder<'ctx> {
     parent: &'ctx TargetBuilder<'ctx>,

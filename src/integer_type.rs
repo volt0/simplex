@@ -2,8 +2,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 
 use crate::errors::{CompilationError, CompilationResult};
-use crate::integer_value::IntegerValue;
-use crate::value::Value;
+use crate::values::{IntegerValue, Value};
 
 type IntegerTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
 

@@ -12,7 +12,7 @@ use crate::function::Function;
 use crate::module_builder::ModuleBuilder;
 use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
-use crate::value::Value;
+use crate::values::Value;
 
 pub struct FunctionBuilder<'ctx, 'm> {
     parent: &'m mut ModuleBuilder<'ctx>,

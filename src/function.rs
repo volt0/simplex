@@ -4,7 +4,7 @@ use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::function_type::FunctionType;
 use crate::types::Type;
-use crate::value::{Value, ValueOperations};
+use crate::values::{Value, ValueOperations};
 
 type FunctionIR<'ctx> = inkwell::values::FunctionValue<'ctx>;
 

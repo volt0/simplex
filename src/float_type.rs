@@ -2,8 +2,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 
 use crate::errors::{CompilationError, CompilationResult};
-use crate::float_value::FloatValue;
-use crate::value::Value;
+use crate::values::{FloatValue, Value};
 
 type FloatTypeIR<'ctx> = inkwell::types::FloatType<'ctx>;
 

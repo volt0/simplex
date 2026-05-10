@@ -3,12 +3,15 @@ use inkwell::builder::Builder;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::integer_type::IntegerType;
-use crate::integer_value::IntegerValue;
-use crate::value::{Value, ValueOperations};
+
+use super::integer_value::IntegerValue;
+use super::value_operations::ValueOperations;
+use super::Value;
 
 type BoolValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
 
 #[derive(Clone)]
+#[repr(transparent)]
 pub struct BoolValue<'ctx> {
     ir: BoolValueIR<'ctx>,
 }
