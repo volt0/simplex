@@ -3,11 +3,16 @@ use inkwell::context::Context;
 use inkwell::types::BasicTypeEnum;
 
 use crate::errors::{CompilationError, CompilationResult};
-use crate::float_type::FloatType;
-use crate::function_type::FunctionType;
-use crate::integer_type::IntegerType;
 use crate::module_builder::ModuleBuilder;
 use crate::values::Value;
+
+mod float_type;
+mod function_type;
+mod integer_type;
+
+pub use float_type::FloatType;
+pub use function_type::FunctionType;
+pub use integer_type::IntegerType;
 
 #[derive(Clone)]
 pub enum TypeSpec {

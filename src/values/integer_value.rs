@@ -4,8 +4,7 @@ use inkwell::IntPredicate;
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
-use crate::float_type::FloatType;
-use crate::integer_type::IntegerType;
+use crate::types::{FloatType, IntegerType};
 
 use super::bool_value::BoolValue;
 use super::float_value::FloatValue;

@@ -2,8 +2,7 @@ use inkwell::builder::Builder;
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
-use crate::function_type::FunctionType;
-use crate::types::Type;
+use crate::types::{FunctionType, Type};
 use crate::values::{Value, ValueOperations};
 
 type FunctionIR<'ctx> = inkwell::values::FunctionValue<'ctx>;

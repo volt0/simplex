@@ -2,7 +2,7 @@ use inkwell::builder::Builder;
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
-use crate::integer_type::IntegerType;
+use crate::types::IntegerType;
 
 use super::integer_value::IntegerValue;
 use super::value_operations::ValueOperations;

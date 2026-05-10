@@ -4,8 +4,9 @@ use crate::ast;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::function::Function;
 use crate::module_builder::ModuleBuilder;
-use crate::types::Type;
 use crate::values::Value;
+
+use super::Type;
 
 type FunctionTypeIR<'ctx> = inkwell::types::FunctionType<'ctx>;
 

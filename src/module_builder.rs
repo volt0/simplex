@@ -6,9 +6,9 @@ use crate::definition::Definition;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::function::Function;
 use crate::function_builder::FunctionBuilder;
-use crate::function_type::FunctionType;
 use crate::module::Module;
 use crate::target_builder::TargetBuilder;
+use crate::types::FunctionType;
 use crate::values::Value;
 
 pub struct ModuleBuilder<'ctx> {
