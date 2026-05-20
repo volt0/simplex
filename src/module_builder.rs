@@ -4,11 +4,10 @@ use crate::ast;
 use crate::block::Block;
 use crate::definition::Definition;
 use crate::errors::{CompilationError, CompilationResult};
-use crate::function::Function;
+use crate::function::{Function, FunctionType};
 use crate::function_builder::FunctionBuilder;
 use crate::module::Module;
 use crate::target_builder::TargetBuilder;
-use crate::types::FunctionType;
 use crate::values::Value;
 
 pub struct ModuleBuilder<'ctx> {
@@ -49,7 +48,7 @@ impl<'ctx> ModuleBuilder<'ctx> {
         let func_type = FunctionType::from_ast(self, &func_signature)?;
         let func_type_ir = func_type.ir().clone();
         let func_ir = self.module.module_ir.add_function(name, func_type_ir, None);
-        let func = Function::new(func_ir, func_type);
+        let func = Function::from_ir(func_ir, func_type);
 
         let func_builder = FunctionBuilder::new(func, func_signature, self)?;
         func_builder.attach_body(func_body)?;

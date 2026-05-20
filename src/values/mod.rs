@@ -1,28 +1,21 @@
-use std::ops::Deref;
-
+use inkwell::context::Context;
 use inkwell::values::{AnyValueEnum, BasicValueEnum};
 
+use crate::ast::Constant;
 use crate::errors::{CompilationError, CompilationResult};
+use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::expression_translator::ExpressionTranslator;
 use crate::function::Function;
+use crate::types::primitive::PrimitiveValue;
 use crate::types::Type;
 
-use self::bool_value::BoolValue;
+use variant::ValueVariant;
 
-mod bool_value;
-mod float_value;
-mod integer_value;
-mod value_operations;
-
-pub use self::float_value::FloatValue;
-pub use self::integer_value::IntegerValue;
-pub use self::value_operations::ValueOperations;
+mod variant;
 
 #[derive(Clone)]
-pub enum Value<'ctx> {
-    Integer(IntegerValue<'ctx>),
-    Float(FloatValue<'ctx>),
-    Bool(BoolValue<'ctx>),
-    Function(Function<'ctx>),
+pub struct Value<'ctx> {
+    pub variant: ValueVariant<'ctx>,
 }
 
 impl<'ctx> Value<'ctx> {
@@ -30,28 +23,74 @@ impl<'ctx> Value<'ctx> {
         value_ir: AnyValueEnum<'ctx>,
         value_type: &Type<'ctx>,
     ) -> CompilationResult<Self> {
-        Ok(match value_type {
-            Type::Integer(value_type) => {
-                IntegerValue::new(value_ir.into_int_value(), value_type.is_signed()).into()
+        let variant = match value_type {
+            Type::Primitive(value_type) => {
+                let value = match value_ir.try_into() {
+                    Ok(value_ir) => PrimitiveValue::from_ir(value_ir, value_type)?,
+                    Err(_) => return Err(CompilationError::InvalidOperation),
+                };
+                ValueVariant::Primitive(value)
             }
-            Type::Float(_) => FloatValue::new(value_ir.into_float_value()).into(),
-            Type::Bool(_) => BoolValue::new(value_ir.into_int_value()).into(),
-            Type::Function(value_type) => {
-                Function::new(value_ir.into_function_value(), value_type.clone()).into()
+            Type::Function(function_type) => {
+                let function_ir = value_ir.into_function_value();
+                ValueVariant::Function(Function::from_ir(function_ir, function_type.clone()))
             }
+        };
+        Ok(Self { variant })
+    }
+
+    pub fn from_constant(context: &'ctx Context, value: &Constant) -> CompilationResult<Self> {
+        Ok(Self {
+            variant: ValueVariant::Primitive(PrimitiveValue::from_constant(context, value)),
         })
+    }
+
+    pub fn to_function(&self) -> CompilationResult<Function<'ctx>> {
+        match &self.variant {
+            ValueVariant::Function(value) => Ok(value.clone()),
+            _ => Err(CompilationError::TypeMismatch),
+        }
+    }
+
+    pub fn to_primitive(&self) -> CompilationResult<PrimitiveValue<'ctx>> {
+        self.variant.to_primitive()
+    }
+
+    pub fn get_type(&self) -> Type<'ctx> {
+        self.variant.get_type()
+    }
+
+    pub fn do_binary_operation(
+        &mut self,
+        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        op: BinaryOperation,
+        other: &Value<'ctx>,
+    ) -> CompilationResult<()> {
+        self.variant
+            .do_binary_operation(expr_translator, op, &other.variant)
+    }
+
+    pub fn do_unary_operation(
+        &mut self,
+        expr_translator: &ExpressionTranslator<'ctx, '_, '_, '_>,
+        op: UnaryOperation,
+    ) -> CompilationResult<()> {
+        self.variant.do_unary_operation(expr_translator, op)
     }
 }
 
-impl<'ctx> Deref for Value<'ctx> {
-    type Target = dyn ValueOperations<'ctx> + 'ctx;
+impl<'ctx> From<PrimitiveValue<'ctx>> for Value<'ctx> {
+    fn from(value: PrimitiveValue<'ctx>) -> Self {
+        Self {
+            variant: ValueVariant::Primitive(value),
+        }
+    }
+}
 
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Value::Integer(value) => value,
-            Value::Float(value) => value,
-            Value::Bool(value) => value,
-            Value::Function(value) => value,
+impl<'ctx> From<Function<'ctx>> for Value<'ctx> {
+    fn from(value: Function<'ctx>) -> Self {
+        Value {
+            variant: ValueVariant::Function(value),
         }
     }
 }
@@ -60,11 +99,9 @@ impl<'ctx> TryInto<BasicValueEnum<'ctx>> for Value<'ctx> {
     type Error = CompilationError;
 
     fn try_into(self) -> Result<BasicValueEnum<'ctx>, Self::Error> {
-        Ok(match self {
-            Value::Integer(value) => BasicValueEnum::IntValue(value.into()),
-            Value::Bool(value) => BasicValueEnum::IntValue(value.into()),
-            Value::Float(value) => BasicValueEnum::FloatValue(value.into()),
-            _ => return Err(CompilationError::InvalidOperation),
-        })
+        match self.variant {
+            ValueVariant::Primitive(value) => Ok(value.into()),
+            _ => Err(CompilationError::InvalidOperation),
+        }
     }
 }

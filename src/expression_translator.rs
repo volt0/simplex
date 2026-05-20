@@ -3,11 +3,11 @@ use std::ops::Deref;
 use inkwell::values::{AnyValue, BasicValueEnum};
 
 use crate::constant::Constant;
-use crate::errors::{CompilationError, CompilationResult};
+use crate::errors::CompilationResult;
 use crate::expression::{BinaryOperation, CallExpression, Expression, UnaryOperation};
 use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
-use crate::values::{IntegerValue, Value};
+use crate::values::Value;
 
 #[repr(transparent)]
 pub struct ExpressionTranslator<'ctx, 'm, 'f, 's> {
@@ -47,19 +47,14 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         };
 
         if let Some(expr_type) = expr_type {
-            expr_type.validate_value(self.builder(), &value?)
+            expr_type.check_value(self.builder(), value?)
         } else {
             value
         }
     }
 
     fn translate_constant(&self, constant: &Constant) -> CompilationResult<Value<'ctx>> {
-        let context = self.context();
-        Ok(match constant {
-            Constant::Integer(value) => {
-                Value::Integer(IntegerValue::from_constant(context, *value))
-            }
-        })
+        Value::from_constant(self.context(), constant)
     }
 
     fn translate_binary_operation(
@@ -69,9 +64,10 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         rhs_expr: &Expression,
         expr_type: Option<&Type<'ctx>>,
     ) -> CompilationResult<Value<'ctx>> {
-        let lhs = self.translate_expression(&lhs_expr, expr_type)?;
-        let rhs = self.translate_expression(&rhs_expr, expr_type)?;
-        lhs.binary_operation(self.builder(), op, &rhs)
+        let mut lhs = self.translate_expression(&lhs_expr, expr_type)?;
+        let mut rhs = self.translate_expression(&rhs_expr, expr_type)?;
+        lhs.do_binary_operation(self, op, &mut rhs)?;
+        Ok(lhs)
     }
 
     fn translate_unary_operation(
@@ -80,15 +76,14 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         arg_expr: &Expression,
         expr_type: Option<&Type<'ctx>>,
     ) -> CompilationResult<Value<'ctx>> {
-        let arg = self.translate_expression(arg_expr, expr_type)?;
-        arg.unary_operation(self.builder(), op)
+        let mut arg = self.translate_expression(arg_expr, expr_type)?;
+        arg.do_unary_operation(self, op)?;
+        Ok(arg)
     }
 
     fn translate_call(&self, expr: &CallExpression) -> CompilationResult<Value<'ctx>> {
-        let callee = match self.translate_expression(&expr.callee, None)? {
-            Value::Function(callee) => callee,
-            _ => return Err(CompilationError::InvalidOperation),
-        };
+        let callee = self.translate_expression(&expr.callee, None)?;
+        let callee = callee.to_function()?;
 
         let callee_type = callee.get_type();
         let callee_ir = callee.clone().into();
