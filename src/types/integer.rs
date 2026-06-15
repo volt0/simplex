@@ -5,9 +5,10 @@ use inkwell::IntPredicate;
 
 use super::boolean::BoolValue;
 use super::floating::{FloatType, FloatValue};
-use super::primitive::{PrimitiveType, PrimitiveValue};
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::types::Type;
+use crate::values::Value;
 
 type IntegerTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
 type IntegerValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
@@ -100,10 +101,10 @@ impl<'ctx> Into<BasicTypeEnum<'ctx>> for IntegerType<'ctx> {
     }
 }
 
-impl<'ctx> From<IntegerType<'ctx>> for PrimitiveType<'ctx> {
+impl<'ctx> From<IntegerType<'ctx>> for Type<'ctx> {
     #[inline]
     fn from(value: IntegerType<'ctx>) -> Self {
-        PrimitiveType::Integer(value)
+        Type::Integer(value)
     }
 }
 
@@ -255,8 +256,8 @@ impl<'ctx> Into<IntegerValueIR<'ctx>> for IntegerValue<'ctx> {
     }
 }
 
-impl<'ctx> Into<PrimitiveValue<'ctx>> for IntegerValue<'ctx> {
-    fn into(self) -> PrimitiveValue<'ctx> {
-        PrimitiveValue::Integer(self)
+impl<'ctx> Into<Value<'ctx>> for IntegerValue<'ctx> {
+    fn into(self) -> Value<'ctx> {
+        Value::Integer(self)
     }
 }

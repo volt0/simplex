@@ -66,7 +66,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
     ) -> CompilationResult<Value<'ctx>> {
         let mut lhs = self.translate_expression(&lhs_expr, expr_type)?;
         let mut rhs = self.translate_expression(&rhs_expr, expr_type)?;
-        lhs.do_binary_operation(self, op, &mut rhs)?;
+        lhs.do_binary_operation(self.builder(), op, &mut rhs)?;
         Ok(lhs)
     }
 
@@ -77,7 +77,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         expr_type: Option<&Type<'ctx>>,
     ) -> CompilationResult<Value<'ctx>> {
         let mut arg = self.translate_expression(arg_expr, expr_type)?;
-        arg.do_unary_operation(self, op)?;
+        arg.do_unary_operation(self.builder(), op)?;
         Ok(arg)
     }
 

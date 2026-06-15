@@ -1,9 +1,10 @@
 use inkwell::builder::Builder;
 
 use super::integer::{IntegerType, IntegerValue};
-use super::primitive::{PrimitiveType, PrimitiveValue};
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::types::Type;
+use crate::values::Value;
 
 pub type BoolTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
 
@@ -21,8 +22,8 @@ impl<'ctx> BoolValue<'ctx> {
         BoolValue { ir }
     }
 
-    pub fn get_type(&self) -> PrimitiveType<'ctx> {
-        PrimitiveType::Bool(self.ir.get_type())
+    pub fn get_type(&self) -> Type<'ctx> {
+        Type::Bool(self.ir.get_type())
     }
 
     pub fn to_integer(
@@ -71,8 +72,8 @@ impl<'ctx> Into<BoolValueIR<'ctx>> for BoolValue<'ctx> {
     }
 }
 
-impl<'ctx> Into<PrimitiveValue<'ctx>> for BoolValue<'ctx> {
-    fn into(self) -> PrimitiveValue<'ctx> {
-        PrimitiveValue::Bool(self)
+impl<'ctx> Into<Value<'ctx>> for BoolValue<'ctx> {
+    fn into(self) -> Value<'ctx> {
+        Value::Bool(self)
     }
 }

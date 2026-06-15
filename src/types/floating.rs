@@ -2,9 +2,10 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::types::BasicTypeEnum;
 
-use super::primitive::{PrimitiveType, PrimitiveValue};
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
+use crate::types::Type;
+use crate::values::Value;
 
 type FloatTypeIR<'ctx> = inkwell::types::FloatType<'ctx>;
 type FloatValueIR<'ctx> = inkwell::values::FloatValue<'ctx>;
@@ -71,10 +72,10 @@ impl<'ctx> Into<BasicTypeEnum<'ctx>> for FloatType<'ctx> {
     }
 }
 
-impl<'ctx> From<FloatType<'ctx>> for PrimitiveType<'ctx> {
+impl<'ctx> From<FloatType<'ctx>> for Type<'ctx> {
     #[inline]
     fn from(value: FloatType<'ctx>) -> Self {
-        PrimitiveType::Float(value)
+        Type::Float(value)
     }
 }
 
@@ -149,8 +150,8 @@ impl<'ctx> Into<FloatValueIR<'ctx>> for FloatValue<'ctx> {
     }
 }
 
-impl<'ctx> Into<PrimitiveValue<'ctx>> for FloatValue<'ctx> {
-    fn into(self) -> PrimitiveValue<'ctx> {
-        PrimitiveValue::Float(self)
+impl<'ctx> Into<Value<'ctx>> for FloatValue<'ctx> {
+    fn into(self) -> Value<'ctx> {
+        Value::Float(self)
     }
 }
