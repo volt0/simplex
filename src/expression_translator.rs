@@ -35,21 +35,21 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         expr_type: Option<&Type<'ctx>>,
     ) -> CompilationResult<Value<'ctx>> {
         let value = match expr {
-            Expression::LoadConstant(constant) => self.translate_constant(constant),
-            Expression::LoadValue(name) => self.load_value(name),
+            Expression::LoadConstant(constant) => self.translate_constant(constant)?,
+            Expression::LoadValue(name) => self.load_value(name)?,
+            Expression::Call(expr) => self.translate_call(expr)?,
             Expression::BinaryOperation(expr) => {
-                self.translate_binary_operation(expr.op, &expr.lhs, &expr.rhs, expr_type)
+                self.translate_binary_operation(expr.op, &expr.lhs, &expr.rhs, expr_type)?
             }
             Expression::UnaryOperation(expr) => {
-                self.translate_unary_operation(expr.op, &expr.arg, expr_type)
+                self.translate_unary_operation(expr.op, &expr.arg, expr_type)?
             }
-            Expression::Call(expr) => self.translate_call(expr),
         };
 
         if let Some(expr_type) = expr_type {
-            expr_type.check_value(self.builder(), value?)
+            expr_type.check_value(self.builder(), value)
         } else {
-            value
+            Ok(value)
         }
     }
 
@@ -86,7 +86,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         let callee = callee.to_function()?;
 
         let callee_type = callee.get_type();
-        let callee_ir = callee.clone().into();
+        let callee_ir = callee.ir().clone();
 
         let mut args_ir = Vec::with_capacity(expr.args.len());
         for (arg_expr, arg_type) in expr.args.iter().zip(callee_type.arg_types().iter()) {

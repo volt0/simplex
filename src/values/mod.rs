@@ -83,6 +83,14 @@ impl<'ctx> Value<'ctx> {
         }
     }
 
+    pub fn from_constant(context: &'ctx Context, value: &Constant) -> CompilationResult<Self> {
+        match value {
+            Constant::Integer(value) => {
+                Ok(Self::Integer(IntegerValue::from_constant(context, *value)))
+            }
+        }
+    }
+
     pub fn to_int(
         &self,
         builder: &Builder<'ctx>,
@@ -112,14 +120,6 @@ impl<'ctx> Value<'ctx> {
             Self::Bool(value) => Ok(value.clone()),
             Self::Integer(value) => value.to_bool(builder),
             _ => Err(CompilationError::TypeMismatch),
-        }
-    }
-
-    pub fn from_constant(context: &'ctx Context, value: &Constant) -> CompilationResult<Self> {
-        match value {
-            Constant::Integer(value) => {
-                Ok(Self::Integer(IntegerValue::from_constant(context, *value)))
-            }
         }
     }
 

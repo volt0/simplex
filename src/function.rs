@@ -35,12 +35,6 @@ impl<'ctx> Function<'ctx> {
     }
 }
 
-impl<'ctx> Into<FunctionIR<'ctx>> for Function<'ctx> {
-    fn into(self) -> FunctionIR<'ctx> {
-        self.ir
-    }
-}
-
 type FunctionTypeIR<'ctx> = inkwell::types::FunctionType<'ctx>;
 
 #[derive(Clone, PartialEq)]
