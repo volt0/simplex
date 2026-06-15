@@ -91,6 +91,18 @@ impl<'ctx> FloatValue<'ctx> {
         FloatValue { ir }
     }
 
+    pub fn from_value(
+        builder: &Builder<'ctx>,
+        value: &Value<'ctx>,
+        type_hint: &FloatType<'ctx>,
+    ) -> CompilationResult<Self> {
+        match value {
+            Value::Float(value) => Ok(value.clone()),
+            Value::Integer(value) => value.to_float(builder, type_hint),
+            _ => Err(CompilationError::TypeMismatch),
+        }
+    }
+
     #[inline]
     pub fn get_type(&self) -> FloatType<'ctx> {
         FloatType::from_ir(self.ir.get_type())
@@ -112,35 +124,38 @@ impl<'ctx> FloatValue<'ctx> {
     }
 
     pub fn do_binary_operation(
-        &mut self,
+        &self,
         builder: &Builder<'ctx>,
         op: BinaryOperation,
-        other: &FloatValue<'ctx>,
-    ) -> CompilationResult<()> {
-        let result_type = FloatType::combined(self.get_type(), other.get_type())?;
-        let lhs_ir = self.clone().promote(builder, &result_type)?.ir;
-        let rhs_ir = other.clone().promote(builder, &result_type)?.ir;
-        self.ir = match op {
+        other: &Value<'ctx>,
+    ) -> CompilationResult<Value<'ctx>> {
+        let this_type = self.get_type();
+        let other = Self::from_value(builder, other, &this_type)?;
+
+        let result_type = FloatType::combined(this_type, other.get_type())?;
+        let lhs_ir = self.promote(builder, &result_type)?.ir;
+        let rhs_ir = other.promote(builder, &result_type)?.ir;
+        let result_ir = match op {
             BinaryOperation::Add => builder.build_float_add(lhs_ir, rhs_ir, "")?,
             BinaryOperation::Sub => builder.build_float_sub(lhs_ir, rhs_ir, "")?,
             BinaryOperation::Mul => builder.build_float_mul(lhs_ir, rhs_ir, "")?,
             BinaryOperation::Div => builder.build_float_div(lhs_ir, rhs_ir, "")?,
             _ => return Err(CompilationError::InvalidOperation),
         };
-        Ok(())
+        Ok(FloatValue::from_ir(result_ir).into())
     }
 
     pub fn do_unary_operation(
-        &mut self,
+        &self,
         builder: &Builder<'ctx>,
         op: UnaryOperation,
-    ) -> CompilationResult<()> {
-        self.ir = match op {
+    ) -> CompilationResult<Value<'ctx>> {
+        let result_ir = match op {
             UnaryOperation::Plus => self.ir.clone(),
             UnaryOperation::Minus => builder.build_float_neg(self.ir, "")?,
             _ => return Err(CompilationError::InvalidOperation),
         };
-        Ok(())
+        Ok(FloatValue::from_ir(result_ir).into())
     }
 }
 

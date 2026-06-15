@@ -22,6 +22,14 @@ impl<'ctx> BoolValue<'ctx> {
         BoolValue { ir }
     }
 
+    pub fn from_value(builder: &Builder<'ctx>, value: &Value<'ctx>) -> CompilationResult<Self> {
+        match value {
+            Value::Bool(value) => Ok(value.clone()),
+            Value::Integer(value) => value.to_bool(builder),
+            _ => Err(CompilationError::TypeMismatch),
+        }
+    }
+
     pub fn get_type(&self) -> Type<'ctx> {
         Type::Bool(self.ir.get_type())
     }
@@ -37,32 +45,33 @@ impl<'ctx> BoolValue<'ctx> {
     }
 
     pub fn do_binary_operation(
-        &mut self,
+        &self,
         builder: &Builder<'ctx>,
         op: BinaryOperation,
-        other: &BoolValue<'ctx>,
-    ) -> CompilationResult<()> {
+        other: &Value<'ctx>,
+    ) -> CompilationResult<Value<'ctx>> {
+        let other = Self::from_value(builder, other)?;
         let lhs_ir = self.ir;
         let rhs_ir = other.ir;
-        self.ir = match op {
+        let result_ir = match op {
             BinaryOperation::BitAnd => builder.build_and(lhs_ir, rhs_ir, "")?,
             BinaryOperation::BitXor => builder.build_xor(lhs_ir, rhs_ir, "")?,
             BinaryOperation::BitOr => builder.build_or(lhs_ir, rhs_ir, "")?,
             _ => return Err(CompilationError::InvalidOperation),
         };
-        Ok(())
+        Ok(BoolValue::from_ir(result_ir).into())
     }
 
     pub fn do_unary_operation(
-        &mut self,
+        &self,
         builder: &Builder<'ctx>,
         op: UnaryOperation,
-    ) -> CompilationResult<()> {
-        self.ir = match op {
+    ) -> CompilationResult<Value<'ctx>> {
+        let result_ir = match op {
             UnaryOperation::BitNot => builder.build_not(self.ir, "")?,
             _ => return Err(CompilationError::InvalidOperation),
         };
-        Ok(())
+        Ok(BoolValue::from_ir(result_ir).into())
     }
 }
 

@@ -47,7 +47,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         };
 
         if let Some(expr_type) = expr_type {
-            expr_type.check_value(self.builder(), value)
+            expr_type.check_value(self.builder(), &value)
         } else {
             Ok(value)
         }
@@ -64,10 +64,9 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         rhs_expr: &Expression,
         expr_type: Option<&Type<'ctx>>,
     ) -> CompilationResult<Value<'ctx>> {
-        let mut lhs = self.translate_expression(&lhs_expr, expr_type)?;
-        let mut rhs = self.translate_expression(&rhs_expr, expr_type)?;
-        lhs.do_binary_operation(self.builder(), op, &mut rhs)?;
-        Ok(lhs)
+        let lhs = self.translate_expression(&lhs_expr, expr_type)?;
+        let rhs = self.translate_expression(&rhs_expr, expr_type)?;
+        lhs.do_binary_operation(self.builder(), op, &rhs)
     }
 
     fn translate_unary_operation(
@@ -76,9 +75,8 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         arg_expr: &Expression,
         expr_type: Option<&Type<'ctx>>,
     ) -> CompilationResult<Value<'ctx>> {
-        let mut arg = self.translate_expression(arg_expr, expr_type)?;
-        arg.do_unary_operation(self.builder(), op)?;
-        Ok(arg)
+        let arg = self.translate_expression(arg_expr, expr_type)?;
+        arg.do_unary_operation(self.builder(), op)
     }
 
     fn translate_call(&self, expr: &CallExpression) -> CompilationResult<Value<'ctx>> {

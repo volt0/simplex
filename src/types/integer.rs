@@ -120,6 +120,18 @@ impl<'ctx> IntegerValue<'ctx> {
         IntegerValue { ir, is_signed }
     }
 
+    pub fn from_value(
+        builder: &Builder<'ctx>,
+        value: &Value<'ctx>,
+        type_hint: &IntegerType<'ctx>,
+    ) -> CompilationResult<Self> {
+        match value {
+            Value::Integer(value) => Ok(value.clone()),
+            Value::Bool(value) => value.to_integer(builder, &type_hint),
+            _ => Err(CompilationError::TypeMismatch),
+        }
+    }
+
     pub fn from_constant(context: &'ctx Context, value: i32) -> Self {
         IntegerValue {
             ir: context.i32_type().const_int(value as u64, true),
@@ -198,16 +210,19 @@ impl<'ctx> IntegerValue<'ctx> {
     }
 
     pub fn do_binary_operation(
-        &mut self,
+        &self,
         builder: &Builder<'ctx>,
         op: BinaryOperation,
-        other: &IntegerValue<'ctx>,
-    ) -> CompilationResult<()> {
-        let result_type = IntegerType::combined(self.get_type(), other.get_type())?;
-        let lhs_ir = self.clone().promote(builder, &result_type)?.ir;
-        let rhs_ir = other.clone().promote(builder, &result_type)?.ir;
+        other: &Value<'ctx>,
+    ) -> CompilationResult<Value<'ctx>> {
+        let this_type = self.get_type();
+        let other = Self::from_value(builder, other, &this_type)?;
 
-        self.ir = match op {
+        let result_type = IntegerType::combined(this_type, other.get_type())?;
+        let lhs_ir = self.promote(builder, &result_type)?.ir;
+        let rhs_ir = other.promote(builder, &result_type)?.ir;
+
+        let result_ir = match op {
             BinaryOperation::Add => builder.build_int_add(lhs_ir, rhs_ir, "")?,
             BinaryOperation::Sub => builder.build_int_sub(lhs_ir, rhs_ir, "")?,
             BinaryOperation::Mul => builder.build_int_mul(lhs_ir, rhs_ir, "")?,
@@ -233,20 +248,20 @@ impl<'ctx> IntegerValue<'ctx> {
                 builder.build_right_shift(lhs_ir, rhs_ir, self.is_signed, "")?
             }
         };
-        Ok(())
+        Ok(IntegerValue::from_ir(result_ir, result_type.is_signed).into())
     }
 
     pub fn do_unary_operation(
-        &mut self,
+        &self,
         builder: &Builder<'ctx>,
         op: UnaryOperation,
-    ) -> CompilationResult<()> {
-        self.ir = match op {
+    ) -> CompilationResult<Value<'ctx>> {
+        let result = match op {
             UnaryOperation::Plus => self.ir,
             UnaryOperation::Minus => builder.build_int_neg(self.ir, "")?,
             UnaryOperation::BitNot => builder.build_not(self.ir, "")?,
         };
-        Ok(())
+        Ok(IntegerValue::from_ir(result, self.is_signed).into())
     }
 }
 

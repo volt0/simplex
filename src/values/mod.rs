@@ -7,8 +7,8 @@ use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::function::Function;
 use crate::types::boolean::BoolValue;
-use crate::types::floating::{FloatType, FloatValue};
-use crate::types::integer::{IntegerType, IntegerValue};
+use crate::types::floating::FloatValue;
+use crate::types::integer::IntegerValue;
 use crate::types::Type;
 
 #[derive(Clone)]
@@ -26,7 +26,8 @@ impl<'ctx> Value<'ctx> {
     ) -> CompilationResult<Self> {
         let value = match value_type {
             Type::Integer(value_type) => {
-                IntegerValue::from_ir(value_ir.into_int_value(), value_type.is_signed()).into()
+                let value_ir = value_ir.into_int_value();
+                IntegerValue::from_ir(value_ir, value_type.is_signed()).into()
             }
             Type::Float(_) => FloatValue::from_ir(value_ir.into_float_value()).into(),
             Type::Bool(_) => BoolValue::from_ir(value_ir.into_int_value()).into(),
@@ -36,6 +37,14 @@ impl<'ctx> Value<'ctx> {
             }
         };
         Ok(value)
+    }
+
+    pub fn from_constant(context: &'ctx Context, value: &Constant) -> CompilationResult<Self> {
+        match value {
+            Constant::Integer(value) => {
+                Ok(Self::Integer(IntegerValue::from_constant(context, *value)))
+            }
+        }
     }
 
     pub fn get_type(&self) -> Type<'ctx> {
@@ -48,78 +57,29 @@ impl<'ctx> Value<'ctx> {
     }
 
     pub fn do_binary_operation(
-        &mut self,
+        &self,
         builder: &Builder<'ctx>,
         op: BinaryOperation,
         other: &Value<'ctx>,
-    ) -> CompilationResult<()> {
+    ) -> CompilationResult<Value<'ctx>> {
         match self {
-            Self::Integer(value) => {
-                let other = other.to_int(builder, &value.get_type())?;
-                value.do_binary_operation(builder, op, &other)
-            }
-            Self::Float(value) => {
-                let other = other.to_float(builder, &value.get_type())?;
-                value.do_binary_operation(builder, op, &other)
-            }
-            Self::Bool(value) => {
-                let other = other.to_bool(builder)?;
-                value.do_binary_operation(builder, op, &other)
-            }
+            Self::Integer(value) => value.do_binary_operation(builder, op, &other),
+            Self::Float(value) => value.do_binary_operation(builder, op, &other),
+            Self::Bool(value) => value.do_binary_operation(builder, op, &other),
             _ => Err(CompilationError::InvalidOperation),
         }
     }
 
     pub fn do_unary_operation(
-        &mut self,
+        &self,
         builder: &Builder<'ctx>,
         op: UnaryOperation,
-    ) -> CompilationResult<()> {
+    ) -> CompilationResult<Value<'ctx>> {
         match self {
             Self::Integer(value) => value.do_unary_operation(builder, op),
             Self::Float(value) => value.do_unary_operation(builder, op),
             Self::Bool(value) => value.do_unary_operation(builder, op),
             _ => Err(CompilationError::InvalidOperation),
-        }
-    }
-
-    pub fn from_constant(context: &'ctx Context, value: &Constant) -> CompilationResult<Self> {
-        match value {
-            Constant::Integer(value) => {
-                Ok(Self::Integer(IntegerValue::from_constant(context, *value)))
-            }
-        }
-    }
-
-    pub fn to_int(
-        &self,
-        builder: &Builder<'ctx>,
-        required_type: &IntegerType<'ctx>,
-    ) -> CompilationResult<IntegerValue<'ctx>> {
-        match self {
-            Self::Integer(value) => value.promote(builder, required_type),
-            Self::Bool(value) => value.to_integer(builder, required_type),
-            _ => Err(CompilationError::TypeMismatch),
-        }
-    }
-
-    pub fn to_float(
-        &self,
-        builder: &Builder<'ctx>,
-        required_type: &FloatType<'ctx>,
-    ) -> CompilationResult<FloatValue<'ctx>> {
-        match self {
-            Self::Float(value) => value.promote(builder, required_type),
-            Self::Integer(value) => value.to_float(builder, required_type),
-            _ => Err(CompilationError::TypeMismatch),
-        }
-    }
-
-    pub fn to_bool(&self, builder: &Builder<'ctx>) -> CompilationResult<BoolValue<'ctx>> {
-        match self {
-            Self::Bool(value) => Ok(value.clone()),
-            Self::Integer(value) => value.to_bool(builder),
-            _ => Err(CompilationError::TypeMismatch),
         }
     }
 

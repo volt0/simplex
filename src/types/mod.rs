@@ -5,7 +5,9 @@ use inkwell::types::BasicTypeEnum;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::function::FunctionType;
 use crate::module_builder::ModuleBuilder;
-use crate::types::boolean::BoolTypeIR;
+use crate::types::boolean::{BoolTypeIR, BoolValue};
+use crate::types::floating::FloatValue;
+use crate::types::integer::IntegerValue;
 use crate::values::Value;
 
 use floating::FloatType;
@@ -41,12 +43,18 @@ impl<'ctx> Type<'ctx> {
     pub fn check_value(
         &self,
         builder: &Builder<'ctx>,
-        value: Value<'ctx>,
+        value: &Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let value = match self {
-            Self::Integer(required_type) => value.to_int(builder, required_type)?.into(),
-            Self::Float(required_type) => value.to_float(builder, required_type)?.into(),
-            Self::Bool(_) => value.to_bool(builder)?.into(),
+            Self::Integer(required_type) => {
+                let result = IntegerValue::from_value(builder, value, required_type)?;
+                result.promote(builder, required_type)?.into()
+            }
+            Self::Float(required_type) => {
+                let result = FloatValue::from_value(builder, value, required_type)?;
+                result.promote(builder, required_type)?.into()
+            }
+            Self::Bool(_) => BoolValue::from_value(builder, value)?.into(),
             Self::Function(required_type) => {
                 if value.get_type() == Type::Function(required_type.clone()) {
                     value.clone()
