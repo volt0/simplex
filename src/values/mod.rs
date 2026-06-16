@@ -84,9 +84,13 @@ impl<'ctx> Value<'ctx> {
         }
     }
 
-    pub fn to_function(&self) -> CompilationResult<Function<'ctx>> {
+    pub fn do_call(
+        &self,
+        builder: &Builder<'ctx>,
+        args: &[Value<'ctx>],
+    ) -> CompilationResult<Value<'ctx>> {
         match self {
-            Value::Function(value) => Ok(value.clone()),
+            Value::Function(function) => function.do_call(builder, args),
             _ => Err(CompilationError::TypeMismatch),
         }
     }

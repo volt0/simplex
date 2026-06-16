@@ -1,9 +1,7 @@
 use std::ops::Deref;
 
-use inkwell::values::{AnyValue, BasicValueEnum};
-
 use crate::constant::Constant;
-use crate::errors::CompilationResult;
+use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, CallExpression, Expression, UnaryOperation};
 use crate::statement_translator::StatementTranslator;
 use crate::types::Type;
@@ -81,22 +79,18 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
 
     fn translate_call(&self, expr: &CallExpression) -> CompilationResult<Value<'ctx>> {
         let callee = self.translate_expression(&expr.callee, None)?;
-        let callee = callee.to_function()?;
-
         let callee_type = callee.get_type();
-        let callee_ir = callee.ir().clone();
 
-        let mut args_ir = Vec::with_capacity(expr.args.len());
-        for (arg_expr, arg_type) in expr.args.iter().zip(callee_type.arg_types().iter()) {
-            let arg_ir: BasicValueEnum = self
-                .translate_expression(arg_expr, Some(arg_type))?
-                .try_into()?;
-            args_ir.push(arg_ir.into());
+        let arg_types = match callee_type {
+            Type::Function(function_type) => function_type.arg_types().to_vec(),
+            _ => return Err(CompilationError::TypeMismatch),
+        };
+
+        let mut args = Vec::with_capacity(arg_types.len());
+        for (arg_expr, arg_type) in expr.args.iter().zip(arg_types.iter()) {
+            args.push(self.translate_expression(arg_expr, Some(arg_type))?);
         }
 
-        let builder = self.builder();
-        let result_ir = builder.build_call(callee_ir, args_ir.as_slice(), "")?;
-        let return_type = callee_type.return_type();
-        Value::from_ir(result_ir.as_any_value_enum(), return_type)
+        callee.do_call(self.builder(), &args)
     }
 }

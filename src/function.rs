@@ -1,4 +1,6 @@
+use inkwell::builder::Builder;
 use inkwell::types::{BasicType, BasicTypeEnum};
+use inkwell::values::{AnyValue, BasicMetadataValueEnum, BasicValueEnum};
 
 use crate::ast;
 use crate::errors::{CompilationError, CompilationResult};
@@ -33,6 +35,21 @@ impl<'ctx> Function<'ctx> {
     #[inline]
     pub fn ir(&self) -> &FunctionIR<'ctx> {
         &self.ir
+    }
+
+    pub fn do_call(
+        &self,
+        builder: &Builder<'ctx>,
+        args: &[Value<'ctx>],
+    ) -> CompilationResult<Value<'ctx>> {
+        let mut args_ir: Vec<BasicMetadataValueEnum> = Vec::with_capacity(args.len());
+        for arg in args {
+            let arg: BasicValueEnum = arg.clone().try_into()?;
+            args_ir.push(arg.into());
+        }
+
+        let result_ir = builder.build_call(self.ir, args_ir.as_slice(), "")?;
+        Value::from_ir(result_ir.as_any_value_enum(), self.get_return_type())
     }
 }
 
