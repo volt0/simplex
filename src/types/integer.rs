@@ -10,49 +10,52 @@ use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::types::Type;
 use crate::values::Value;
 
-type IntegerTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
-type IntegerValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
+type IntTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
+type IntValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
 
 #[derive(Clone, PartialEq)]
-pub struct IntegerType<'ctx> {
-    ir: IntegerTypeIR<'ctx>,
+pub struct IntType<'ctx> {
+    ir: IntTypeIR<'ctx>,
     is_signed: bool,
 }
 
 #[derive(Clone, PartialEq, PartialOrd)]
-pub enum IntegerWidth {
+pub enum IntWidth {
     I8,
     I16,
     I32,
     I64,
 }
 
-impl<'ctx> IntegerType<'ctx> {
+impl<'ctx> IntType<'ctx> {
     #[inline]
-    pub fn from_ir(ir: IntegerTypeIR<'ctx>, is_signed: bool) -> Self {
+    pub fn from_ir(ir: IntTypeIR<'ctx>, is_signed: bool) -> Self {
         Self { ir, is_signed }
     }
 
-    pub fn from_spec(context: &'ctx Context, width: IntegerWidth, is_signed: bool) -> Self {
+    pub fn from_spec(context: &'ctx Context, width: IntWidth, is_signed: bool) -> Self {
         let ir = match width {
-            IntegerWidth::I8 => context.i8_type(),
-            IntegerWidth::I16 => context.i16_type(),
-            IntegerWidth::I32 => context.i32_type(),
-            IntegerWidth::I64 => context.i64_type(),
+            IntWidth::I8 => context.i8_type(),
+            IntWidth::I16 => context.i16_type(),
+            IntWidth::I32 => context.i32_type(),
+            IntWidth::I64 => context.i64_type(),
         };
         Self { ir, is_signed }
     }
 
     pub fn combined(lhs: Self, rhs: Self) -> CompilationResult<Self> {
+        let lhs_width = lhs.ir.get_bit_width();
+        let rhs_width = rhs.ir.get_bit_width();
+
         if lhs.is_signed == rhs.is_signed {
-            if rhs.bit_width() > lhs.bit_width() {
+            if rhs_width > lhs_width {
                 Ok(rhs)
             } else {
                 Ok(lhs)
             }
-        } else if rhs.is_signed && rhs.bit_width() > lhs.bit_width() {
+        } else if rhs.is_signed && rhs_width > lhs_width {
             Ok(rhs)
-        } else if lhs.is_signed && lhs.bit_width() > rhs.bit_width() {
+        } else if lhs.is_signed && lhs_width > rhs_width {
             Ok(lhs)
         } else {
             Err(CompilationError::TypeMismatch)
@@ -63,10 +66,10 @@ impl<'ctx> IntegerType<'ctx> {
         &self,
         builder: &Builder<'ctx>,
         value: &Value<'ctx>,
-    ) -> CompilationResult<IntegerValue<'ctx>> {
+    ) -> CompilationResult<IntValue<'ctx>> {
         match value {
-            Value::Integer(value) => value.promote(builder, self),
-            Value::Bool(value) => value.to_integer(builder, self),
+            Value::Int(value) => value.promote(builder, self),
+            Value::Bool(value) => value.to_int(builder, self),
             _ => Err(CompilationError::TypeMismatch),
         }
     }
@@ -77,70 +80,65 @@ impl<'ctx> IntegerType<'ctx> {
     }
 
     #[inline]
-    fn bit_width(&self) -> u32 {
-        self.ir.get_bit_width()
-    }
-
-    #[inline]
-    pub fn ir(&self) -> &IntegerTypeIR<'ctx> {
+    pub fn ir(&self) -> &IntTypeIR<'ctx> {
         &self.ir
     }
 
     #[inline]
     pub fn new_i8(context: &'ctx Context, is_signed: bool) -> Self {
-        Self::from_spec(context, IntegerWidth::I8, is_signed)
+        Self::from_spec(context, IntWidth::I8, is_signed)
     }
 
     #[inline]
     pub fn new_i16(context: &'ctx Context, is_signed: bool) -> Self {
-        Self::from_spec(context, IntegerWidth::I16, is_signed)
+        Self::from_spec(context, IntWidth::I16, is_signed)
     }
 
     #[inline]
     pub fn new_i32(context: &'ctx Context, is_signed: bool) -> Self {
-        Self::from_spec(context, IntegerWidth::I32, is_signed)
+        Self::from_spec(context, IntWidth::I32, is_signed)
     }
 
     #[inline]
     pub fn new_i64(context: &'ctx Context, is_signed: bool) -> Self {
-        Self::from_spec(context, IntegerWidth::I64, is_signed)
+        Self::from_spec(context, IntWidth::I64, is_signed)
     }
 }
 
-impl<'ctx> Into<BasicTypeEnum<'ctx>> for IntegerType<'ctx> {
+impl<'ctx> Into<BasicTypeEnum<'ctx>> for IntType<'ctx> {
     fn into(self) -> BasicTypeEnum<'ctx> {
         BasicTypeEnum::IntType(self.ir)
     }
 }
 
-impl<'ctx> From<IntegerType<'ctx>> for Type<'ctx> {
+impl<'ctx> From<IntType<'ctx>> for Type<'ctx> {
     #[inline]
-    fn from(value: IntegerType<'ctx>) -> Self {
-        Type::Integer(value)
+    fn from(value: IntType<'ctx>) -> Self {
+        Type::Int(value)
     }
 }
 
 #[derive(Clone)]
-pub struct IntegerValue<'ctx> {
-    ir: IntegerValueIR<'ctx>,
+pub struct IntValue<'ctx> {
+    ir: IntValueIR<'ctx>,
     is_signed: bool,
 }
 
-impl<'ctx> IntegerValue<'ctx> {
+impl<'ctx> IntValue<'ctx> {
     #[inline]
-    pub fn from_ir(ir: IntegerValueIR<'ctx>, is_signed: bool) -> Self {
-        IntegerValue { ir, is_signed }
+    pub fn from_ir(ir: IntValueIR<'ctx>, is_signed: bool) -> Self {
+        IntValue { ir, is_signed }
     }
 
     pub fn from_constant(context: &'ctx Context, value: i32) -> Self {
-        IntegerValue {
+        IntValue {
             ir: context.i32_type().const_int(value as u64, true),
             is_signed: true,
         }
     }
 
-    pub fn get_type(&self) -> IntegerType<'ctx> {
-        IntegerType::from_ir(self.ir.get_type(), self.is_signed)
+    pub fn get_type(&self) -> IntType<'ctx> {
+        IntType::from_ir(self.ir.get_type(), self.is_signed)
     }
 
     pub fn to_bool(&self, builder: &Builder<'ctx>) -> CompilationResult<BoolValue<'ctx>> {
@@ -181,8 +179,8 @@ impl<'ctx> IntegerValue<'ctx> {
     pub fn promote(
         &self,
         builder: &Builder<'ctx>,
-        target_type: &IntegerType<'ctx>,
-    ) -> CompilationResult<IntegerValue<'ctx>> {
+        target_type: &IntType<'ctx>,
+    ) -> CompilationResult<IntValue<'ctx>> {
         let this_type_ir = self.ir.get_type();
         let target_type_ir = target_type.ir.clone();
         let is_compatible = if self.is_signed == target_type.is_signed {
@@ -203,7 +201,7 @@ impl<'ctx> IntegerValue<'ctx> {
             builder.build_int_z_extend(self.ir, target_type_ir, "")?
         };
 
-        Ok(IntegerValue {
+        Ok(IntValue {
             ir: result_ir,
             is_signed: target_type.is_signed,
         })
@@ -218,7 +216,7 @@ impl<'ctx> IntegerValue<'ctx> {
         let self_type = self.get_type();
         let other = self_type.validate_value(builder, other)?;
 
-        let result_type = IntegerType::combined(self_type, other.get_type())?;
+        let result_type = IntType::combined(self_type, other.get_type())?;
         let lhs_ir = self.promote(builder, &result_type)?.ir;
         let rhs_ir = other.promote(builder, &result_type)?.ir;
 
@@ -248,7 +246,7 @@ impl<'ctx> IntegerValue<'ctx> {
                 builder.build_right_shift(lhs_ir, rhs_ir, self.is_signed, "")?
             }
         };
-        Ok(IntegerValue::from_ir(result_ir, result_type.is_signed).into())
+        Ok(IntValue::from_ir(result_ir, result_type.is_signed).into())
     }
 
     pub fn do_unary_operation(
@@ -261,18 +259,18 @@ impl<'ctx> IntegerValue<'ctx> {
             UnaryOperation::Minus => builder.build_int_neg(self.ir, "")?,
             UnaryOperation::BitNot => builder.build_not(self.ir, "")?,
         };
-        Ok(IntegerValue::from_ir(result, self.is_signed).into())
+        Ok(IntValue::from_ir(result, self.is_signed).into())
     }
 }
 
-impl<'ctx> Into<IntegerValueIR<'ctx>> for IntegerValue<'ctx> {
-    fn into(self) -> IntegerValueIR<'ctx> {
+impl<'ctx> Into<IntValueIR<'ctx>> for IntValue<'ctx> {
+    fn into(self) -> IntValueIR<'ctx> {
         self.ir
     }
 }
 
-impl<'ctx> Into<Value<'ctx>> for IntegerValue<'ctx> {
+impl<'ctx> Into<Value<'ctx>> for IntValue<'ctx> {
     fn into(self) -> Value<'ctx> {
-        Value::Integer(self)
+        Value::Int(self)
     }
 }

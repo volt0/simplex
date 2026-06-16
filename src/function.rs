@@ -9,6 +9,7 @@ use crate::types::Type;
 use crate::values::Value;
 
 type FunctionIR<'ctx> = inkwell::values::FunctionValue<'ctx>;
+type FunctionTypeIR<'ctx> = inkwell::types::FunctionType<'ctx>;
 
 #[derive(Clone)]
 pub struct Function<'ctx> {
@@ -52,8 +53,6 @@ impl<'ctx> Function<'ctx> {
         Value::from_ir(result_ir.as_any_value_enum(), self.get_return_type())
     }
 }
-
-type FunctionTypeIR<'ctx> = inkwell::types::FunctionType<'ctx>;
 
 #[derive(Clone, PartialEq)]
 pub struct FunctionType<'ctx> {

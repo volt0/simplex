@@ -52,7 +52,7 @@ impl<'ctx> FloatType<'ctx> {
     ) -> CompilationResult<FloatValue<'ctx>> {
         match value {
             Value::Float(value) => value.promote(builder, self),
-            Value::Integer(value) => value.to_float(builder, self),
+            Value::Int(value) => value.to_float(builder, self),
             _ => Err(CompilationError::TypeMismatch),
         }
     }
@@ -85,7 +85,6 @@ impl<'ctx> Into<BasicTypeEnum<'ctx>> for FloatType<'ctx> {
 }
 
 impl<'ctx> From<FloatType<'ctx>> for Type<'ctx> {
-    #[inline]
     fn from(value: FloatType<'ctx>) -> Self {
         Type::Float(value)
     }

@@ -145,7 +145,7 @@ Type: TypeSpec = {
 Identifier: String = <s:r"[_A-Za-z][_0-9A-Za-z]*"> => s.to_string();
 
 Constant: Constant = {
-    <value:IntegerConstant> => Constant::new_integer(value),
+    <value:IntegerConstant> => Constant::new_int(value),
 }
 
 IntegerConstant: i32 = <s:r"[0-9]+"> => s.parse::<i32>().unwrap();

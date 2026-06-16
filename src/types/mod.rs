@@ -9,7 +9,7 @@ use crate::types::boolean::BoolType;
 use crate::values::Value;
 
 use floating::FloatType;
-use integer::IntegerType;
+use integer::IntType;
 
 pub mod boolean;
 pub mod floating;
@@ -22,7 +22,7 @@ pub enum TypeSpec {
 
 #[derive(Clone, PartialEq)]
 pub enum Type<'ctx> {
-    Integer(IntegerType<'ctx>),
+    Int(IntType<'ctx>),
     Float(FloatType<'ctx>),
     Bool(BoolType<'ctx>),
     Function(FunctionType<'ctx>),
@@ -44,7 +44,7 @@ impl<'ctx> Type<'ctx> {
         value: &Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let value = match self {
-            Self::Integer(required_type) => required_type.validate_value(builder, value)?.into(),
+            Self::Int(required_type) => required_type.validate_value(builder, value)?.into(),
             Self::Float(required_type) => required_type.validate_value(builder, value)?.into(),
             Self::Bool(required_type) => required_type.validate_value(builder, value)?.into(),
             Self::Function(required_type) => required_type.validate_value(value)?.into(),
@@ -54,22 +54,22 @@ impl<'ctx> Type<'ctx> {
 
     #[inline]
     pub fn new_i8(context: &'ctx Context, is_signed: bool) -> Self {
-        Self::Integer(IntegerType::new_i8(context, is_signed))
+        Self::Int(IntType::new_i8(context, is_signed))
     }
 
     #[inline]
     pub fn new_i16(context: &'ctx Context, is_signed: bool) -> Self {
-        Self::Integer(IntegerType::new_i16(context, is_signed))
+        Self::Int(IntType::new_i16(context, is_signed))
     }
 
     #[inline]
     pub fn new_i32(context: &'ctx Context, is_signed: bool) -> Self {
-        Self::Integer(IntegerType::new_i32(context, is_signed))
+        Self::Int(IntType::new_i32(context, is_signed))
     }
 
     #[inline]
     pub fn new_i64(context: &'ctx Context, is_signed: bool) -> Self {
-        Self::Integer(IntegerType::new_i64(context, is_signed))
+        Self::Int(IntType::new_i64(context, is_signed))
     }
 
     #[inline]
@@ -93,7 +93,7 @@ impl<'ctx> TryInto<BasicTypeEnum<'ctx>> for Type<'ctx> {
 
     fn try_into(self) -> Result<BasicTypeEnum<'ctx>, Self::Error> {
         match self {
-            Self::Integer(int_type) => Ok(int_type.into()),
+            Self::Int(int_type) => Ok(int_type.into()),
             Self::Float(float_type) => Ok(float_type.into()),
             Self::Bool(bool_type) => Ok(bool_type.into()),
             _ => Err(CompilationError::InvalidOperation),

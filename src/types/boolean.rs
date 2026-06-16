@@ -2,15 +2,17 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::types::BasicTypeEnum;
 
-use super::integer::{IntegerType, IntegerValue};
+use super::integer::{IntType, IntValue};
 use crate::errors::{CompilationError, CompilationResult};
 use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::types::Type;
 use crate::values::Value;
 
 type BoolTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
+type BoolValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
 
 #[derive(Clone, PartialEq)]
+#[repr(transparent)]
 pub struct BoolType<'ctx>(BoolTypeIR<'ctx>);
 
 impl<'ctx> BoolType<'ctx> {
@@ -31,7 +33,7 @@ impl<'ctx> BoolType<'ctx> {
     ) -> CompilationResult<BoolValue<'ctx>> {
         match value {
             Value::Bool(value) => Ok(value.clone()),
-            Value::Integer(value) => value.to_bool(builder),
+            Value::Int(value) => value.to_bool(builder),
             _ => Err(CompilationError::TypeMismatch),
         }
     }
@@ -49,8 +51,6 @@ impl<'ctx> Into<Type<'ctx>> for BoolType<'ctx> {
     }
 }
 
-type BoolValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
-
 #[derive(Clone)]
 #[repr(transparent)]
 pub struct BoolValue<'ctx> {
@@ -67,14 +67,14 @@ impl<'ctx> BoolValue<'ctx> {
         BoolType::from_ir(self.ir.get_type())
     }
 
-    pub fn to_integer(
+    pub fn to_int(
         &self,
         builder: &Builder<'ctx>,
-        required_type: &IntegerType<'ctx>,
-    ) -> CompilationResult<IntegerValue<'ctx>> {
+        required_type: &IntType<'ctx>,
+    ) -> CompilationResult<IntValue<'ctx>> {
         let value_type_ir = required_type.ir().clone();
         let value_ir = builder.build_int_z_extend(self.ir, value_type_ir, "")?;
-        Ok(IntegerValue::from_ir(value_ir, required_type.is_signed()))
+        Ok(IntValue::from_ir(value_ir, required_type.is_signed()))
     }
 
     pub fn do_binary_operation(
