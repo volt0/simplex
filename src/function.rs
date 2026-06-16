@@ -1,9 +1,10 @@
 use inkwell::types::{BasicType, BasicTypeEnum};
 
 use crate::ast;
-use crate::errors::CompilationResult;
+use crate::errors::{CompilationError, CompilationResult};
 use crate::module_builder::ModuleBuilder;
 use crate::types::Type;
+use crate::values::Value;
 
 type FunctionIR<'ctx> = inkwell::values::FunctionValue<'ctx>;
 
@@ -68,6 +69,13 @@ impl<'ctx> FunctionType<'ctx> {
             return_type: Box::new(return_type),
             arg_types,
         })
+    }
+
+    pub fn validate_value(&self, value: &Value<'ctx>) -> CompilationResult<Function<'ctx>> {
+        match value {
+            Value::Function(value) if value.get_type() == self => Ok(value.clone()),
+            _ => Err(CompilationError::TypeMismatch),
+        }
     }
 
     #[inline(always)]

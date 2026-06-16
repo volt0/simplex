@@ -47,7 +47,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         };
 
         if let Some(expr_type) = expr_type {
-            expr_type.check_value(self.builder(), &value)
+            expr_type.validate_value(self.builder(), &value)
         } else {
             Ok(value)
         }

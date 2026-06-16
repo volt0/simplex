@@ -47,11 +47,12 @@ impl<'ctx> Value<'ctx> {
         }
     }
 
+    #[allow(unused)]
     pub fn get_type(&self) -> Type<'ctx> {
         match self {
             Value::Integer(value) => value.get_type().into(),
             Value::Float(value) => value.get_type().into(),
-            Value::Bool(value) => value.get_type(),
+            Value::Bool(value) => value.get_type().into(),
             Value::Function(value) => Type::Function(value.get_type().clone()),
         }
     }

@@ -43,7 +43,7 @@ impl<'ctx> IntegerType<'ctx> {
         Self { ir, is_signed }
     }
 
-    pub fn combined(lhs: IntegerType<'ctx>, rhs: IntegerType<'ctx>) -> CompilationResult<Self> {
+    pub fn combined(lhs: Self, rhs: Self) -> CompilationResult<Self> {
         if lhs.is_signed == rhs.is_signed {
             if rhs.bit_width() > lhs.bit_width() {
                 Ok(rhs)
@@ -59,19 +59,31 @@ impl<'ctx> IntegerType<'ctx> {
         }
     }
 
+    pub fn validate_value(
+        &self,
+        builder: &Builder<'ctx>,
+        value: &Value<'ctx>,
+    ) -> CompilationResult<IntegerValue<'ctx>> {
+        match value {
+            Value::Integer(value) => value.promote(builder, self),
+            Value::Bool(value) => value.to_integer(builder, self),
+            _ => Err(CompilationError::TypeMismatch),
+        }
+    }
+
     #[inline]
     pub fn is_signed(&self) -> bool {
         self.is_signed
     }
 
     #[inline]
-    pub fn ir(&self) -> &IntegerTypeIR<'ctx> {
-        &self.ir
+    fn bit_width(&self) -> u32 {
+        self.ir.get_bit_width()
     }
 
     #[inline]
-    fn bit_width(&self) -> u32 {
-        self.ir.get_bit_width()
+    pub fn ir(&self) -> &IntegerTypeIR<'ctx> {
+        &self.ir
     }
 
     #[inline]
@@ -118,18 +130,6 @@ impl<'ctx> IntegerValue<'ctx> {
     #[inline]
     pub fn from_ir(ir: IntegerValueIR<'ctx>, is_signed: bool) -> Self {
         IntegerValue { ir, is_signed }
-    }
-
-    pub fn from_value(
-        builder: &Builder<'ctx>,
-        value: &Value<'ctx>,
-        type_hint: &IntegerType<'ctx>,
-    ) -> CompilationResult<Self> {
-        match value {
-            Value::Integer(value) => Ok(value.clone()),
-            Value::Bool(value) => value.to_integer(builder, &type_hint),
-            _ => Err(CompilationError::TypeMismatch),
-        }
     }
 
     pub fn from_constant(context: &'ctx Context, value: i32) -> Self {
@@ -215,10 +215,10 @@ impl<'ctx> IntegerValue<'ctx> {
         op: BinaryOperation,
         other: &Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
-        let this_type = self.get_type();
-        let other = Self::from_value(builder, other, &this_type)?;
+        let self_type = self.get_type();
+        let other = self_type.validate_value(builder, other)?;
 
-        let result_type = IntegerType::combined(this_type, other.get_type())?;
+        let result_type = IntegerType::combined(self_type, other.get_type())?;
         let lhs_ir = self.promote(builder, &result_type)?.ir;
         let rhs_ir = other.promote(builder, &result_type)?.ir;
 

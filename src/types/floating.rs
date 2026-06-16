@@ -37,11 +37,23 @@ impl<'ctx> FloatType<'ctx> {
     }
 
     #[inline]
-    fn combined(lhs: FloatType<'ctx>, rhs: FloatType<'ctx>) -> CompilationResult<Self> {
+    fn combined(lhs: Self, rhs: Self) -> CompilationResult<Self> {
         if rhs.bit_width() > lhs.bit_width() {
             Ok(rhs)
         } else {
             Ok(lhs)
+        }
+    }
+
+    pub fn validate_value(
+        &self,
+        builder: &Builder<'ctx>,
+        value: &Value<'ctx>,
+    ) -> CompilationResult<FloatValue<'ctx>> {
+        match value {
+            Value::Float(value) => value.promote(builder, self),
+            Value::Integer(value) => value.to_float(builder, self),
+            _ => Err(CompilationError::TypeMismatch),
         }
     }
 
@@ -91,18 +103,6 @@ impl<'ctx> FloatValue<'ctx> {
         FloatValue { ir }
     }
 
-    pub fn from_value(
-        builder: &Builder<'ctx>,
-        value: &Value<'ctx>,
-        type_hint: &FloatType<'ctx>,
-    ) -> CompilationResult<Self> {
-        match value {
-            Value::Float(value) => Ok(value.clone()),
-            Value::Integer(value) => value.to_float(builder, type_hint),
-            _ => Err(CompilationError::TypeMismatch),
-        }
-    }
-
     #[inline]
     pub fn get_type(&self) -> FloatType<'ctx> {
         FloatType::from_ir(self.ir.get_type())
@@ -129,10 +129,10 @@ impl<'ctx> FloatValue<'ctx> {
         op: BinaryOperation,
         other: &Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
-        let this_type = self.get_type();
-        let other = Self::from_value(builder, other, &this_type)?;
+        let self_type = self.get_type();
+        let other = self_type.validate_value(builder, other)?;
 
-        let result_type = FloatType::combined(this_type, other.get_type())?;
+        let result_type = FloatType::combined(self_type, other.get_type())?;
         let lhs_ir = self.promote(builder, &result_type)?.ir;
         let rhs_ir = other.promote(builder, &result_type)?.ir;
         let result_ir = match op {

@@ -1,4 +1,6 @@
 use inkwell::builder::Builder;
+use inkwell::context::Context;
+use inkwell::types::BasicTypeEnum;
 
 use super::integer::{IntegerType, IntegerValue};
 use crate::errors::{CompilationError, CompilationResult};
@@ -6,7 +8,46 @@ use crate::expression::{BinaryOperation, UnaryOperation};
 use crate::types::Type;
 use crate::values::Value;
 
-pub type BoolTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
+type BoolTypeIR<'ctx> = inkwell::types::IntType<'ctx>;
+
+#[derive(Clone, PartialEq)]
+pub struct BoolType<'ctx>(BoolTypeIR<'ctx>);
+
+impl<'ctx> BoolType<'ctx> {
+    #[inline]
+    pub fn from_ir(ir: BoolTypeIR<'ctx>) -> Self {
+        Self(ir)
+    }
+
+    #[inline]
+    pub fn new(context: &'ctx Context) -> Self {
+        Self(context.bool_type())
+    }
+
+    pub fn validate_value(
+        &self,
+        builder: &Builder<'ctx>,
+        value: &Value<'ctx>,
+    ) -> CompilationResult<BoolValue<'ctx>> {
+        match value {
+            Value::Bool(value) => Ok(value.clone()),
+            Value::Integer(value) => value.to_bool(builder),
+            _ => Err(CompilationError::TypeMismatch),
+        }
+    }
+}
+
+impl<'ctx> Into<BasicTypeEnum<'ctx>> for BoolType<'ctx> {
+    fn into(self) -> BasicTypeEnum<'ctx> {
+        BasicTypeEnum::IntType(self.0.clone())
+    }
+}
+
+impl<'ctx> Into<Type<'ctx>> for BoolType<'ctx> {
+    fn into(self) -> Type<'ctx> {
+        Type::Bool(self)
+    }
+}
 
 type BoolValueIR<'ctx> = inkwell::values::IntValue<'ctx>;
 
@@ -22,16 +63,8 @@ impl<'ctx> BoolValue<'ctx> {
         BoolValue { ir }
     }
 
-    pub fn from_value(builder: &Builder<'ctx>, value: &Value<'ctx>) -> CompilationResult<Self> {
-        match value {
-            Value::Bool(value) => Ok(value.clone()),
-            Value::Integer(value) => value.to_bool(builder),
-            _ => Err(CompilationError::TypeMismatch),
-        }
-    }
-
-    pub fn get_type(&self) -> Type<'ctx> {
-        Type::Bool(self.ir.get_type())
+    pub fn get_type(&self) -> BoolType<'ctx> {
+        BoolType::from_ir(self.ir.get_type())
     }
 
     pub fn to_integer(
@@ -50,7 +83,7 @@ impl<'ctx> BoolValue<'ctx> {
         op: BinaryOperation,
         other: &Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
-        let other = Self::from_value(builder, other)?;
+        let other = self.get_type().validate_value(builder, other)?;
         let lhs_ir = self.ir;
         let rhs_ir = other.ir;
         let result_ir = match op {

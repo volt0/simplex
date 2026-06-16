@@ -5,9 +5,7 @@ use inkwell::types::BasicTypeEnum;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::function::FunctionType;
 use crate::module_builder::ModuleBuilder;
-use crate::types::boolean::{BoolTypeIR, BoolValue};
-use crate::types::floating::FloatValue;
-use crate::types::integer::IntegerValue;
+use crate::types::boolean::BoolType;
 use crate::values::Value;
 
 use floating::FloatType;
@@ -26,7 +24,7 @@ pub enum TypeSpec {
 pub enum Type<'ctx> {
     Integer(IntegerType<'ctx>),
     Float(FloatType<'ctx>),
-    Bool(BoolTypeIR<'ctx>),
+    Bool(BoolType<'ctx>),
     Function(FunctionType<'ctx>),
 }
 
@@ -40,28 +38,16 @@ impl<'ctx> Type<'ctx> {
         }
     }
 
-    pub fn check_value(
+    pub fn validate_value(
         &self,
         builder: &Builder<'ctx>,
         value: &Value<'ctx>,
     ) -> CompilationResult<Value<'ctx>> {
         let value = match self {
-            Self::Integer(required_type) => {
-                let result = IntegerValue::from_value(builder, value, required_type)?;
-                result.promote(builder, required_type)?.into()
-            }
-            Self::Float(required_type) => {
-                let result = FloatValue::from_value(builder, value, required_type)?;
-                result.promote(builder, required_type)?.into()
-            }
-            Self::Bool(_) => BoolValue::from_value(builder, value)?.into(),
-            Self::Function(required_type) => {
-                if value.get_type() == Type::Function(required_type.clone()) {
-                    value.clone()
-                } else {
-                    return Err(CompilationError::TypeMismatch);
-                }
-            }
+            Self::Integer(required_type) => required_type.validate_value(builder, value)?.into(),
+            Self::Float(required_type) => required_type.validate_value(builder, value)?.into(),
+            Self::Bool(required_type) => required_type.validate_value(builder, value)?.into(),
+            Self::Function(required_type) => required_type.validate_value(value)?.into(),
         };
         Ok(value)
     }
@@ -98,7 +84,7 @@ impl<'ctx> Type<'ctx> {
 
     #[inline]
     pub fn new_bool(context: &'ctx Context) -> Self {
-        Self::Bool(context.bool_type())
+        Self::Bool(BoolType::new(context))
     }
 }
 
@@ -109,7 +95,7 @@ impl<'ctx> TryInto<BasicTypeEnum<'ctx>> for Type<'ctx> {
         match self {
             Self::Integer(int_type) => Ok(int_type.into()),
             Self::Float(float_type) => Ok(float_type.into()),
-            Self::Bool(ir) => Ok(BasicTypeEnum::IntType(ir)),
+            Self::Bool(bool_type) => Ok(bool_type.into()),
             _ => Err(CompilationError::InvalidOperation),
         }
     }
