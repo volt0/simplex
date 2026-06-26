@@ -1,9 +1,17 @@
 use std::collections::HashMap;
+use std::ops::Deref;
 
 use inkwell::execution_engine::JitFunction;
 use inkwell::OptimizationLevel;
 
+use crate::ast;
+use crate::block::Block;
 use crate::definition::Definition;
+use crate::errors::{CompilationError, CompilationResult};
+use crate::function::FunctionBuilder;
+use crate::function::{Function, FunctionType};
+use crate::target_builder::TargetBuilder;
+use crate::values::Value;
 
 type ModuleIR<'ctx> = inkwell::module::Module<'ctx>;
 
@@ -18,10 +26,6 @@ impl<'ctx> Module<'ctx> {
             module_ir,
             defs: HashMap::new(),
         }
-    }
-
-    pub fn add_definition(&mut self, name: &String, def: Definition<'ctx>) {
-        self.defs.insert(name.clone(), def);
     }
 
     pub fn run_test(&self) {
@@ -44,5 +48,64 @@ impl<'ctx> Module<'ctx> {
             let w = true;
             dbg!(test_func.call(x, y, z, w));
         }
+    }
+}
+
+pub struct ModuleBuilder<'ctx> {
+    parent: &'ctx TargetBuilder<'ctx>,
+    module: Module<'ctx>,
+}
+
+impl<'ctx> ModuleBuilder<'ctx> {
+    pub fn new(parent: &'ctx TargetBuilder<'ctx>, module: Module<'ctx>) -> Self {
+        Self { parent, module }
+    }
+
+    pub fn define(&mut self, def_ast: ast::Definition) -> CompilationResult<()> {
+        let def = match def_ast.value {
+            ast::DefinitionValue::Function(func_ast) => Definition::Function(
+                self.create_function(def_ast.name.as_str(), func_ast.signature, func_ast.body)?,
+            ),
+        };
+        self.module.defs.insert(def_ast.name.clone(), def);
+
+        Ok(())
+    }
+
+    fn create_function(
+        &mut self,
+        name: &str,
+        func_signature: ast::FunctionSignature,
+        func_body: Block,
+    ) -> CompilationResult<Function<'ctx>> {
+        let func_type = FunctionType::from_ast(self, &func_signature)?;
+        let func_type_ir = func_type.ir().clone();
+        let func_ir = self.module.module_ir.add_function(name, func_type_ir, None);
+        let func = Function::from_ir(func_ir, func_type);
+
+        let func_builder = FunctionBuilder::new(func, func_signature, self)?;
+        func_builder.attach_body(func_body)?;
+        Ok(func_builder.build())
+    }
+
+    pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
+        match self.module.defs.get(name) {
+            Some(def) => Ok(match def {
+                Definition::Function(func) => func.clone().into(),
+            }),
+            None => Err(CompilationError::UnresolvedName(name.to_string())),
+        }
+    }
+
+    pub fn build(self) -> Module<'ctx> {
+        self.module
+    }
+}
+
+impl<'ctx> Deref for ModuleBuilder<'ctx> {
+    type Target = TargetBuilder<'ctx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.parent
     }
 }

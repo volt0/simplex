@@ -4,7 +4,7 @@ use inkwell::types::BasicTypeEnum;
 
 use crate::errors::{CompilationError, CompilationResult};
 use crate::function::FunctionType;
-use crate::module_builder::ModuleBuilder;
+use crate::module::ModuleBuilder;
 use crate::types::boolean::BoolType;
 use crate::values::Value;
 

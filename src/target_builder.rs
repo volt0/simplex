@@ -6,7 +6,7 @@ use inkwell::targets::TargetTriple;
 use crate::ast;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::module::Module;
-use crate::module_builder::ModuleBuilder;
+use crate::module::ModuleBuilder;
 use crate::types::Type;
 
 pub struct TargetBuilder<'ctx> {

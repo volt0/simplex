@@ -1,10 +1,15 @@
+use std::collections::HashMap;
+use std::ops::Deref;
+
 use inkwell::builder::Builder;
 use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{AnyValue, BasicMetadataValueEnum, BasicValueEnum};
 
 use crate::ast;
+use crate::block::{Block, BlockVisitor};
 use crate::errors::{CompilationError, CompilationResult};
-use crate::module_builder::ModuleBuilder;
+use crate::module::ModuleBuilder;
+use crate::statement::StatementTranslator;
 use crate::types::Type;
 use crate::values::Value;
 
@@ -107,5 +112,93 @@ impl<'ctx> FunctionType<'ctx> {
     #[inline(always)]
     pub fn ir(&self) -> &FunctionTypeIR<'ctx> {
         &self.ir
+    }
+}
+
+pub struct FunctionBuilder<'ctx, 'm> {
+    parent: &'m mut ModuleBuilder<'ctx>,
+    builder: Builder<'ctx>,
+    func: Function<'ctx>,
+    func_args: HashMap<String, Value<'ctx>>,
+}
+
+impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
+    pub fn new(
+        func: Function<'ctx>,
+        func_signature: ast::FunctionSignature,
+        parent: &'m mut ModuleBuilder<'ctx>,
+    ) -> CompilationResult<Self> {
+        let mut func_builder = Self {
+            func,
+            func_args: HashMap::with_capacity(func_signature.args.len()),
+            builder: parent.context().create_builder(),
+            parent,
+        };
+
+        for arg_ast in func_signature.args.into_iter() {
+            func_builder.add_argument(arg_ast.name.clone(), arg_ast)?;
+        }
+
+        Ok(func_builder)
+    }
+
+    fn add_argument(
+        &mut self,
+        name: String,
+        arg_ast: ast::FunctionArgument,
+    ) -> CompilationResult<()> {
+        let func_ir = self.function_ir();
+        let arg_id = self.func_args.len() as u32;
+        let arg_ir = func_ir.get_nth_param(arg_id).unwrap().as_any_value_enum();
+        let arg_type = Type::from_spec(self, arg_ast.value_type)?;
+        self.func_args
+            .insert(name, Value::from_ir(arg_ir, &arg_type)?);
+
+        Ok(())
+    }
+
+    pub fn attach_body(&self, body: Block) -> CompilationResult<()> {
+        let body_ir = self
+            .context()
+            .append_basic_block(self.function_ir().clone(), "");
+
+        self.builder().position_at_end(body_ir);
+
+        let stmt_translator = StatementTranslator::new(self);
+        stmt_translator.enter_block(&body)
+    }
+
+    #[inline(always)]
+    pub fn builder(&self) -> &Builder<'ctx> {
+        &self.builder
+    }
+
+    #[inline(always)]
+    pub fn function_return_type(&self) -> &Type<'ctx> {
+        self.func.get_return_type()
+    }
+
+    #[inline(always)]
+    pub fn function_ir(&self) -> &FunctionIR<'ctx> {
+        self.func.ir()
+    }
+
+    pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
+        match self.func_args.get(name) {
+            Some(arg) => Ok(arg.clone()),
+            None => self.parent.load_value(name),
+        }
+    }
+
+    pub fn build(self) -> Function<'ctx> {
+        self.func
+    }
+}
+
+impl<'ctx, 'm> Deref for FunctionBuilder<'ctx, 'm> {
+    type Target = ModuleBuilder<'ctx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.parent
     }
 }
