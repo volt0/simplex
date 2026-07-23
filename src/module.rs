@@ -1,17 +1,16 @@
 use std::collections::HashMap;
 use std::ops::Deref;
 
-use inkwell::execution_engine::JitFunction;
-use inkwell::OptimizationLevel;
-
 use crate::ast;
 use crate::block::Block;
 use crate::definition::Definition;
 use crate::errors::{CompilationError, CompilationResult};
-use crate::function::FunctionBuilder;
-use crate::function::{Function, FunctionType};
+use crate::function::{Function, FunctionBuilder};
 use crate::target_builder::TargetBuilder;
 use crate::values::Value;
+use inkwell::execution_engine::JitFunction;
+use inkwell::targets::TargetTriple;
+use inkwell::OptimizationLevel;
 
 type ModuleIR<'ctx> = inkwell::module::Module<'ctx>;
 
@@ -21,13 +20,6 @@ pub struct Module<'ctx> {
 }
 
 impl<'ctx> Module<'ctx> {
-    pub fn new(module_ir: ModuleIR<'ctx>) -> Self {
-        Self {
-            module_ir,
-            defs: HashMap::new(),
-        }
-    }
-
     pub fn run_test(&self) {
         self.module_ir.print_to_stderr();
 
@@ -57,8 +49,17 @@ pub struct ModuleBuilder<'ctx> {
 }
 
 impl<'ctx> ModuleBuilder<'ctx> {
-    pub fn new(parent: &'ctx TargetBuilder<'ctx>, module: Module<'ctx>) -> Self {
-        Self { parent, module }
+    pub fn new(parent: &'ctx TargetBuilder<'ctx>, name: &str) -> Self {
+        let module_ir = parent.context().create_module(name);
+        module_ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
+
+        Self {
+            parent,
+            module: Module {
+                module_ir,
+                defs: HashMap::new(),
+            },
+        }
     }
 
     pub fn define(&mut self, def_ast: ast::Definition) -> CompilationResult<()> {
@@ -78,12 +79,7 @@ impl<'ctx> ModuleBuilder<'ctx> {
         func_signature: ast::FunctionSignature,
         func_body: Block,
     ) -> CompilationResult<Function<'ctx>> {
-        let func_type = FunctionType::from_ast(self, &func_signature)?;
-        let func_type_ir = func_type.ir().clone();
-        let func_ir = self.module.module_ir.add_function(name, func_type_ir, None);
-        let func = Function::from_ir(func_ir, func_type);
-
-        let func_builder = FunctionBuilder::new(func, func_signature, self)?;
+        let func_builder = FunctionBuilder::new(self, name, func_signature)?;
         func_builder.attach_body(func_body)?;
         Ok(func_builder.build())
     }
@@ -99,6 +95,11 @@ impl<'ctx> ModuleBuilder<'ctx> {
 
     pub fn build(self) -> Module<'ctx> {
         self.module
+    }
+
+    #[inline(always)]
+    pub fn module_ir(&self) -> &ModuleIR<'ctx> {
+        &self.module.module_ir
     }
 }
 

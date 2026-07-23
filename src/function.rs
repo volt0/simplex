@@ -124,12 +124,16 @@ pub struct FunctionBuilder<'ctx, 'm> {
 
 impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
     pub fn new(
-        func: Function<'ctx>,
-        func_signature: ast::FunctionSignature,
         parent: &'m mut ModuleBuilder<'ctx>,
+        name: &str,
+        func_signature: ast::FunctionSignature,
     ) -> CompilationResult<Self> {
+        let func_type = FunctionType::from_ast(parent, &func_signature)?;
+        let func_type_ir = func_type.ir().clone();
+        let func_ir = parent.module_ir().add_function(name, func_type_ir, None);
+
         let mut func_builder = Self {
-            func,
+            func: Function::from_ir(func_ir, func_type),
             func_args: HashMap::with_capacity(func_signature.args.len()),
             builder: parent.context().create_builder(),
             parent,
