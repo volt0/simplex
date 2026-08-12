@@ -31,10 +31,7 @@ impl<'ctx> Value<'ctx> {
             }
             Type::Float(_) => FloatValue::from_ir(value_ir.into_float_value()).into(),
             Type::Bool(_) => BoolValue::from_ir(value_ir.into_int_value()).into(),
-            Type::Function(function_type) => {
-                let function_ir = value_ir.into_function_value();
-                Value::Function(Function::from_ir(function_ir, function_type.clone()))
-            }
+            Type::Function(_) => unimplemented!(),
         };
         Ok(value)
     }

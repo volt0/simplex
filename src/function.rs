@@ -19,15 +19,11 @@ type FunctionTypeIR<'ctx> = inkwell::types::FunctionType<'ctx>;
 #[derive(Clone)]
 pub struct Function<'ctx> {
     ir: FunctionIR<'ctx>,
+    args: HashMap<String, Value<'ctx>>,
     func_type: FunctionType<'ctx>,
 }
 
 impl<'ctx> Function<'ctx> {
-    #[inline]
-    pub fn from_ir(ir: FunctionIR<'ctx>, func_type: FunctionType<'ctx>) -> Self {
-        Self { ir, func_type }
-    }
-
     #[inline]
     pub fn get_type(&self) -> &FunctionType<'ctx> {
         &self.func_type
@@ -119,7 +115,6 @@ pub struct FunctionBuilder<'ctx, 'm> {
     module_builder: &'m mut ModuleBuilder<'ctx>,
     ir_builder: Builder<'ctx>,
     func: Function<'ctx>,
-    func_args: HashMap<String, Value<'ctx>>,
 }
 
 impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
@@ -132,33 +127,28 @@ impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
         let func_type_ir = func_type.ir().clone();
         let func_ir = parent.module_ir().add_function(name, func_type_ir, None);
 
-        let mut func_builder = Self {
-            func: Function::from_ir(func_ir, func_type),
-            func_args: HashMap::with_capacity(func_signature.args.len()),
-            ir_builder: parent.context().create_builder(),
-            module_builder: parent,
+        let mut func = Function {
+            ir: func_ir,
+            args: HashMap::with_capacity(func_signature.args.len()),
+            func_type,
         };
 
-        for arg_ast in func_signature.args.into_iter() {
-            func_builder.add_argument(arg_ast.name.clone(), arg_ast)?;
+        for (arg_id, arg_ast) in func_signature.args.into_iter().enumerate() {
+            let arg_ir = func_ir
+                .get_nth_param(arg_id as u32)
+                .unwrap()
+                .as_any_value_enum();
+
+            let arg_type = Type::from_spec(parent, arg_ast.value_type)?;
+            func.args
+                .insert(arg_ast.name.clone(), Value::from_ir(arg_ir, &arg_type)?);
         }
 
-        Ok(func_builder)
-    }
-
-    fn add_argument(
-        &mut self,
-        name: String,
-        arg_ast: ast::FunctionArgument,
-    ) -> CompilationResult<()> {
-        let func_ir = self.function_ir();
-        let arg_id = self.func_args.len() as u32;
-        let arg_ir = func_ir.get_nth_param(arg_id).unwrap().as_any_value_enum();
-        let arg_type = Type::from_spec(self, arg_ast.value_type)?;
-        self.func_args
-            .insert(name, Value::from_ir(arg_ir, &arg_type)?);
-
-        Ok(())
+        Ok(Self {
+            func,
+            ir_builder: parent.context().create_builder(),
+            module_builder: parent,
+        })
     }
 
     pub fn attach_body(&self, body: Block) -> CompilationResult<()> {
@@ -188,7 +178,7 @@ impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
     }
 
     pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
-        match self.func_args.get(name) {
+        match self.func.args.get(name) {
             Some(arg) => Ok(arg.clone()),
             None => self.module_builder.load_value(name),
         }
