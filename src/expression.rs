@@ -166,7 +166,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         };
 
         if let Some(expr_type) = expr_type {
-            expr_type.validate_value(self.builder(), &value)
+            expr_type.validate_value(self.ir_builder(), &value)
         } else {
             Ok(value)
         }
@@ -185,7 +185,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
     ) -> CompilationResult<Value<'ctx>> {
         let lhs = self.translate_expression(&lhs_expr, expr_type)?;
         let rhs = self.translate_expression(&rhs_expr, expr_type)?;
-        lhs.do_binary_operation(self.builder(), op, &rhs)
+        lhs.do_binary_operation(self.ir_builder(), op, &rhs)
     }
 
     fn translate_unary_operation(
@@ -195,7 +195,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         expr_type: Option<&Type<'ctx>>,
     ) -> CompilationResult<Value<'ctx>> {
         let arg = self.translate_expression(arg_expr, expr_type)?;
-        arg.do_unary_operation(self.builder(), op)
+        arg.do_unary_operation(self.ir_builder(), op)
     }
 
     fn translate_call(&self, expr: &CallExpression) -> CompilationResult<Value<'ctx>> {
@@ -212,7 +212,7 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
             args.push(self.translate_expression(arg_expr, Some(arg_type))?);
         }
 
-        callee.do_call(self.builder(), &args)
+        callee.do_call(self.ir_builder(), &args)
     }
 }
 

@@ -116,8 +116,8 @@ impl<'ctx> FunctionType<'ctx> {
 }
 
 pub struct FunctionBuilder<'ctx, 'm> {
-    parent: &'m mut ModuleBuilder<'ctx>,
-    builder: Builder<'ctx>,
+    module_builder: &'m mut ModuleBuilder<'ctx>,
+    ir_builder: Builder<'ctx>,
     func: Function<'ctx>,
     func_args: HashMap<String, Value<'ctx>>,
 }
@@ -135,8 +135,8 @@ impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
         let mut func_builder = Self {
             func: Function::from_ir(func_ir, func_type),
             func_args: HashMap::with_capacity(func_signature.args.len()),
-            builder: parent.context().create_builder(),
-            parent,
+            ir_builder: parent.context().create_builder(),
+            module_builder: parent,
         };
 
         for arg_ast in func_signature.args.into_iter() {
@@ -166,15 +166,15 @@ impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
             .context()
             .append_basic_block(self.function_ir().clone(), "");
 
-        self.builder().position_at_end(body_ir);
+        self.ir_builder.position_at_end(body_ir);
 
         let stmt_translator = StatementTranslator::new(self);
         stmt_translator.enter_block(&body)
     }
 
     #[inline(always)]
-    pub fn builder(&self) -> &Builder<'ctx> {
-        &self.builder
+    pub fn ir_builder(&self) -> &Builder<'ctx> {
+        &self.ir_builder
     }
 
     #[inline(always)]
@@ -190,7 +190,7 @@ impl<'ctx, 'm> FunctionBuilder<'ctx, 'm> {
     pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
         match self.func_args.get(name) {
             Some(arg) => Ok(arg.clone()),
-            None => self.parent.load_value(name),
+            None => self.module_builder.load_value(name),
         }
     }
 
@@ -203,6 +203,6 @@ impl<'ctx, 'm> Deref for FunctionBuilder<'ctx, 'm> {
     type Target = ModuleBuilder<'ctx>;
 
     fn deref(&self) -> &Self::Target {
-        self.parent
+        self.module_builder
     }
 }

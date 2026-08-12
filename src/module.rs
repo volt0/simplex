@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 use std::ops::Deref;
 
+use inkwell::execution_engine::JitFunction;
+use inkwell::targets::TargetTriple;
+use inkwell::OptimizationLevel;
+
 use crate::ast;
 use crate::block::Block;
 use crate::definition::Definition;
@@ -8,15 +12,12 @@ use crate::errors::{CompilationError, CompilationResult};
 use crate::function::{Function, FunctionBuilder};
 use crate::target_builder::TargetBuilder;
 use crate::values::Value;
-use inkwell::execution_engine::JitFunction;
-use inkwell::targets::TargetTriple;
-use inkwell::OptimizationLevel;
 
 type ModuleIR<'ctx> = inkwell::module::Module<'ctx>;
 
 pub struct Module<'ctx> {
-    pub(crate) module_ir: ModuleIR<'ctx>,
-    pub defs: HashMap<String, Definition<'ctx>>,
+    pub module_ir: ModuleIR<'ctx>,
+    pub definitions: HashMap<String, Definition<'ctx>>,
 }
 
 impl<'ctx> Module<'ctx> {
@@ -44,7 +45,7 @@ impl<'ctx> Module<'ctx> {
 }
 
 pub struct ModuleBuilder<'ctx> {
-    parent: &'ctx TargetBuilder<'ctx>,
+    target_builder: &'ctx TargetBuilder<'ctx>,
     module: Module<'ctx>,
 }
 
@@ -54,10 +55,10 @@ impl<'ctx> ModuleBuilder<'ctx> {
         module_ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
 
         Self {
-            parent,
+            target_builder: parent,
             module: Module {
                 module_ir,
-                defs: HashMap::new(),
+                definitions: HashMap::new(),
             },
         }
     }
@@ -68,7 +69,7 @@ impl<'ctx> ModuleBuilder<'ctx> {
                 self.create_function(def_ast.name.as_str(), func_ast.signature, func_ast.body)?,
             ),
         };
-        self.module.defs.insert(def_ast.name.clone(), def);
+        self.module.definitions.insert(def_ast.name.clone(), def);
 
         Ok(())
     }
@@ -85,7 +86,7 @@ impl<'ctx> ModuleBuilder<'ctx> {
     }
 
     pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
-        match self.module.defs.get(name) {
+        match self.module.definitions.get(name) {
             Some(def) => Ok(match def {
                 Definition::Function(func) => func.clone().into(),
             }),
@@ -107,6 +108,6 @@ impl<'ctx> Deref for ModuleBuilder<'ctx> {
     type Target = TargetBuilder<'ctx>;
 
     fn deref(&self) -> &Self::Target {
-        self.parent
+        self.target_builder
     }
 }

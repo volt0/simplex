@@ -58,7 +58,7 @@ impl<'ctx, 'm, 'f> BlockVisitor for StatementTranslator<'ctx, 'm, 'f> {
         let value = expr_translator.translate_expression(expr, Some(&expr_type))?;
         let value_ir: BasicValueEnum<'ctx> = value.try_into()?;
 
-        self.builder().build_return(Some(&value_ir))?;
+        self.ir_builder().build_return(Some(&value_ir))?;
         Ok(())
     }
 }
