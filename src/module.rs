@@ -2,15 +2,14 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use inkwell::execution_engine::JitFunction;
-use inkwell::targets::TargetTriple;
 use inkwell::OptimizationLevel;
 
 use crate::ast;
 use crate::block::Block;
 use crate::definition::Definition;
 use crate::errors::{CompilationError, CompilationResult};
-use crate::function::{Function, FunctionBuilder};
-use crate::target_builder::TargetBuilder;
+use crate::function::{Function, FunctionBuilder, FunctionType};
+use crate::target::TargetBuilder;
 use crate::values::Value;
 
 type ModuleIR<'ctx> = inkwell::module::Module<'ctx>;
@@ -21,6 +20,13 @@ pub struct Module<'ctx> {
 }
 
 impl<'ctx> Module<'ctx> {
+    pub fn new(module_ir: ModuleIR<'ctx>) -> Self {
+        Module {
+            module_ir,
+            definitions: HashMap::new(),
+        }
+    }
+
     pub fn run_test(&self) {
         self.module_ir.print_to_stderr();
 
@@ -45,44 +51,45 @@ impl<'ctx> Module<'ctx> {
 }
 
 pub struct ModuleBuilder<'ctx> {
-    target_builder: &'ctx TargetBuilder<'ctx>,
     module: Module<'ctx>,
+    target_builder: &'ctx TargetBuilder<'ctx>,
 }
 
 impl<'ctx> ModuleBuilder<'ctx> {
-    pub fn new(parent: &'ctx TargetBuilder<'ctx>, name: &str) -> Self {
-        let module_ir = parent.context().create_module(name);
-        module_ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
-
+    pub fn new(module: Module<'ctx>, target_builder: &'ctx TargetBuilder<'ctx>) -> Self {
         Self {
-            target_builder: parent,
-            module: Module {
-                module_ir,
-                definitions: HashMap::new(),
-            },
+            module,
+            target_builder,
         }
     }
 
-    pub fn define(&mut self, def_ast: ast::Definition) -> CompilationResult<()> {
-        let def = match def_ast.value {
-            ast::DefinitionValue::Function(func_ast) => Definition::Function(
-                self.create_function(def_ast.name.as_str(), func_ast.signature, func_ast.body)?,
-            ),
-        };
-        self.module.definitions.insert(def_ast.name.clone(), def);
-
+    pub fn add_definition(&mut self, def_ast: ast::Definition) -> CompilationResult<()> {
+        let name = def_ast.name.clone();
+        let def = Definition::new_from_ast(def_ast, self)?;
+        self.module.definitions.insert(name, def);
         Ok(())
     }
 
-    fn create_function(
+    pub fn create_function(
         &mut self,
         name: &str,
-        func_signature: ast::FunctionSignature,
-        func_body: Block,
+        signature: ast::FunctionSignature,
+        body: Block,
     ) -> CompilationResult<Function<'ctx>> {
-        let func_builder = FunctionBuilder::new(self, name, func_signature)?;
-        func_builder.attach_body(func_body)?;
+        let func_type = FunctionType::from_ast(&signature, self)?;
+        let func_type_ir = func_type.ir().clone();
+        let func_ir = self.module_ir().add_function(name, func_type_ir, None);
+
+        let func = Function::new(func_ir, func_type)?;
+        let func_builder = FunctionBuilder::new(func, self)?;
+        func_builder.attach_body(body)?;
+
         Ok(func_builder.build())
+    }
+
+    #[inline(always)]
+    pub fn module_ir(&self) -> &ModuleIR<'ctx> {
+        &self.module.module_ir
     }
 
     pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
@@ -96,11 +103,6 @@ impl<'ctx> ModuleBuilder<'ctx> {
 
     pub fn build(self) -> Module<'ctx> {
         self.module
-    }
-
-    #[inline(always)]
-    pub fn module_ir(&self) -> &ModuleIR<'ctx> {
-        &self.module.module_ir
     }
 }
 

@@ -208,11 +208,11 @@ impl<'ctx, 'm, 'f, 's> ExpressionTranslator<'ctx, 'm, 'f, 's> {
         };
 
         let mut args = Vec::with_capacity(arg_types.len());
-        for (arg_expr, arg_type) in expr.args.iter().zip(arg_types.iter()) {
+        for (arg_expr, (_, arg_type)) in expr.args.iter().zip(arg_types.iter()) {
             args.push(self.translate_expression(arg_expr, Some(arg_type))?);
         }
 
-        callee.do_call(self.ir_builder(), &args)
+        callee.call(self.ir_builder(), &args)
     }
 }
 

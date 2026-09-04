@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use inkwell::context::Context;
+use inkwell::targets::TargetTriple;
 
 use crate::ast;
 use crate::errors::{CompilationError, CompilationResult};
@@ -45,9 +46,14 @@ impl<'ctx> TargetBuilder<'ctx> {
         name: &str,
         module_ast: ast::Module,
     ) -> CompilationResult<Module<'_>> {
-        let mut module_builder = ModuleBuilder::new(self, name);
+        let module_ir = self.context.create_module(name);
+        module_ir.set_triple(&TargetTriple::create("x86_64-pc-linux-gnu"));
+
+        let module = Module::new(module_ir);
+
+        let mut module_builder = ModuleBuilder::new(module, self);
         for def_ast in module_ast.defs {
-            module_builder.define(def_ast)?;
+            module_builder.add_definition(def_ast)?;
         }
 
         Ok(module_builder.build())

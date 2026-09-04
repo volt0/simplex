@@ -1,7 +1,7 @@
 use inkwell::context::Context;
 
 use crate::parser::grammar::ModuleParser;
-use crate::target_builder::TargetBuilder;
+use crate::target::TargetBuilder;
 
 mod ast;
 mod block;
@@ -13,7 +13,7 @@ mod function;
 mod module;
 mod parser;
 mod statement;
-mod target_builder;
+mod target;
 mod types;
 mod values;
 

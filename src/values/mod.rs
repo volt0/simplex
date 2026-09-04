@@ -48,7 +48,7 @@ impl<'ctx> Value<'ctx> {
             Value::Int(value) => value.get_type().into(),
             Value::Float(value) => value.get_type().into(),
             Value::Bool(value) => value.get_type().into(),
-            Value::Function(value) => Type::Function(value.get_type().clone()),
+            Value::Function(value) => Type::Function(value.function_type().clone()),
         }
     }
 
@@ -79,13 +79,13 @@ impl<'ctx> Value<'ctx> {
         }
     }
 
-    pub fn do_call(
+    pub fn call(
         &self,
         builder: &Builder<'ctx>,
         args: &[Value<'ctx>],
     ) -> CompilationResult<Value<'ctx>> {
         match self {
-            Value::Function(function) => function.do_call(builder, args),
+            Value::Function(function) => function.call(builder, args),
             _ => Err(CompilationError::TypeMismatch),
         }
     }
