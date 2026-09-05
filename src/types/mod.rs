@@ -2,6 +2,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::types::BasicTypeEnum;
 
+use crate::ast;
 use crate::errors::{CompilationError, CompilationResult};
 use crate::function::FunctionType;
 use crate::module::ModuleBuilder;
@@ -29,15 +30,6 @@ pub enum Type<'ctx> {
 }
 
 impl<'ctx> Type<'ctx> {
-    pub fn from_spec(
-        module_builder: &ModuleBuilder<'ctx>,
-        type_spec: TypeSpec,
-    ) -> CompilationResult<Self> {
-        match type_spec {
-            TypeSpec::Reference(name) => module_builder.load_type(&name),
-        }
-    }
-
     pub fn validate_value(
         &self,
         builder: &Builder<'ctx>,
@@ -98,5 +90,36 @@ impl<'ctx> TryInto<BasicTypeEnum<'ctx>> for Type<'ctx> {
             Self::Bool(bool_type) => Ok(bool_type.into()),
             _ => Err(CompilationError::InvalidOperation),
         }
+    }
+}
+
+pub struct TypeTranslator<'ctx, 'm> {
+    module_builder: &'m ModuleBuilder<'ctx>,
+}
+
+impl<'ctx, 'm> TypeTranslator<'ctx, 'm> {
+    pub fn new(module_builder: &'m ModuleBuilder<'ctx>) -> Self {
+        Self { module_builder }
+    }
+
+    pub fn create_type(&self, type_spec: TypeSpec) -> CompilationResult<Type<'ctx>> {
+        match type_spec {
+            TypeSpec::Reference(name) => self.module_builder.load_type(&name),
+        }
+    }
+
+    pub fn create_function_type(
+        &self,
+        signature: &ast::FunctionSignature,
+    ) -> CompilationResult<FunctionType<'ctx>> {
+        let mut arg_types = Vec::with_capacity(signature.args.len());
+        for arg in signature.args.iter() {
+            let arg_type = self.create_type(arg.value_type.clone())?;
+            arg_types.push((arg.name.clone(), arg_type.clone()));
+        }
+
+        let return_type = self.create_type(signature.return_type.clone())?;
+
+        FunctionType::new(arg_types, return_type)
     }
 }

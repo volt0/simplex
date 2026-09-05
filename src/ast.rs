@@ -1,7 +1,6 @@
-pub use crate::block::Block;
 pub use crate::constant::Constant;
 pub use crate::expression::Expression;
-pub use crate::statement::Statement;
+pub use crate::statement::{Block, Statement};
 pub use crate::types::TypeSpec;
 
 pub struct Module {

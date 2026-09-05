@@ -4,7 +4,6 @@ use crate::parser::grammar::ModuleParser;
 use crate::target::TargetBuilder;
 
 mod ast;
-mod block;
 mod constant;
 mod definition;
 mod errors;

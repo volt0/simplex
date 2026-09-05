@@ -3,7 +3,6 @@ use std::ops::Deref;
 
 use inkwell::values::BasicValueEnum;
 
-use crate::block::{Block, BlockVisitor};
 use crate::errors::CompilationResult;
 use crate::expression::Expression;
 use crate::expression::ExpressionTranslator;
@@ -38,20 +37,17 @@ impl<'ctx, 'm, 'f> StatementTranslator<'ctx, 'm, 'f> {
         }
     }
 
-    pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
-        match self.values.get(name) {
-            Some(value) => Ok(value.clone()),
-            None => self.parent.load_value(name),
+    pub fn enter_block(&self, block: &Block) -> CompilationResult<()> {
+        for stmt in block.statements.iter() {
+            match stmt {
+                Statement::Block(block) => self.enter_block(block)?,
+                Statement::Return(expr) => self.add_return_statement(expr)?,
+            }
         }
-    }
-}
-
-impl<'ctx, 'm, 'f> BlockVisitor for StatementTranslator<'ctx, 'm, 'f> {
-    fn enter_block(&self, block: &Block) -> CompilationResult<()> {
-        block.visit(self)
+        Ok(())
     }
 
-    fn add_return_statement(&self, expr: &Expression) -> CompilationResult<()> {
+    pub fn add_return_statement(&self, expr: &Expression) -> CompilationResult<()> {
         let expr_translator = ExpressionTranslator::new(self);
         let expr_type = self.function_return_type().clone();
 
@@ -61,6 +57,13 @@ impl<'ctx, 'm, 'f> BlockVisitor for StatementTranslator<'ctx, 'm, 'f> {
         self.ir_builder().build_return(Some(&value_ir))?;
         Ok(())
     }
+
+    pub fn load_value(&self, name: &str) -> CompilationResult<Value<'ctx>> {
+        match self.values.get(name) {
+            Some(value) => Ok(value.clone()),
+            None => self.parent.load_value(name),
+        }
+    }
 }
 
 impl<'ctx, 'm, 'f> Deref for StatementTranslator<'ctx, 'm, 'f> {
@@ -68,5 +71,15 @@ impl<'ctx, 'm, 'f> Deref for StatementTranslator<'ctx, 'm, 'f> {
 
     fn deref(&self) -> &Self::Target {
         self.parent
+    }
+}
+
+pub struct Block {
+    statements: Vec<Statement>,
+}
+
+impl Block {
+    pub fn new(statements: Vec<Statement>) -> Self {
+        Self { statements }
     }
 }

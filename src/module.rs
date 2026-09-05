@@ -5,11 +5,12 @@ use inkwell::execution_engine::JitFunction;
 use inkwell::OptimizationLevel;
 
 use crate::ast;
-use crate::block::Block;
 use crate::definition::Definition;
 use crate::errors::{CompilationError, CompilationResult};
-use crate::function::{Function, FunctionBuilder, FunctionType};
+use crate::function::{Function, FunctionBuilder};
+use crate::statement::Block;
 use crate::target::TargetBuilder;
+use crate::types::TypeTranslator;
 use crate::values::Value;
 
 type ModuleIR<'ctx> = inkwell::module::Module<'ctx>;
@@ -76,7 +77,8 @@ impl<'ctx> ModuleBuilder<'ctx> {
         signature: ast::FunctionSignature,
         body: Block,
     ) -> CompilationResult<Function<'ctx>> {
-        let func_type = FunctionType::from_ast(&signature, self)?;
+        let type_translator = TypeTranslator::new(self);
+        let func_type = type_translator.create_function_type(&signature)?;
         let func_type_ir = func_type.ir().clone();
         let func_ir = self.module_ir().add_function(name, func_type_ir, None);
 
